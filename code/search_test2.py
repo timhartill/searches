@@ -709,7 +709,7 @@ if __name__ == "__main__":
 
     # input params
     iterations = 100000   # for MCTS
-    max_depth = 1000      # for MCTS
+    max_depth = 100      # for MCTS
 
 
     # --- Define Problems ---

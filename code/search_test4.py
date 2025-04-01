@@ -79,7 +79,7 @@ class SlidingTileProblem:
     Implements the Sliding Tile puzzle problem interface.
     Can use uniform cost (1) or variable cost (value of tile moved).
     """
-    def __init__(self, initial_state, goal_state=None, use_variable_costs=False):
+    def __init__(self, initial_state, goal_state=None, use_variable_costs=False, make_heuristic_inadmissable=False):
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
@@ -93,7 +93,13 @@ class SlidingTileProblem:
             
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
         self.use_variable_costs = use_variable_costs
-        self.optimality_guaranteed = not use_variable_costs
+        self.optimality_guaranteed = True
+        self.make_heuristic_inadmissable = make_heuristic_inadmissable
+        if make_heuristic_inadmissable:
+            self.h_multiplier = len(initial_state) * 20
+            self.optimality_guaranteed = False
+        else:
+            self.h_multiplier = 1    
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self._str_repr = f"SlidingTile-{self.n}x{self.n}-{cost_type}"
 
@@ -107,16 +113,19 @@ class SlidingTileProblem:
         return state == self.goal_state_tuple
 
     def get_neighbors(self, state):
-        """Returns list of tuples: (neighbor_state, moved_tile_value)"""
+        """Returns list of tuples: (neighbor_state, moved_tile_value) from state
+        where moved_tile_value is the value (label) of the tile that was moved to the blank space.
+        """
         neighbors = []
-        blank_index = state.index(0)
+        blank_index = state.index(0)    # index of blank in state list 
         row, col = divmod(blank_index, self.n)
         moves = {'up': (row - 1, col), 'down': (row + 1, col), 'left': (row, col - 1), 'right': (row, col + 1)}
         for move_dir, (new_row, new_col) in moves.items():
-            if 0 <= new_row < self.n and 0 <= new_col < self.n:
-                new_blank_index = new_row * self.n + new_col
+            if 0 <= new_row < self.n and 0 <= new_col < self.n:  # if valid move
+                new_blank_index = new_row * self.n + new_col  # index of blank if move this direction
                 new_state_list = list(state)
                 moved_tile_value = new_state_list[new_blank_index] 
+                # swap blank with the tile in the new position:
                 new_state_list[blank_index], new_state_list[new_blank_index] = new_state_list[new_blank_index], new_state_list[blank_index]
                 neighbors.append((tuple(new_state_list), moved_tile_value)) 
         return neighbors 
@@ -152,7 +161,7 @@ class SlidingTileProblem:
         """
         Calculates the Manhattan distance heuristic (number of steps).
         NOTE: This heuristic counts steps (cost=1). If variable costs are used,
-        its effectiveness will decrease.
+        its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
         distance = 0
         for i, tile in enumerate(state):
@@ -162,7 +171,7 @@ class SlidingTileProblem:
                 if goal_idx is None: continue 
                 goal_pos = divmod(goal_idx, self.n)
                 distance += abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1])
-        return distance
+        return distance * self.h_multiplier
         
     def __str__(self): 
         return self._str_repr
@@ -173,12 +182,18 @@ class PancakeProblem:
     Implements the Pancake Sorting problem interface.
     Can use uniform cost (1) or variable cost (k = pancakes flipped).
     """
-    def __init__(self, initial_state, goal_state=None, use_variable_costs=False):
+    def __init__(self, initial_state, goal_state=None, use_variable_costs=False, make_heuristic_inadmissable=False):
         self.initial_state_tuple=tuple(initial_state); self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
         else: self.goal_state_tuple=tuple(sorted(initial_state))
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = not use_variable_costs
+        self.make_heuristic_inadmissable = make_heuristic_inadmissable
+        if make_heuristic_inadmissable:
+            self.h_multiplier = len(initial_state) * 20
+            self.optimality_guaranteed = False
+        else:
+            self.h_multiplier = 1    
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self._str_repr = f"Pancake-{self.n}-{cost_type}"
         
@@ -249,7 +264,7 @@ class PancakeProblem:
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
         at most 2 gaps.
         """
-        return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1)
+        return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
         
     def __str__(self): 
         return self._str_repr
@@ -257,9 +272,15 @@ class PancakeProblem:
 # --- TowersOfHanoiProblem (Corrected Formatting) ---
 class TowersOfHanoiProblem:
     """Implements the Towers of Hanoi problem interface. Cost is always 1."""
-    def __init__(self, num_disks, initial_peg='A', target_peg='C'): 
+    def __init__(self, num_disks, initial_peg='A', target_peg='C', make_heuristic_inadmissable=False): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = not self.use_variable_costs
+        self.make_heuristic_inadmissable = make_heuristic_inadmissable
+        if make_heuristic_inadmissable:
+            self.h_multiplier = num_disks * 20
+            self.optimality_guaranteed = False
+        else:
+            self.h_multiplier = 1    
         assert num_disks >= 1, "Number of disks must be at least 1."
         self.num_disks = num_disks
         self.pegs=['A','B','C']
@@ -316,7 +337,8 @@ class TowersOfHanoiProblem:
 
     def heuristic(self, state): 
         """Calculates the standard admissible heuristic for Towers of Hanoi."""
-        h=0; ctp=self.target_peg # current target peg for disk k
+        h=0 
+        ctp=self.target_peg # current target peg for disk k
         for k in range(self.num_disks-1,-1,-1): # Iterate largest disk (N-1) down to smallest (0)
             if state[k] != ctp: 
                 # If disk k is not where it should be relative to disk k+1 (or final target)
@@ -326,7 +348,7 @@ class TowersOfHanoiProblem:
                 # (neither where k is, nor where k should have been)
                 ctp = next(p for p in self.pegs if p!=state[k] and p!=ctp)
             # else: disk k is on the correct peg (ctp), so target for k-1 remains ctp.
-        return h
+        return h * self.h_multiplier
 
     def get_cost(self, state1, state2, move_info=None): 
         """Cost is always 1 for Towers of Hanoi."""
@@ -354,34 +376,38 @@ def generic_search(problem, priority_key='f'):
     elif priority_key == 'h': initial_priority = h_initial
     else: initial_priority = initial_g + h_initial # 'f'
 
-    frontier = [(initial_priority, start_node)]; heapq.heapify(frontier)
-    came_from = {start_node: None}; g_score = {start_node: initial_g}
-    closed_set = set(); nodes_expanded = 0
+    frontier = [(initial_priority, start_node)] 
+    heapq.heapify(frontier)
+    came_from = {start_node: None} 
+    g_score = {start_node: initial_g}
+    closed_set = set()
+    nodes_expanded = 0
 
     while frontier:
         current_priority, current_state = heapq.heappop(frontier)
         
         # Optimization: If current_state's g_score is worse than recorded, skip
         # This can happen with duplicate states in the queue with different priorities
-        if current_state in g_score and g_score[current_state] < current_priority - (problem.heuristic(current_state) if priority_key != 'g' else 0):
+        #if current_state in g_score and g_score[current_state] < current_priority - (problem.heuristic(current_state) if priority_key != 'g' else 0):
              # Check g_score derived from priority vs stored g_score if applicable
              # Let's rely on the closed set check primarily
-             pass 
+             #pass 
 
         nodes_expanded += 1 
         if current_state in closed_set: continue
         closed_set.add(current_state) # Add after popping and checking
 
         if problem.is_goal(current_state):
-            end_time = time.time(); path = reconstruct_path(came_from, start_node, current_state)
+            end_time = time.time()
+            path = reconstruct_path(came_from, start_node, current_state)
             final_g_score = g_score.get(current_state)
-            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed if path else False }
+            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed }
 
         current_g_score = g_score.get(current_state)
         if current_g_score is None: continue # Should have g_score if reached here
 
         for neighbor_info in problem.get_neighbors(current_state):
-            # Handle cases where get_neighbors might return just state or (state, info)
+            # Handle cases where get_neighbors might return just state or (state, move_info)
             if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
                  neighbor_state = neighbor_info[0]
                  move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
@@ -395,7 +421,8 @@ def generic_search(problem, priority_key='f'):
             tentative_g_score = current_g_score + cost
 
             if tentative_g_score < g_score.get(neighbor_state, float('inf')):
-                came_from[neighbor_state] = current_state; g_score[neighbor_state] = tentative_g_score
+                came_from[neighbor_state] = current_state 
+                g_score[neighbor_state] = tentative_g_score
                 priority = tentative_g_score # Default for 'g'
                 if priority_key in ['h', 'f']:
                     h_score = problem.heuristic(neighbor_state)
@@ -494,62 +521,82 @@ def bidirectional_a_star_search(problem):
 # --- MCTSNode and mcts_search (Updated for variable cost) ---
 class MCTSNode:
     def __init__(self, state, parent=None, problem=None): 
-        self.state = state; self.parent = parent; self.problem = problem 
-        self.children = []; self.visits = 0; self.value = 0.0  
+        self.state = state
+        self.parent = parent    # parent MCTSNode
+        self.problem = problem  # problem instance, can access problem methods like get_neighbors, heuristic
+        self.children = []      # list of child MCTSNode
+        self.visits = 0         # number of visits to this node
+        self.value = 0.0        # current value of this node
+        # self.heuristic = problem.heuristic(state) if problem else 0 # heuristic value of this node
         # Store neighbor states for expansion, original info might be needed for cost later if not recalculated
-        self._untried_actions_info = problem.get_neighbors(state) if problem else []
-        self._untried_states = [info[0] if isinstance(info, tuple) else info for info in self._untried_actions_info]
+        self._untried_actions_info = problem.get_neighbors(state) if problem else []  # list of tuples of (neighbor states, 'moved' item = "action")
+        self._untried_states = [info[0] if isinstance(info, tuple) else info for info in self._untried_actions_info] # list of neighbour states
         random.shuffle(self._untried_states)
-    def is_fully_expanded(self): return len(self._untried_states) == 0
+
     def best_child(self, exploration_weight=1.41): 
+        """ Selects the best child node randomly if previously unvisited or deterministically based on UCB1 (Upper Confidence Bound) formula. """
         if not self.children: return None
         if self.visits <= 0: # Ensure visits is positive for log
              # If root or unvisited node, pick randomly or based on prior?
+             # TODO: consider using heuristic for unvisited nodes either max or sampled
              return random.choice(self.children) if self.children else None 
         log_total_visits = math.log(self.visits)
-        def ucb1(node):
-            if node.visits == 0: return float('inf') # Prioritize unvisited
-            exploitation = node.value / node.visits
-            exploration = exploration_weight * math.sqrt(log_total_visits / node.visits)
+
+        def ucb1(node): # Upper Confidence Bound 
+            #TODO modify to include heuristic?
+            if node.visits == 0: return float('inf') # Prioritize unvisited children [and/or use heuristic?]
+            exploitation = node.value / node.visits  # higher value=higher exploitation score but the more visits the lower the exploitation score
+            exploration = exploration_weight * math.sqrt(log_total_visits / node.visits) # sqrt(log(parent_visits) / curr_child_visits)  1 visit = 0, 2=0.59*1.41, 10=0.48, 100=0.21, 1000=0.08
             return exploitation + exploration
+
         # Add small random noise to break ties consistently
+        #TODO: consider using heuristic for unvisited nodes either max or sampled
         best_node = max(self.children, key=lambda node: ucb1(node) + random.uniform(0, 1e-6))
         return best_node
+    
     def expand(self):
+        """ Expand single node by removing one untried state and creating a child node from it. """
         if not self._untried_states: return None 
         action_state = self._untried_states.pop() 
         child_node = MCTSNode(action_state, parent=self, problem=self.problem)
         self.children.append(child_node)
         return child_node
+
+    def is_fully_expanded(self): return len(self._untried_states) == 0
+
     def is_terminal(self): return self.problem.is_goal(self.state) if self.problem else False
 
-def mcts_search(problem, iterations=1000, max_depth=50):
+
+def mcts_search(problem, iterations=100000, max_depth=150):
     """Performs MCTS. Handles variable costs in simulation and final path cost."""
-    start_time = time.time(); start_node = problem.initial_state()
+    start_time = time.time() 
+    start_node = problem.initial_state()
     root = MCTSNode(state=start_node, problem=problem)
     if root.is_terminal(): return {"path": [root.state], "cost": 0, "nodes_expanded": 1, "time": time.time()-start_time, "algorithm": "MCTS", "iterations": 0}
     
     for i in range(iterations):
-        node = root; path_to_leaf = [node]
+        node = root 
+        path_to_leaf = [node]
         # 1. Selection
-        while not node.is_terminal() and node.is_fully_expanded():
-            selected_child = node.best_child(); 
+        while not node.is_terminal() and node.is_fully_expanded():  # traverse while not at goal and all children of this node are expanded
+            selected_child = node.best_child() # Select best child randomly if unvisited or based on UCB1 if visited
             if selected_child is None: break 
-            node = selected_child; path_to_leaf.append(node)
+            node = selected_child
+            path_to_leaf.append(node)
         # 2. Expansion
-        if not node.is_terminal() and not node.is_fully_expanded():
+        if not node.is_terminal() and not node.is_fully_expanded():  # from last node, expand one untried state
             expanded_node = node.expand() 
-            if expanded_node: node = expanded_node; path_to_leaf.append(node)
-        # 3. Simulation
-        current_state = node.state; reward = 0; sim_depth = 0; sim_path_cost = 0 
-        sim_history = {current_state}; 
+            if expanded_node: 
+                node = expanded_node
+                path_to_leaf.append(node)
+        # 3. Simulation: randomly move from current state to goal state or max depth
+        current_state = node.state
+        reward = 0
+        sim_depth = 0
+        sim_path_cost = 0 
+        sim_history = {current_state}   # like closed set
         while not problem.is_goal(current_state) and sim_depth < max_depth:
-            neighbors_info = problem.get_neighbors(current_state)
-            #valid_neighbors_info = [(ns, mi) if isinstance(info, tuple) else (info, None) 
-            #                       for info in neighbors_info 
-            #                       if (ns := (info[0] if isinstance(info, tuple) else info)) not in sim_history]
-            #if not valid_neighbors_info: break 
-
+            neighbors_info = problem.get_neighbors(current_state) # list of tuples (neighbor_state, move_info) or list of neighbour states
             valid_neighbors_info = []
             for info in neighbors_info:
                 if isinstance(info, tuple):
@@ -563,24 +610,28 @@ def mcts_search(problem, iterations=1000, max_depth=50):
 
             if not valid_neighbors_info:
                 break
-            
-            next_state, move_info = random.choice(valid_neighbors_info)
+
+            next_state, move_info = random.choice(valid_neighbors_info) # Randomly select one of the valid neighbors
             sim_path_cost += problem.get_cost(current_state, next_state, move_info) 
             current_state = next_state
-            sim_history.add(current_state); sim_depth += 1
+            sim_history.add(current_state) 
+            sim_depth += 1
             
         if problem.is_goal(current_state): 
              reward = 1000.0 / (1 + sim_path_cost) if sim_path_cost >= 0 else 1000.0
-        else: reward = -problem.heuristic(current_state) 
+        else: 
+            reward = -problem.heuristic(current_state)  # or -1.0 * (1 + sim_path_cost) if sim_path_cost >= 0 else -1.0 
         # 4. Backpropagation
         for node_in_path in reversed(path_to_leaf):
             if node_in_path.visits <= 0: node_in_path.visits = 0 # Ensure not negative
-            node_in_path.visits += 1; node_in_path.value += reward 
+            node_in_path.visits += 1 
+            node_in_path.value += reward 
 
     end_time = time.time()
     
     # --- Extracting Path and Cost from MCTS Tree (using BFS and get_cost) ---
-    goal_node_in_tree = None; min_cost_in_tree = float('inf')
+    #goal_node_in_tree = None
+    min_cost_in_tree = float('inf')
     queue = collections.deque([(root, [root.state], 0)]) 
     visited_in_tree = {root.state: 0} 
     nodes_explored_in_tree = 0; best_path_found_list = None
@@ -615,23 +666,298 @@ def mcts_search(problem, iterations=1000, max_depth=50):
          return {"path": None, "cost": -1, "nodes_expanded": nodes_explored_in_tree, "time": end_time - start_time, "algorithm": "MCTS", "iterations": iterations, "best_next_state_estimate": best_first_move_node.state if best_first_move_node else None, "tree_root_visits": root.visits}
 
 
+# --- Heuristic MCTS Implementation ---
+
+class HeuristicMCTSNode:  #(MCTSNode): # Inherit from previous MCTSNode if needed, or define fully
+    """ MCTS Node extended for heuristic guidance. """
+    def __init__(self, state, parent=None, problem=None):
+        # Basic MCTS Node attributes
+        self.state = state
+        self.parent = parent
+        self.problem = problem 
+        self.children = []
+        self.visits = 0
+        self.value = 0.0 # Accumulated reward (e.g., -cost, win/loss, -heuristic)
+        
+        # Heuristic value (cache if expensive to compute)
+        self._heuristic_value = None 
+        
+        # Manage untried actions/states
+        self._untried_actions_info = problem.get_neighbors(state) if problem else []
+        # Store states for expansion control
+        self._untried_states = [info[0] if isinstance(info, tuple) else info for info in self._untried_actions_info]
+        random.shuffle(self._untried_states)
+
+    def get_heuristic(self):
+        """ Calculates or retrieves the cached heuristic value for the node's state. """
+        if self._heuristic_value is None and self.problem:
+            self._heuristic_value = self.problem.heuristic(self.state)
+        return self._heuristic_value if self._heuristic_value is not None else float('inf') # Default if no problem/heuristic
+
+    def is_fully_expanded(self): 
+        return len(self._untried_states) == 0
+
+    def expand(self):
+        """ Expands the node by creating one child node from untried states. """
+        if not self._untried_states: return None 
+        # could be random or based on heuristic; applying heuristics in selection and/or rollout considered more impactful
+        action_state = self._untried_states.pop() 
+        # Create a new node of the same type (HeuristicMCTSNode)
+        child_node = HeuristicMCTSNode(action_state, parent=self, problem=self.problem) 
+        self.children.append(child_node)
+        return child_node
+
+    def best_child(self, exploration_weight=1.41, heuristic_weight=0.0, epsilon=1e-6):
+        """ Selects the best child using UCB1 potentially modified by heuristic. """
+        if not self.children: return None
+        
+        # Ensure parent visits is positive for log calculation
+        parent_visits = self.visits if self.visits > 0 else 1 
+        log_total_visits = math.log(parent_visits)
+
+        best_score = -float('inf')
+        best_children = [] # Handle ties
+
+        for child in self.children:
+            if child.visits == 0:
+                # Prioritize unvisited children slightly differently if using heuristic
+                # Can give them a high initial score or use heuristic directly?
+                # Let's give a very high score, potentially modified by heuristic later if desired
+                score = float('inf')
+                if heuristic_weight > 0:
+                    h_val = child.get_heuristic()
+                    # Scale heuristic bonus inversely: bonus = weight / (1 + h)
+                    score = heuristic_weight / (epsilon + h_val) 
+            else:
+                # UCB1 components
+                exploitation = child.value / child.visits # Average reward
+                exploration = exploration_weight * math.sqrt(log_total_visits / child.visits)
+                
+                # Heuristic component (lower heuristic is better -> higher score)
+                heuristic_term = 0
+                if heuristic_weight > 0:
+                    h_val = child.get_heuristic()
+                    # Scale heuristic bonus inversely: bonus = weight / (1 + h)
+                    heuristic_term = heuristic_weight / (epsilon + h_val) # Add epsilon to prevent div by zero if h=0
+                    # Alternative scaling: Normalize heuristic? Requires knowing range.
+                
+                score = exploitation + exploration + heuristic_term
+
+            if score > best_score:
+                best_score = score
+                best_children = [child]
+            elif score == best_score:
+                best_children.append(child)
+
+        # Break ties randomly
+        return random.choice(best_children) if best_children else None
+
+    def is_terminal(self): 
+        return self.problem.is_goal(self.state) if self.problem else False
+
+
+def heuristic_mcts_search(problem, 
+                          iterations=100000, 
+                          max_depth=150, 
+                          exploration_weight=1.41, 
+                          heuristic_weight=0.0, # Controls heuristic influence in selection
+                          heuristic_rollout=False, # Controls heuristic use in simulation
+                          epsilon=1e-6, # Small value for division stability
+                         ):
+    """
+    Performs MCTS search, optionally using heuristic guidance in selection
+    and/or simulation phases.
+    """
+    start_time = time.time()
+    start_node = problem.initial_state()
+    # Use the HeuristicMCTSNode
+    root = HeuristicMCTSNode(state=start_node, problem=problem) 
+
+    if root.is_terminal(): 
+        return {"path": [root.state], "cost": 0, "nodes_expanded": 1, "time": time.time()-start_time, 
+                "algorithm": "Heuristic MCTS", "iterations": 0, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout}
+
+
+    for i in range(iterations):
+        node = root
+        path_to_leaf = [node]
+        
+        # 1. Selection (using potentially heuristic-guided best_child)
+        while not node.is_terminal() and node.is_fully_expanded():
+            selected_child = node.best_child(exploration_weight=exploration_weight, 
+                                             heuristic_weight=heuristic_weight, 
+                                             epsilon=epsilon) 
+            if selected_child is None: break 
+            node = selected_child
+            path_to_leaf.append(node)
+            
+        # 2. Expansion
+        if not node.is_terminal() and not node.is_fully_expanded():
+            expanded_node = node.expand() 
+            if expanded_node: 
+                node = expanded_node # Move to the new node
+                path_to_leaf.append(node)
+                
+        # 3. Simulation (Rollout) - Potentially heuristic-guided
+        current_state = node.state
+        reward = 0
+        sim_depth = 0
+        sim_path_cost = 0 
+        sim_history = {current_state} 
+
+        while not problem.is_goal(current_state) and sim_depth < max_depth:
+            neighbors_info = problem.get_neighbors(current_state)
+            valid_neighbors_info = []
+            for info in neighbors_info:
+                if isinstance(info, tuple):
+                    next_s, move_info = info
+                else:
+                    next_s = info
+                    move_info = None  # Assign None if move info is not provided
+
+                if next_s not in sim_history:
+                    valid_neighbors_info.append((next_s, move_info))
+
+            if not valid_neighbors_info:            # Dead end in simulation
+                break
+            
+            next_state = None
+            move_info = None
+
+            if heuristic_rollout and valid_neighbors_info:
+                # Heuristic-biased rollout: Choose neighbor probabilistically based on h value
+                neighbor_states = [ni[0] for ni in valid_neighbors_info]
+                heuristics = [problem.heuristic(ns) for ns in neighbor_states]
+                
+                # Calculate weights (lower heuristic -> higher weight)
+                weights = [1.0 / (epsilon + h) for h in heuristics]
+                total_weight = sum(weights)
+                
+                if total_weight > 0:
+                    probabilities = [w / total_weight for w in weights]
+                    # Choose based on calculated probabilities
+                    chosen_index = random.choices(range(len(valid_neighbors_info)), weights=probabilities, k=1)[0]
+                    next_state, move_info = valid_neighbors_info[chosen_index]
+                else: 
+                    # Fallback if all weights are zero (e.g., all heuristics infinite?)
+                    next_state, move_info = random.choice(valid_neighbors_info)
+            
+            elif valid_neighbors_info: # Standard random rollout
+                next_state, move_info = random.choice(valid_neighbors_info)
+
+            else: # Should not happen if break condition works
+                 break
+
+            if next_state is None: break # Safety check
+
+            sim_path_cost += problem.get_cost(current_state, next_state, move_info) 
+            current_state = next_state
+            sim_history.add(current_state)
+            sim_depth += 1
+            
+        # Calculate reward based on simulation outcome
+        if problem.is_goal(current_state): 
+             # Higher reward for lower cost paths found in simulation
+             reward = 1000000.0 / (1 + sim_path_cost) if sim_path_cost >= 0 else 1000000.0
+        else: 
+             # Use negative heuristic of final state as penalty
+             reward = -problem.heuristic(current_state) 
+             # Alternative: Fixed penalty for not reaching goal, or -sim_path_cost
+             
+        # 4. Backpropagation
+        for node_in_path in reversed(path_to_leaf):
+            # Ensure visits starts correctly for UCB calculation later
+            if node_in_path.visits <= 0: node_in_path.visits = 0
+            node_in_path.visits += 1
+            node_in_path.value += reward 
+
+
+    end_time = time.time()
+    
+    # --- Extracting Best Path Found in Tree ---
+    # Use BFS starting from root to find the best path based on cost
+    min_cost_in_tree = float('inf')
+    queue = collections.deque([(root, [root.state], 0)]) # Node, path_list, cost_so_far
+    visited_in_tree = {root.state: 0} 
+    nodes_explored_in_tree = 0
+    best_path_found_list = None
+
+    while queue:
+         current_node, current_path_list, current_cost = queue.popleft()
+         nodes_explored_in_tree += 1
+
+         if current_node.is_terminal():
+             if current_cost < min_cost_in_tree:
+                  min_cost_in_tree = current_cost
+                  best_path_found_list = current_path_list 
+         
+         if current_cost >= min_cost_in_tree: continue # Pruning BFS
+
+         for child in current_node.children:
+             cost_step = problem.get_cost(current_node.state, child.state) 
+             new_cost = current_cost + cost_step
+             
+             if new_cost < visited_in_tree.get(child.state, float('inf')):
+                  # Check cost before adding to prevent cycles/redundancy? Or trust closed set?
+                  # Let's add if cheaper or not visited in this BFS path extraction phase
+                  visited_in_tree[child.state] = new_cost
+                  new_path_list = current_path_list + [child.state]
+                  if new_cost < min_cost_in_tree: # Only explore if potentially better
+                       queue.append((child, new_path_list, new_cost))
+
+    # Prepare results dictionary
+    algo_name = f"Heuristic MCTS (SelW={heuristic_weight:.2f}, Rollout={heuristic_rollout})"
+    if best_path_found_list:
+        return {"path": best_path_found_list, "cost": min_cost_in_tree, "nodes_expanded": nodes_explored_in_tree, 
+                "time": end_time - start_time, "algorithm": algo_name, "iterations": iterations, 
+                "tree_root_visits": root.visits, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout }
+    else:
+         # If goal not found, return best guess for next move from root (greedy exploitation)
+         best_first_move_node = root.best_child(exploration_weight=0, heuristic_weight=0) # Pure exploitation
+         return {"path": None, "cost": -1, "nodes_expanded": nodes_explored_in_tree, 
+                 "time": end_time - start_time, "algorithm": algo_name, "iterations": iterations, 
+                 "best_next_state_estimate": best_first_move_node.state if best_first_move_node else None, 
+                 "tree_root_visits": root.visits, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout}
+
+
+
+
 # --- Main Execution Logic ---
 
 if __name__ == "__main__":
     print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
+    random.seed(42)
+
+    iterations = 100            # MCTS  1000000 finds near-optimal paths in 8-puzzle and occasionally pancake
+    max_depth = 150             # MCTS
+    heuristic_weight = 100.0    # MCTS
+    make_heuristic_inadmissable = True # Set to True to make heuristic inadmissible
+
+
     # --- Define Problems ---
     tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium
     #tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder
-    sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, use_variable_costs=False)
-    sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, use_variable_costs=True)
+    sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
+                                                use_variable_costs=False, 
+                                                make_heuristic_inadmissable=make_heuristic_inadmissable)
+    sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, 
+                                               use_variable_costs=True,
+                                               make_heuristic_inadmissable=make_heuristic_inadmissable)
 
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) 
-    pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, use_variable_costs=False)
-    pancake_var_cost = PancakeProblem(initial_state=pancake_initial, use_variable_costs=True)
+    pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
+                                       use_variable_costs=False,
+                                       make_heuristic_inadmissable=make_heuristic_inadmissable)
+
+    pancake_var_cost = PancakeProblem(initial_state=pancake_initial, 
+                                      use_variable_costs=True,
+                                      make_heuristic_inadmissable=make_heuristic_inadmissable)
 
     hanoi_disks = 7 # Optimal cost = 2^7 - 1 = 127
-    hanoi_problem = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C')
+    hanoi_problem = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=make_heuristic_inadmissable)
+
 
     problems_to_solve = [
         sliding_tile_unit_cost,
@@ -642,26 +968,46 @@ if __name__ == "__main__":
     ]
 
     # --- Define Algorithms ---
+
+
     def run_ucs(problem): return generic_search(problem, priority_key='g')
     def run_greedy_bfs(problem): return generic_search(problem, priority_key='h')
     def run_astar(problem): return generic_search(problem, priority_key='f')
     def run_bidir_astar(problem): return bidirectional_a_star_search(problem)
-    def run_mcts(problem, iterations=None, max_depth=None): 
-         default_iterations = 100000
-         default_depth = 100
+#    def run_mcts(problem, iterations=100000, max_depth=150): 
+#         default_iterations = 100000
+#         default_depth = 150
          #if isinstance(problem, TowersOfHanoiProblem): 
          #     default_iterations = 20000; default_depth = problem.num_disks * 3 
-         final_iterations = iterations if iterations is not None else default_iterations
-         final_depth = max_depth if max_depth is not None else default_depth
-         return mcts_search(problem, iterations=final_iterations, max_depth=final_depth)
+#         final_iterations = iterations if iterations is not None else default_iterations
+#         final_depth = max_depth if max_depth is not None else default_depth
+#         return mcts_search(problem, iterations=final_iterations, max_depth=final_depth)
+    def run_mcts_standard(problem): 
+        # Wrapper for standard MCTS (no heuristic guidance)
+        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=0.0, heuristic_rollout=False)
+    def run_mcts_h_select(problem): 
+        # MCTS with heuristic in selection only
+        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=heuristic_weight, heuristic_rollout=False) # Tune weight
+    def run_mcts_h_rollout(problem): 
+        # MCTS with heuristic in rollout only
+        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=0.0, heuristic_rollout=True)
+    def run_mcts_h_both(problem): 
+        # MCTS with heuristic in both selection and rollout
+        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=heuristic_weight, heuristic_rollout=True) # Tune weight
+
 
     search_algorithms_runners = {
         "Uniform Cost": run_ucs,
         "Greedy Best-First": run_greedy_bfs,
         "A*": run_astar,
         "Bidirectional A*": run_bidir_astar,
-        "MCTS": run_mcts 
+#        "MCTS": run_mcts,                      # Original MCTS, no heuristic options 
+        "MCTS (Standard)": run_mcts_standard,
+        "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
+        "MCTS (H-Rollout)": run_mcts_h_rollout,
+        "MCTS (H-Both)": run_mcts_h_both,
     }
+
 
     # --- Run Experiments ---
     all_results = []
@@ -714,7 +1060,7 @@ if __name__ == "__main__":
     print(f"\n{'*'*15} Overall Summary {'*'*15}")
     for res in all_results:
          status = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}" if res.get('path') else ("No Path Found" if 'error' not in res else f"ERROR: {res['error']}")
-             # print(f"Path Length: {len(res['path'])}") # Should be cost + 1
+             # print(f"Path Length: {len(res['path'])}") # Should be sum(unit cost) + 1
             #print("Path:", res['path']) # Uncomment to see the full path states
 
          optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
