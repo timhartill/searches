@@ -932,12 +932,12 @@ if __name__ == "__main__":
     iterations = 100            # MCTS  1000000 finds near-optimal paths in 8-puzzle and occasionally pancake
     max_depth = 150             # MCTS
     heuristic_weight = 100.0    # MCTS
-    make_heuristic_inadmissable = True # Set to True to make heuristic inadmissible
+    make_heuristic_inadmissable = False # Set to True to make heuristic inadmissible
 
 
     # --- Define Problems ---
-    tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium
-    #tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder
+    tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium C*=3
+    #tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder C*=32
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=make_heuristic_inadmissable)
@@ -945,7 +945,7 @@ if __name__ == "__main__":
                                                use_variable_costs=True,
                                                make_heuristic_inadmissable=make_heuristic_inadmissable)
 
-    pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) 
+    pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
                                        use_variable_costs=False,
                                        make_heuristic_inadmissable=make_heuristic_inadmissable)
