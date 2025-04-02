@@ -79,7 +79,9 @@ class SlidingTileProblem:
     Implements the Sliding Tile puzzle problem interface.
     Can use uniform cost (1) or variable cost (value of tile moved).
     """
-    def __init__(self, initial_state, goal_state=None, use_variable_costs=False, make_heuristic_inadmissable=False):
+    def __init__(self, initial_state, goal_state=None, 
+                 use_variable_costs=False, make_heuristic_inadmissable=False,
+                 degradation=0):
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
@@ -96,12 +98,13 @@ class SlidingTileProblem:
         self.optimality_guaranteed = True
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = len(initial_state) * 20
+            self.h_multiplier = len(initial_state) * (degradation+10)
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1    
+        self.degradation = degradation    
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self._str_repr = f"SlidingTile-{self.n}x{self.n}-{cost_type}"
+        self._str_repr = f"SlidingTile-{self.n}x{self.n}-{cost_type}-d{degradation}-a{not make_heuristic_inadmissable}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -164,13 +167,17 @@ class SlidingTileProblem:
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
         distance = 0
+        multiplier = 1
+        ignored_tiles = set(range(self.degradation + 1))
         for i, tile in enumerate(state):
-            if tile != 0:
+            if tile not in ignored_tiles:
                 current_pos = divmod(i, self.n)
                 goal_idx = self._goal_positions.get(tile)
                 if goal_idx is None: continue 
                 goal_pos = divmod(goal_idx, self.n)
-                distance += abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1])
+                if self.make_heuristic_inadmissable:
+                    multiplier = i
+                distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
         return distance * self.h_multiplier
         
     def __str__(self): 
@@ -182,7 +189,9 @@ class PancakeProblem:
     Implements the Pancake Sorting problem interface.
     Can use uniform cost (1) or variable cost (k = pancakes flipped).
     """
-    def __init__(self, initial_state, goal_state=None, use_variable_costs=False, make_heuristic_inadmissable=False):
+    def __init__(self, initial_state, goal_state=None, 
+                 use_variable_costs=False, make_heuristic_inadmissable=False,
+                 degradation=0):
         self.initial_state_tuple=tuple(initial_state); self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
         else: self.goal_state_tuple=tuple(sorted(initial_state))
@@ -190,12 +199,13 @@ class PancakeProblem:
         self.optimality_guaranteed = not use_variable_costs
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = len(initial_state) * 20
+            self.h_multiplier = len(initial_state) * (degradation+10)
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1    
+        self.degradation = degradation
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self._str_repr = f"Pancake-{self.n}-{cost_type}"
+        self._str_repr = f"Pancake-{self.n}-{cost_type}-d{degradation}-a{not make_heuristic_inadmissable}"
         
     def initial_state(self): 
         return self.initial_state_tuple
@@ -272,15 +282,17 @@ class PancakeProblem:
 # --- TowersOfHanoiProblem (Corrected Formatting) ---
 class TowersOfHanoiProblem:
     """Implements the Towers of Hanoi problem interface. Cost is always 1."""
-    def __init__(self, num_disks, initial_peg='A', target_peg='C', make_heuristic_inadmissable=False): 
+    def __init__(self, num_disks, initial_peg='A', target_peg='C', 
+                 make_heuristic_inadmissable=False, degradation=0): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = not self.use_variable_costs
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = num_disks * 20
+            self.h_multiplier = num_disks * (degradation+10)
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1    
+        self.degradation = degradation    
         assert num_disks >= 1, "Number of disks must be at least 1."
         self.num_disks = num_disks
         self.pegs=['A','B','C']
@@ -291,7 +303,7 @@ class TowersOfHanoiProblem:
         self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
         self._initial_state=tuple([initial_peg]*num_disks)
         self._goal_state=tuple([target_peg]*num_disks)
-        self._str_repr=f"TowersOfHanoi-{num_disks}"
+        self._str_repr=f"TowersOfHanoi-{num_disks}-d{degradation}-a{not make_heuristic_inadmissable}"
 
     def initial_state(self): 
         return self._initial_state
@@ -933,30 +945,37 @@ if __name__ == "__main__":
     max_depth = 150             # MCTS
     heuristic_weight = 100.0    # MCTS
     make_heuristic_inadmissable = False # Set to True to make heuristic inadmissible
-
+    tile_degradation = 0
+    pancake_degradation = 0
+    hanoi_degradation = 0
 
     # --- Define Problems ---
     tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium C*=3
     #tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder C*=32
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
-                                                make_heuristic_inadmissable=make_heuristic_inadmissable)
+                                                make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                                degradation=tile_degradation)
     sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                use_variable_costs=True,
-                                               make_heuristic_inadmissable=make_heuristic_inadmissable)
+                                               make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                               degradation=tile_degradation)
 
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
                                        use_variable_costs=False,
-                                       make_heuristic_inadmissable=make_heuristic_inadmissable)
+                                       make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                       degradation=pancake_degradation)
 
     pancake_var_cost = PancakeProblem(initial_state=pancake_initial, 
                                       use_variable_costs=True,
-                                      make_heuristic_inadmissable=make_heuristic_inadmissable)
+                                      make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                      degradation=pancake_degradation)
 
     hanoi_disks = 7 # Optimal cost = 2^7 - 1 = 127
     hanoi_problem = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
-                                         make_heuristic_inadmissable=make_heuristic_inadmissable)
+                                         make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                         degradation=hanoi_degradation)
 
 
     problems_to_solve = [
