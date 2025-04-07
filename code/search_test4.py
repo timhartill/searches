@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
     # --- Define Problems ---
     #tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=3
     tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder 3x3 unit C*=31
-    tile_initial = [15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1] # harderer 4x4 unit C*=
+    #tile_initial = [15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1] # harderer 4x4 unit C*= >>31 A* ran out of memory @ 48GB
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=make_heuristic_inadmissable,
@@ -1099,7 +1099,7 @@ if __name__ == "__main__":
 
 
     search_algorithms_runners = {
-#        "Uniform Cost": run_ucs,
+        "Uniform Cost": run_ucs,
         "Greedy Best-First": run_greedy_bfs,
         "A*": run_astar,
         "Bidirectional A*": run_bidir_astar,
