@@ -163,7 +163,7 @@ class SlidingTileProblem:
     def heuristic(self, state):
         """
         Calculates the Manhattan distance heuristic (number of steps).
-        NOTE: This heuristic counts steps (cost=1). If variable costs are used,
+        NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
         distance = 0
@@ -196,7 +196,7 @@ class PancakeProblem:
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
         else: self.goal_state_tuple=tuple(sorted(initial_state))
         self.use_variable_costs = use_variable_costs
-        self.optimality_guaranteed = not use_variable_costs
+        self.optimality_guaranteed = (not use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
             self.h_multiplier = len(initial_state) * (degradation+10)
@@ -266,15 +266,61 @@ class PancakeProblem:
 
             return found_k
 
+    def gap_heuristic(self, state_1, state_2):
+        """
+        Calculates a heuristic value based on the order of elements in two states,
+        ignoring the first 'degradation' elements.
+
+        Args:
+            state_1: A list of integers representing the first state.
+            state_2: A list of integers representing the second state (the goal state).
+            degradation: An integer representing the number of initial elements to ignore.
+
+        Returns:
+            An integer representing the heuristic value.
+
+        Raises:
+            ValueError: If the input states have different lengths.
+        """
+        if len(state_1) != len(state_2):
+            raise ValueError("Input states must have the same length.")
+
+        heuristic_value = 0
+        ignored_pancakes = set(range(1, self.degradation + 1))
+        multiplier = 1
+
+        for i in range(len(state_1) - 1):
+            pancake_i = state_1[i]
+            pancake_j = state_1[i + 1]
+
+            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
+                continue
+
+            try:
+                goal_position_i = state_2.index(pancake_i)  # find index
+            except ValueError:
+                continue  # Handle the case where pancake_i is not in state_2
+
+            if (goal_position_i != 0 and state_2[goal_position_i - 1] == pancake_j) or \
+            (goal_position_i != len(state_1) - 1 and state_2[goal_position_i + 1] == pancake_j):
+                heuristic_value += 0
+            else:
+                if self.make_heuristic_inadmissable:
+                    multiplier = i
+                heuristic_value += multiplier
+
+        return heuristic_value
 
     def heuristic(self, state):
         """
-        Calculates the Gap Heuristic (number of adjacent non-consecutive pairs).
+        Calculates the Symetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
         NOTE: This counts number of "breaks". If variable costs (cost=k) are used,
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
         at most 2 gaps.
         """
-        return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
+        #return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
+        return max(self.gap_heuristic(state, self.goal_state_tuple), 
+                   self.gap_heuristic(self.goal_state_tuple, state)) * self.h_multiplier
         
     def __str__(self): 
         return self._str_repr
@@ -285,10 +331,10 @@ class TowersOfHanoiProblem:
     def __init__(self, num_disks, initial_peg='A', target_peg='C', 
                  make_heuristic_inadmissable=False, degradation=0): 
         self.use_variable_costs = False # Cost is always 1
-        self.optimality_guaranteed = not self.use_variable_costs
+        self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = num_disks * (degradation+10)
+            self.h_multiplier = num_disks * (degradation+10)**2
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1    
@@ -301,8 +347,8 @@ class TowersOfHanoiProblem:
         self.initial_peg = initial_peg
         self.target_peg = target_peg
         self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
-        self._initial_state=tuple([initial_peg]*num_disks)
-        self._goal_state=tuple([target_peg]*num_disks)
+        self._initial_state=tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)
+        self._goal_state=tuple([target_peg]*num_disks)      # (C, C, C, ..., C)
         self._str_repr=f"TowersOfHanoi-{num_disks}-d{degradation}-a{not make_heuristic_inadmissable}"
 
     def initial_state(self): 
@@ -315,7 +361,9 @@ class TowersOfHanoiProblem:
         return state == self._goal_state
 
     def _get_peg_tops(self, state):
-        """Helper to find the smallest (topmost) disk index on each peg."""
+        """Helper to find the smallest (topmost) disk index on each peg.
+        eg _get_peg_tops(('A', 'A', 'B', 'C', 'A', 'A', 'A')) = {'A': 0, 'B': 2, 'C': 3}
+        """
         peg_tops = {p: None for p in self.pegs}
         # Use infinity to correctly find the minimum disk index
         peg_top_disk_index = {p: float('inf') for p in self.pegs} 
@@ -332,12 +380,20 @@ class TowersOfHanoiProblem:
         return peg_tops
 
     def get_neighbors(self, state): 
-        """Returns list of tuples: (neighbor_state, cost=1)"""
-        nbs=[]; pts=self._get_peg_tops(state); 
-        for sp in self.pegs:
+        """Returns list of tuples: (neighbor_state, cost=1)
+        eg get_neighbours(('A', 'A', 'B', 'C', 'A', 'A', 'A')) =
+                [(('B', 'A', 'B', 'C', 'A', 'A', 'A'), 1),
+                 (('C', 'A', 'B', 'C', 'A', 'A', 'A'), 1),
+                 (('A', 'A', 'C', 'C', 'A', 'A', 'A'), 1)]
+        """
+        nbs=[] 
+        pts=self._get_peg_tops(state);
+        pegs = self.pegs.copy() 
+        random.shuffle(pegs)    #  TJH to avoid search bias
+        for sp in pegs:
             dtm = pts[sp] # Disk To Move index (top disk on source)
             if dtm is not None: # If source peg is not empty
-                for dp in self.pegs: # Destination Peg
+                for dp in pegs: # Destination Peg
                     if sp != dp: # Cannot move to same peg
                         tdod = pts[dp] # Top Disk On Destination index
                         # Check move validity: dest empty OR moving disk < disk on dest
@@ -345,17 +401,28 @@ class TowersOfHanoiProblem:
                             nsl = list(state)
                             nsl[dtm] = dp # Move disk dtm to peg dp
                             nbs.append((tuple(nsl), 1)) # Append (new_state, cost)
+        random.shuffle(nbs) # Shuffle neighbors to avoid bias in search. TJH Added along with peg order randomisation
         return nbs
 
     def heuristic(self, state): 
-        """Calculates the standard admissible heuristic for Towers of Hanoi."""
+        """Calculates the standard admissible heuristic for Towers of Hanoi.
+        Allows for degrading heuristic by ignoring disks
+        Allows for inadmissable heuristic but A* still always finds optimal path.. 
+        """
         h=0 
         ctp=self.target_peg # current target peg for disk k
+        multiplier = 1
+        ignored_disks = set(range(self.degradation))
+
         for k in range(self.num_disks-1,-1,-1): # Iterate largest disk (N-1) down to smallest (0)
+            if k in ignored_disks: 
+                continue # Ignore disks in degradation
             if state[k] != ctp: 
                 # If disk k is not where it should be relative to disk k+1 (or final target)
                 # it and all smaller disks must move. Lower bound cost is 2^k.
-                h += pow(2,k)
+                if self.make_heuristic_inadmissable:
+                    multiplier = random.choice(range(1,self.num_disks)) #TJH: It seems with anything based on k A* still finds optimal path 
+                h += 2**k * multiplier
                 # The new target for disk k-1 becomes the 'third' peg 
                 # (neither where k is, nor where k should have been)
                 ctp = next(p for p in self.pegs if p!=state[k] and p!=ctp)
@@ -473,11 +540,14 @@ def bidirectional_a_star_search(problem):
             _, current_state_fwd = heapq.heappop(frontier_fwd)
             if current_state_fwd in closed_fwd: continue
             current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-            if current_g_fwd >= best_path_cost : continue             
-            closed_fwd.add(current_state_fwd); nodes_expanded += 1
+            if current_g_fwd >= best_path_cost: continue          
+            closed_fwd.add(current_state_fwd)
+            nodes_expanded += 1
             if current_state_fwd in g_score_bwd: 
                 current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
-                if current_path_cost < best_path_cost: best_path_cost = current_path_cost; meeting_node = current_state_fwd
+                if current_path_cost < best_path_cost: 
+                    best_path_cost = current_path_cost
+                    meeting_node = current_state_fwd
             
             for neighbor_info in problem.get_neighbors(current_state_fwd):
                 neighbor_state, move_info = (neighbor_info if isinstance(neighbor_info, tuple) and len(neighbor_info)==2 else (neighbor_info, None))
@@ -485,9 +555,12 @@ def bidirectional_a_star_search(problem):
                 cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                 tentative_g_score = current_g_fwd + cost
                 if tentative_g_score < g_score_fwd.get(neighbor_state, float('inf')):
-                    came_from_fwd[neighbor_state] = current_state_fwd; g_score_fwd[neighbor_state] = tentative_g_score
-                    h_score = problem.heuristic(neighbor_state); f_score = tentative_g_score + h_score
-                    if f_score < best_path_cost: heapq.heappush(frontier_fwd, (f_score, neighbor_state))
+                    came_from_fwd[neighbor_state] = current_state_fwd 
+                    g_score_fwd[neighbor_state] = tentative_g_score
+                    h_score = problem.heuristic(neighbor_state) 
+                    f_score = tentative_g_score + h_score
+                    if f_score < best_path_cost: 
+                        heapq.heappush(frontier_fwd, (f_score, neighbor_state))
         
         # --- Backward Step ---
         if frontier_bwd:
@@ -495,10 +568,13 @@ def bidirectional_a_star_search(problem):
             if current_state_bwd in closed_bwd: continue
             current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
             if current_g_bwd + problem.heuristic(current_state_bwd) >= best_path_cost: continue 
-            closed_bwd.add(current_state_bwd); nodes_expanded += 1
+            closed_bwd.add(current_state_bwd)
+            nodes_expanded += 1
             if current_state_bwd in g_score_fwd: 
                 current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
-                if current_path_cost < best_path_cost: best_path_cost = current_path_cost; meeting_node = current_state_bwd
+                if current_path_cost < best_path_cost: 
+                    best_path_cost = current_path_cost
+                    meeting_node = current_state_bwd
 
             for neighbor_info in problem.get_neighbors(current_state_bwd):
                 neighbor_state, move_info = (neighbor_info if isinstance(neighbor_info, tuple) and len(neighbor_info)==2 else (neighbor_info, None))
@@ -508,22 +584,28 @@ def bidirectional_a_star_search(problem):
                 if tentative_g_score < g_score_bwd.get(neighbor_state, float('inf')):
                     came_from_bwd[neighbor_state] = current_state_bwd 
                     g_score_bwd[neighbor_state] = tentative_g_score
-                    h_score = problem.heuristic(neighbor_state); f_score = tentative_g_score + h_score
-                    if f_score < best_path_cost: heapq.heappush(frontier_bwd, (f_score, neighbor_state))
+                    h_score = problem.heuristic(neighbor_state)
+                    f_score = tentative_g_score + h_score
+                    if f_score < best_path_cost: 
+                        heapq.heappush(frontier_bwd, (f_score, neighbor_state))
         
     end_time = time.time()
     if meeting_node:
         path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
-        final_cost = -1; recalculated_cost = 0; cost_mismatch = False
+        final_cost = -1
+        recalculated_cost = 0
+        cost_mismatch = False
         if path:
              try:
                  for i in range(len(path) - 1):
                      recalculated_cost += problem.get_cost(path[i], path[i+1]) # Use fallback cost
                  final_cost = recalculated_cost
-                 if abs(final_cost - best_path_cost) > 1e-6 : cost_mismatch = True
+                 if abs(final_cost - best_path_cost) > 1e-6: cost_mismatch = True
              except Exception as e:
-                 print(f"Error recalculating bidirectional path cost: {e}"); final_cost = best_path_cost 
-        if cost_mismatch: print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={best_path_cost}")
+                 print(f"Error recalculating bidirectional path cost: {e}")
+                 final_cost = best_path_cost 
+        if cost_mismatch: 
+            print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={best_path_cost}")
         final_reported_cost = best_path_cost # Report cost found by search
         return {"path": path, "cost": final_reported_cost if path else -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": "Bidirectional A*"}
     else:
@@ -946,12 +1028,13 @@ if __name__ == "__main__":
     heuristic_weight = 100.0    # MCTS
     make_heuristic_inadmissable = False # Set to True to make heuristic inadmissible
     tile_degradation = 0
-    pancake_degradation = 0
-    hanoi_degradation = 0
+    pancake_degradation = 4
+    hanoi_degradation = 5
 
     # --- Define Problems ---
-    tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium C*=3
-    #tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder C*=32
+    #tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=3
+    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder 3x3 unit C*=31
+    tile_initial = [15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1] # harderer 4x4 unit C*=
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=make_heuristic_inadmissable,
@@ -1016,7 +1099,7 @@ if __name__ == "__main__":
 
 
     search_algorithms_runners = {
-        "Uniform Cost": run_ucs,
+#        "Uniform Cost": run_ucs,
         "Greedy Best-First": run_greedy_bfs,
         "A*": run_astar,
         "Bidirectional A*": run_bidir_astar,
@@ -1047,7 +1130,7 @@ if __name__ == "__main__":
                     else: 
                          result['algorithm'] = algo_display_name
                 
-                print(f"{algo_display_name} Done.")
+                print(f"{algo_display_name} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path'])}")
 
             except Exception as e:
                 print(f"!!! ERROR during {algo_display_name} on {problem}: {e}")
