@@ -61,6 +61,11 @@ class MatrixEditorApp:
         self.grid_frame.bind("<ButtonRelease-1>", self.handle_button_release)
         self.grid_frame.bind("<ButtonRelease-3>", self.handle_right_button_release)
         self.master.bind("<ButtonRelease-1>", self.handle_button_release, add='+')
+    
+        # --- Bind mouse wheel events to the canvas ---
+        self.canvas.bind("<MouseWheel>", self._on_mousewheel)  # For vertical scrolling
+        self.canvas.bind("<Shift-MouseWheel>", self._on_shift_mousewheel) # For horizontal scrolling
+
         # --- End Scrollable Grid ---
 
         # --- Control Widgets ---
@@ -214,6 +219,22 @@ class MatrixEditorApp:
         if self.is_dragging:
             self.is_dragging = False
             self.status_var.set(f"{self._get_timestamp()}: Painting finished. Ready.")
+
+
+    def _on_mousewheel(self, event):
+        """Handles vertical scrolling with the mouse wheel."""
+        if event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        else:
+            self.canvas.yview_scroll(1, "units")
+
+    def _on_shift_mousewheel(self, event):
+        """Handles horizontal scrolling with the mouse wheel (when Shift is pressed)."""
+        if event.delta > 0:
+            self.canvas.xview_scroll(-1, "units")
+        else:
+            self.canvas.xview_scroll(1, "units")
+
 
     # ----- Core Logic -----
     def cell_clicked(self, r, c, update_ui_fully=True):
