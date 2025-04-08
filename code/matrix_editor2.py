@@ -59,6 +59,7 @@ class MatrixEditorApp:
         self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw")
         self.grid_frame.bind("<Configure>", self.on_frame_configure)
         self.grid_frame.bind("<ButtonRelease-1>", self.handle_button_release)
+        self.grid_frame.bind("<ButtonRelease-3>", self.handle_right_button_release)
         self.master.bind("<ButtonRelease-1>", self.handle_button_release, add='+')
         # --- End Scrollable Grid ---
 
@@ -156,6 +157,7 @@ class MatrixEditorApp:
                     bg=color, fg="black", relief=tk.RAISED, bd=1,
                 )
                 btn.bind("<ButtonPress-1>", lambda event, row=r, col=c: self.handle_button_press(event, row, col))
+                btn.bind("<ButtonPress-3>", lambda event, row=r, col=c: self.handle_right_button_press(event, row, col))
                 btn.bind("<Enter>", lambda event, row=r, col=c: self.handle_button_enter(event, row, col))
                 btn.grid(row=r, column=c, padx=0, pady=0, sticky="nsew")
                 self.grid_frame.grid_rowconfigure(r, weight=1, minsize=CELL_SIZE)
@@ -177,17 +179,30 @@ class MatrixEditorApp:
     def handle_button_press(self, event, r, c):
         selected_val = self.selected_value.get()
         if selected_val in [0, 1]:
-            self.is_dragging = True
+            #self.is_dragging = True
             self.cell_clicked(r, c, update_ui_fully=False)
             self.status_var.set(f"{self._get_timestamp()}: Painting {selected_val}...")
         else:
             self.cell_clicked(r, c, update_ui_fully=True)
 
+    def handle_right_button_press(self, event, r, c):
+        selected_val = self.selected_value.get()
+        if selected_val in [0, 1]:
+            self.is_dragging = not self.is_dragging
+            if self.is_dragging:
+                self.cell_clicked(r, c, update_ui_fully=False)
+                self.status_var.set(f"{self._get_timestamp()}: Start Drag Painting {selected_val}...")
+            else:
+                self.status_var.set(f"{self._get_timestamp()}: Drag Painting stopped. Ready.")
+
+    def handle_right_button_release(self, event):
+        pass
+
     def handle_button_enter(self, event, r, c):
-        self.status_var.set(f"{self._get_timestamp()}: Entering button {r} {c} Dragging: {self.is_dragging}.")
         if self.is_dragging:
             selected_val = self.selected_value.get()
             if selected_val in [0, 1]:
+                self.status_var.set(f"{self._get_timestamp()}: Dragging {r} {c} Right-click to stop dragging.")
                 if 0 <= r < self.matrix_data.shape[0] and 0 <= c < self.matrix_data.shape[1]:
                     if self.matrix_data[r, c] != selected_val:
                         self.cell_clicked(r, c, update_ui_fully=False)
