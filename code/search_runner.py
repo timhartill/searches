@@ -12,7 +12,7 @@ import traceback # For error reporting
 from puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
 
 # searches
-from mcts import heuristic_mcts_search
+from search_mcts import heuristic_mcts_search
 from search_unidirectional import generic_search
 from search_bidirectional import bidirectional_a_star_search
 
