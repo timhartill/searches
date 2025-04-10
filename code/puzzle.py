@@ -75,7 +75,7 @@ class SlidingTileProblem:
                 moved_tile_value = new_state_list[new_blank_index] 
                 # swap blank with the tile in the new position:
                 new_state_list[blank_index], new_state_list[new_blank_index] = new_state_list[new_blank_index], new_state_list[blank_index]
-                neighbors.append((tuple(new_state_list), moved_tile_value)) 
+                neighbors.append( (tuple(new_state_list), moved_tile_value) ) 
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -247,7 +247,7 @@ class PancakeProblem:
                 continue  # Handle the case where pancake_i is not in state_2
 
             if (goal_position_i != 0 and state_2[goal_position_i - 1] == pancake_j) or \
-            (goal_position_i != len(state_1) - 1 and state_2[goal_position_i + 1] == pancake_j):
+                (goal_position_i != len(state_1) - 1 and state_2[goal_position_i + 1] == pancake_j):
                 heuristic_value += 0
             else:
                 if self.make_heuristic_inadmissable:

@@ -10,6 +10,7 @@ import traceback # For error reporting
 
 # problems
 from puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
+from spatial import GridProblem
 
 # searches
 from search_mcts import heuristic_mcts_search
@@ -22,16 +23,22 @@ if __name__ == "__main__":
 
     random.seed(42)
 
+    # Problem parameters - set here globally or individually in problem definition section
+    make_heuristic_inadmissable = False # Set to True to make all heuristics for all problems inadmissible
+    tile_degradation = 0
+    pancake_degradation = 4
+    hanoi_degradation = 0
+
+    grid_prob = 'matrix_10yX10x.npy'   # w/o diagonal C*=22 allowing diag C* = 15.899
+    #matrix_20yX100x.npy w/o diag C*=176 with diag C*= 152.58
+
+    # Search Parameters - set here globally or individually in algorithm definition section
+    # MCTS
     iterations = 100            # MCTS  1000000 finds near-optimal paths in 8-puzzle and occasionally pancake
     max_depth = 150             # MCTS
     heuristic_weight = 100.0    # MCTS
-    make_heuristic_inadmissable = False # Set to True to make heuristic inadmissible
-    tile_degradation = 0
-    pancake_degradation = 4
-    hanoi_degradation = 5
 
-    grid_dir = '/media/tim/dl3storage/gitprojects/searches/problems/matrices'
-    grid_prob = 'matrix_10yX10x.npy'   # matrix_20yX100x.npy
+
 
     # --- Define Problems ---
     #tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=3
@@ -62,13 +69,116 @@ if __name__ == "__main__":
                                          make_heuristic_inadmissable=make_heuristic_inadmissable,
                                          degradation=hanoi_degradation)
 
+    grid_easy_unit = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=False, heuristic='manhattan')
+
+    grid_easy_unit_diag_octile = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+                    initial_state=None, goal_state=None, cost_multiplier=1,
+                    make_heuristic_inadmissable=False, degradation=0,
+                    allow_diagonal=True, heuristic='octile')
+
+    grid_easy_unit_diag_octile_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+                    initial_state=None, goal_state=None, cost_multiplier=1,
+                    make_heuristic_inadmissable=False, degradation=5,
+                    allow_diagonal=True, heuristic='octile')
+
+
+    grid_easy_unit_diag_manhattan = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+                    initial_state=None, goal_state=None, cost_multiplier=1,
+                    make_heuristic_inadmissable=False, degradation=0,
+                    allow_diagonal=True, heuristic='manhattan')
+    
+    grid_harder_unit = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=False, heuristic='manhattan')
+
+    grid_harder_unit_d500 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=500,
+                   allow_diagonal=False, heuristic='manhattan')
+
+
+    grid_harder_unit_diag_octile = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=True, heuristic='octile')
+
+    grid_harder_unit_diag_octile_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=5,
+                   allow_diagonal=True, heuristic='octile')
+
+
+    grid_harder_unit_diag_euc = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=True, heuristic='euclidean')
+
+    grid_harder_unit_diag_euc_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=5,
+                   allow_diagonal=True, heuristic='euclidean')
+
+    grid_harder_unit_diag_euc_d500 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=500,
+                   allow_diagonal=True, heuristic='euclidean')
+
+
+    grid_harder_unit_diag_che = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=True, heuristic='chebyshev')
+
+    grid_harder_unit_diag_che_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=5,
+                   allow_diagonal=True, heuristic='chebyshev')
+
+
+    grid_harder_unit_diag_octile_d0 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=True, degradation=0,
+                   allow_diagonal=True, heuristic='octile')
+
+    grid_harder_unit_diag_euc_d0_cm1000 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1000,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=True, heuristic='euclidean')
+
+    grid_harder_unit_diag_euc_d500_cm1000 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1000,
+                   make_heuristic_inadmissable=False, degradation=500,
+                   allow_diagonal=True, heuristic='euclidean')
+
+
+
 
     problems_to_solve = [
-        sliding_tile_unit_cost,
-        sliding_tile_var_cost,
-        pancake_unit_cost,
-        pancake_var_cost,
-        hanoi_problem
+#        sliding_tile_unit_cost,
+#        sliding_tile_var_cost,
+#        pancake_unit_cost,
+#        pancake_var_cost,
+#        hanoi_problem,
+        grid_easy_unit,
+        grid_easy_unit_diag_octile,
+        grid_easy_unit_diag_octile_d5,
+        grid_easy_unit_diag_manhattan,
+        grid_harder_unit,
+        grid_harder_unit_d500,
+        grid_harder_unit_diag_octile,
+        grid_harder_unit_diag_octile_d5,
+        grid_harder_unit_diag_euc,
+        grid_harder_unit_diag_euc_d5,
+        grid_harder_unit_diag_euc_d500,
+        grid_harder_unit_diag_che,
+        grid_harder_unit_diag_che_d5,
+        grid_harder_unit_diag_octile_d0,
+        grid_harder_unit_diag_euc_d0_cm1000,
+        grid_harder_unit_diag_euc_d500_cm1000,
     ]
 
     # --- Define Algorithms ---
@@ -95,10 +205,10 @@ if __name__ == "__main__":
         "Greedy Best-First": run_greedy_bfs,
         "A*": run_astar,
         "Bidirectional A*": run_bidir_astar,
-        "MCTS (Standard)": run_mcts_standard,
-        "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
-        "MCTS (H-Rollout)": run_mcts_h_rollout,
-        "MCTS (H-Both)": run_mcts_h_both,
+    #    "MCTS (Standard)": run_mcts_standard,
+    #    "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
+    #    "MCTS (H-Rollout)": run_mcts_h_rollout,
+    #    "MCTS (H-Both)": run_mcts_h_both,
     }
 
 
