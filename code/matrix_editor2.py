@@ -9,6 +9,9 @@ $ sudo apt install python3-tk
 after that, importing tkinter should work correctly
 
 usage: python matrix_editor2.py
+
+Note: Better performance on large matrices than the grid of buttons here using matrix_editor_image1.py
+
 """
 
 import tkinter as tk

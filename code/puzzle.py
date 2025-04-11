@@ -124,7 +124,15 @@ class SlidingTileProblem:
                     multiplier = i
                 distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
         return distance * self.h_multiplier
-        
+
+
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
+                  path_type: str = '', output_file_ext: str = 'png',
+                  display: bool = False, return_image: bool = False):
+        """ Placeholder - see GridProblem for implemented example"""
+        return None
+
+
     def __str__(self): 
         return self._str_repr
 
@@ -266,7 +274,15 @@ class PancakeProblem:
         #return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
         return max(self.gap_heuristic(state, self.goal_state_tuple), 
                    self.gap_heuristic(self.goal_state_tuple, state)) * self.h_multiplier
-        
+
+
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
+                  path_type: str = '', output_file_ext: str = 'png',
+                  display: bool = False, return_image: bool = False):
+        """ Placeholder - see GridProblem for implemented example"""
+        return None
+
+
     def __str__(self): 
         return self._str_repr
 
@@ -377,7 +393,13 @@ class TowersOfHanoiProblem:
     def get_cost(self, state1, state2, move_info=None): 
         """Cost is always 1 for Towers of Hanoi."""
         return 1
-        
+    
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
+                  path_type: str = '', output_file_ext: str = 'png',
+                  display: bool = False, return_image: bool = False):
+        """ Placeholder - see GridProblem for implemented example"""
+        return None
+
     def __str__(self): 
         return self._str_repr
 

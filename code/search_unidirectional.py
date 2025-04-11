@@ -11,15 +11,18 @@ import heapq
 
 
 # --- Generic Unidirectional Search Function ---
-def generic_search(problem, priority_key='f'):
+def generic_search(problem, priority_key='f', visualise=True):
     """
     Performs a generic best-first search using a closed set.
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
+    if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     if priority_key not in ['g', 'h', 'f']: raise ValueError("priority_key must be 'g', 'h', or 'f'")
-    algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "A*"}
-    algorithm_name = algo_name_map[priority_key] + " (Generic)"
+    algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "Astar"}
+    algorithm_name = algo_name_map[priority_key] #+ " (Generic)"
     optimality_guaranteed = (priority_key == 'g') or (priority_key=='f' and problem.optimality_guaranteed)
+
+    image_file = "no file"
 
     start_time = time.time(); start_node = problem.initial_state()
     h_initial = problem.heuristic(start_node) if priority_key in ['h', 'f'] else 0
@@ -53,7 +56,10 @@ def generic_search(problem, priority_key='f'):
             end_time = time.time()
             path = reconstruct_path(came_from, start_node, current_state)
             final_g_score = g_score.get(current_state)
-            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed }
+            if visualise and hasattr(problem, 'visualise'):
+                image_file = problem.visualise(path=path, path_type=algorithm_name)
+                if not image_file: image_file = 'no file'
+            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed, "visual": image_file}
 
         current_g_score = g_score.get(current_state)
         if current_g_score is None: continue # Should have g_score if reached here
@@ -83,13 +89,11 @@ def generic_search(problem, priority_key='f'):
                 heapq.heappush(frontier, (priority, neighbor_state))
 
     end_time = time.time()
-    return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": False }
-
-
+    return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": False, "visual": image_file }
 
 
 def reconstruct_path(came_from, start_state, goal_state):
-    """Reconstructs the path from start to goal."""
+    """Reconstructs the path from start to goal. Path is list of states"""
     path = []
     current = goal_state
     start_node = start_state 

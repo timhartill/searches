@@ -31,6 +31,7 @@ if __name__ == "__main__":
 
     grid_prob = 'matrix_10yX10x.npy'   # w/o diagonal C*=22 allowing diag C* = 15.899
     #matrix_20yX100x.npy w/o diag C*=176 with diag C*= 152.58
+    #matrix_1000yX1000x.npy w/o diag C*= 4330 with diag C* = 3881.87
 
     # Search Parameters - set here globally or individually in algorithm definition section
     # MCTS
@@ -155,14 +156,33 @@ if __name__ == "__main__":
                    allow_diagonal=True, heuristic='euclidean')
 
 
+    grid_harder1000x1000_unit_diag_euc_d0_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=True, heuristic='euclidean')
+
+    grid_harder1000x1000_unit_diag_euc_d500_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=500,
+                   allow_diagonal=True, heuristic='euclidean')
+
+    grid_harder1000x1000_unit_nodiag_euc_d0_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=0,
+                   allow_diagonal=False, heuristic='euclidean')
+
+    grid_harder1000x1000_unit_nodiag_euc_d500_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+                   initial_state=None, goal_state=None, cost_multiplier=1,
+                   make_heuristic_inadmissable=False, degradation=500,
+                   allow_diagonal=False, heuristic='euclidean')
 
 
     problems_to_solve = [
-#        sliding_tile_unit_cost,
-#        sliding_tile_var_cost,
-#        pancake_unit_cost,
-#        pancake_var_cost,
-#        hanoi_problem,
+        sliding_tile_unit_cost,
+        sliding_tile_var_cost,
+        pancake_unit_cost,
+        pancake_var_cost,
+        hanoi_problem,
         grid_easy_unit,
         grid_easy_unit_diag_octile,
         grid_easy_unit_diag_octile_d5,
@@ -179,6 +199,10 @@ if __name__ == "__main__":
         grid_harder_unit_diag_octile_d0,
         grid_harder_unit_diag_euc_d0_cm1000,
         grid_harder_unit_diag_euc_d500_cm1000,
+        grid_harder1000x1000_unit_diag_euc_d0_cm1,
+        grid_harder1000x1000_unit_diag_euc_d500_cm1,
+        grid_harder1000x1000_unit_nodiag_euc_d0_cm1,
+        grid_harder1000x1000_unit_nodiag_euc_d500_cm1,
     ]
 
     # --- Define Algorithms ---
@@ -226,10 +250,7 @@ if __name__ == "__main__":
                 
                 # Set algorithm name in result consistently
                 if result and 'algorithm' in result: 
-                    if "Generic" in result['algorithm']:
-                         result['algorithm'] = f"{algo_display_name} (Generic)"
-                    else: 
-                         result['algorithm'] = algo_display_name
+                    result['algorithm'] = algo_display_name
                 
                 print(f"{algo_display_name} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
 
@@ -267,5 +288,5 @@ if __name__ == "__main__":
             #print("Path:", res['path']) # Uncomment to see the full path states
 
          optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
-         algo_name = res.get('algorithm','N/A').replace(" (Generic)", "") 
+         algo_name = res.get('algorithm','N/A') 
          print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note}")
