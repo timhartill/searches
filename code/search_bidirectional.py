@@ -18,16 +18,19 @@ def bidirectional_a_star_search(problem, visualise=True):
     start_node = problem.initial_state()
     goal_node = problem.goal_state()
     if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, "time": 0, "algorithm": algorithm_name, 'visual': image_file}
+
     h_start = problem.heuristic(start_node)
     frontier_fwd = [(h_start, start_node)]
     came_from_fwd = {start_node: None}
     g_score_fwd = {start_node: 0}
     closed_fwd = set() 
-    h_goal = problem.heuristic(goal_node)
+
+    h_goal = problem.heuristic(goal_node, backward=True)
     frontier_bwd = [(h_goal, goal_node)]
     came_from_bwd = {goal_node: None}
     g_score_bwd = {goal_node: 0}
     closed_bwd = set() 
+
     nodes_expanded = 0
     best_path_cost = float('inf')
     meeting_node = None
@@ -38,12 +41,12 @@ def bidirectional_a_star_search(problem, visualise=True):
             _, current_state_fwd = heapq.heappop(frontier_fwd)
             if current_state_fwd in closed_fwd: continue
             current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-            if current_g_fwd >= best_path_cost: continue          
+            if current_g_fwd >= best_path_cost: continue  #TODO check this vs bwd version below
             closed_fwd.add(current_state_fwd)
             nodes_expanded += 1
             if current_state_fwd in g_score_bwd: 
                 current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
-                if current_path_cost < best_path_cost: 
+                if current_path_cost < best_path_cost:   #TODO keep going if found a path? - there is no stopping condition until both frontiers are empty!
                     best_path_cost = current_path_cost
                     meeting_node = current_state_fwd
             
@@ -65,7 +68,7 @@ def bidirectional_a_star_search(problem, visualise=True):
             _, current_state_bwd = heapq.heappop(frontier_bwd)
             if current_state_bwd in closed_bwd: continue
             current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
-            if current_g_bwd + problem.heuristic(current_state_bwd) >= best_path_cost: continue 
+            if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= best_path_cost: continue #TODO check vs fwd version that doesnt look at heuristic
             closed_bwd.add(current_state_bwd)
             nodes_expanded += 1
             if current_state_bwd in g_score_fwd: 
@@ -82,7 +85,7 @@ def bidirectional_a_star_search(problem, visualise=True):
                 if tentative_g_score < g_score_bwd.get(neighbor_state, float('inf')):
                     came_from_bwd[neighbor_state] = current_state_bwd 
                     g_score_bwd[neighbor_state] = tentative_g_score
-                    h_score = problem.heuristic(neighbor_state)
+                    h_score = problem.heuristic(neighbor_state, backward=True)
                     f_score = tentative_g_score + h_score
                     if f_score < best_path_cost: 
                         heapq.heappush(frontier_bwd, (f_score, neighbor_state))
@@ -91,7 +94,8 @@ def bidirectional_a_star_search(problem, visualise=True):
     if meeting_node:
         path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
         if visualise and hasattr(problem, 'visualise'):
-            image_file = problem.visualise(path=path, path_type=algorithm_name, meeting_node=meeting_node)
+            image_file = problem.visualise(path=path, path_type=algorithm_name, 
+                                           meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd)
             if not image_file: image_file = 'no file'
         final_cost = -1
         recalculated_cost = 0

@@ -11,7 +11,7 @@ import heapq
 
 
 # --- Generic Unidirectional Search Function ---
-def generic_search(problem, priority_key='f', visualise=True):
+def generic_search(problem, priority_key='f', cstar=None, visualise=True):
     """
     Performs a generic best-first search using a closed set.
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
@@ -37,6 +37,7 @@ def generic_search(problem, priority_key='f', visualise=True):
     g_score = {start_node: initial_g}
     closed_set = set()
     nodes_expanded = 0
+    nodes_expanded_below_cstar = 0
 
     while frontier:
         current_priority, current_state = heapq.heappop(frontier)
@@ -48,8 +49,8 @@ def generic_search(problem, priority_key='f', visualise=True):
              # Let's rely on the closed set check primarily
              #pass 
 
-        nodes_expanded += 1 
         if current_state in closed_set: continue
+        nodes_expanded += 1
         closed_set.add(current_state) # Add after popping and checking
 
         if problem.is_goal(current_state):
@@ -57,7 +58,7 @@ def generic_search(problem, priority_key='f', visualise=True):
             path = reconstruct_path(came_from, start_node, current_state)
             final_g_score = g_score.get(current_state)
             if visualise and hasattr(problem, 'visualise'):
-                image_file = problem.visualise(path=path, path_type=algorithm_name)
+                image_file = problem.visualise(path=path, path_type=algorithm_name, visited_fwd=closed_set)
                 if not image_file: image_file = 'no file'
             return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed, "visual": image_file}
 
@@ -87,6 +88,7 @@ def generic_search(problem, priority_key='f', visualise=True):
                     if priority_key == 'h': priority = h_score
                     elif priority_key == 'f': priority = tentative_g_score + h_score
                 heapq.heappush(frontier, (priority, neighbor_state))
+                
 
     end_time = time.time()
     return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": False, "visual": image_file }

@@ -20,11 +20,14 @@ START = 2
 GOAL = 3
 PATH = 4
 MEET = 8
-#START_PATH = 7  # on image this color if both start and on path
-#GOAL_PATH = 8
+EXPANDED_FWD = 6    # Yellow
+EXPANDED_BWD = 10   # GreenYellow
+EXPANDED_BOTH = 12  # MediumSpringGreen - bluish green
 
 # --- Color Mapping Definition ---
-# Using RGB tuples (Red, Green, Blue)
+# Using RGB tuples (Red, Green, Blue)  Obtain by:
+# from PIL import ImagePalette
+# ImagePalette.ImageColor.getrgb('mediumspringgreen')  # (0, 250, 154)
 COLOR_MAP: Dict[int, Tuple[int, int, int]] = {
     0: (255, 255, 255),  # White - empty
     1: (0, 255, 255),      # Cyan - obstacle
@@ -35,6 +38,10 @@ COLOR_MAP: Dict[int, Tuple[int, int, int]] = {
     6: (255, 255, 0),  # Yellow
     7: (0, 0, 255),      # Blue
     8: (255, 165, 0),  # Orange
+    9: (128, 128, 128), # Grey
+    10: (173, 255, 47), # GreenYellow
+    11: (127, 255, 0), # Chartreuse
+    12: (0, 250, 154), # MediumSpringGreen
 }
 DEFAULT_COLOR: Tuple[int, int, int] = (0, 0, 0) # Black for values outside the map
 
@@ -138,7 +145,7 @@ class GridProblem:
         self.degradation = degradation   
         self.cost_multiplier = cost_multiplier 
         cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{cost_type}-h{heuristic}-d{degradation}-a{not make_heuristic_inadmissable}-cm{cost_multiplier}"
+        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -146,7 +153,9 @@ class GridProblem:
     def goal_state(self): 
         return self.goal_state_tuple
         
-    def is_goal(self, state): 
+    def is_goal(self, state, backward=False): 
+        if backward:
+            return state == self.initial_state_tuple
         return state == self.goal_state_tuple
 
     def get_neighbors(self, state):
@@ -195,20 +204,24 @@ class GridProblem:
         If diagonal, cost is sqrt(2) * cost_multiplier, otherwise, cost is 1 * cost_multiplier.
         """
         if move_info is not None:
-            return max(1, move_info)
+            return move_info
 
         return euclidean(abs(state1[0] - state2[0]), 
                             abs(state1[1] - state2[1])) * self.cost_multiplier
 
 
-    def heuristic(self, state):
+    def heuristic(self, state, backward=False):
         """
         Calculates the heuristic.
         NOTE: This heuristic assumes unit cost (cost=1 or SQRT2). If cost multipier > 1 is used,
         its effectiveness will decrease but still admissable since multiplied costs >= unit costs.
         """
-        dx = abs(state[0] - self.goal_state_tuple[0])
-        dy = abs(state[1] - self.goal_state_tuple[1])
+        if backward:
+            dx = abs(state[0] - self.initial_state_tuple[0])
+            dy = abs(state[1] - self.initial_state_tuple[1])
+        else:    
+            dx = abs(state[0] - self.goal_state_tuple[0])
+            dy = abs(state[1] - self.goal_state_tuple[1])
 
 
         distance = self.h_func(dx, dy)
@@ -221,7 +234,7 @@ class GridProblem:
         return distance * self.h_multiplier
     
 
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, visited_fwd: set = None, visited_bwd: set = None,
                   path_type: str = '', output_file_ext: str = 'png',
                   display: bool = False, return_image: bool = False):
         """
@@ -254,6 +267,18 @@ class GridProblem:
         # This array will have dimensions (rows, cols, 3) for RGB values
         rgb_array = np.zeros((rows, cols, 3), dtype=np.uint8)
         grid_draw = self.grid.copy()
+
+        if visited_fwd:
+            # If visited_fwd is provided, set expanded values in grid_draw to EXPANDED_FWD
+            for r, c in visited_fwd:
+                grid_draw[r, c] = EXPANDED_FWD
+        if visited_bwd:
+            # If visited_bwd is provided, set expanded values in grid_draw to EXPANDED_BWD
+            for r, c in visited_bwd:
+                if grid_draw[r, c] == EXPANDED_FWD:
+                    grid_draw[r, c] = EXPANDED_BOTH
+                else:
+                    grid_draw[r, c] = EXPANDED_BWD
 
         if path:
             # If path is provided, set path values in grid_draw to PATH

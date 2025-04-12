@@ -39,6 +39,7 @@ class SlidingTileProblem:
             self.goal_state_tuple = tuple(sorted_list)
             
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
+        self._start_positions = {tile: i for i, tile in enumerate(self.initial_state_tuple)}  # for bdhs
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = True
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -57,7 +58,9 @@ class SlidingTileProblem:
     def goal_state(self): 
         return self.goal_state_tuple
         
-    def is_goal(self, state): 
+    def is_goal(self, state, backward=False): 
+        if backward:
+            return state == self.initial_state_tuple
         return state == self.goal_state_tuple
 
     def get_neighbors(self, state):
@@ -105,33 +108,29 @@ class SlidingTileProblem:
                  print(f"Warning: Could not determine moved tile between {state1} and {state2}")
                  return 1 
 
-    def heuristic(self, state):
+    def heuristic(self, state, backward=False):
         """
         Calculates the Manhattan distance heuristic (number of steps).
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
+        if backward: # For bidirectional search
+            target_positions = self._start_positions
+        else:
+            target_positions = self._goal_positions
         distance = 0
         multiplier = 1
         ignored_tiles = set(range(self.degradation + 1))
         for i, tile in enumerate(state):
             if tile not in ignored_tiles:
                 current_pos = divmod(i, self.n)
-                goal_idx = self._goal_positions.get(tile)
+                goal_idx = target_positions.get(tile)
                 if goal_idx is None: continue 
                 goal_pos = divmod(goal_idx, self.n)
                 if self.make_heuristic_inadmissable:
                     multiplier = i
                 distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
         return distance * self.h_multiplier
-
-
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
-                  path_type: str = '', output_file_ext: str = 'png',
-                  display: bool = False, return_image: bool = False):
-        """ Placeholder - see GridProblem for implemented example"""
-        return None
-
 
     def __str__(self): 
         return self._str_repr
@@ -145,7 +144,8 @@ class PancakeProblem:
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
                  degradation=0):
-        self.initial_state_tuple=tuple(initial_state); self.n=len(initial_state)
+        self.initial_state_tuple=tuple(initial_state) 
+        self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
         else: self.goal_state_tuple=tuple(sorted(initial_state))
         self.use_variable_costs = use_variable_costs
@@ -166,7 +166,9 @@ class PancakeProblem:
     def goal_state(self): 
         return self.goal_state_tuple
         
-    def is_goal(self, state): 
+    def is_goal(self, state, backward=False): 
+        if backward:
+            return state == self.initial_state_tuple
         return state == self.goal_state_tuple
 
     def get_neighbors(self, state):
@@ -264,7 +266,7 @@ class PancakeProblem:
 
         return heuristic_value
 
-    def heuristic(self, state):
+    def heuristic(self, state, backward=False):
         """
         Calculates the Symetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
         NOTE: This counts number of "breaks". If variable costs (cost=k) are used,
@@ -272,19 +274,14 @@ class PancakeProblem:
         at most 2 gaps.
         """
         #return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
-        return max(self.gap_heuristic(state, self.goal_state_tuple), 
-                   self.gap_heuristic(self.goal_state_tuple, state)) * self.h_multiplier
-
-
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
-                  path_type: str = '', output_file_ext: str = 'png',
-                  display: bool = False, return_image: bool = False):
-        """ Placeholder - see GridProblem for implemented example"""
-        return None
-
+        if backward: target_tuple = self.initial_state_tuple
+        else: target_tuple = self.goal_state_tuple
+        return max(self.gap_heuristic(state, target_tuple), 
+                   self.gap_heuristic(target_tuple, state)) * self.h_multiplier
 
     def __str__(self): 
         return self._str_repr
+
 
 # --- TowersOfHanoiProblem (Corrected Formatting) ---
 class TowersOfHanoiProblem:
@@ -318,7 +315,9 @@ class TowersOfHanoiProblem:
     def goal_state(self): 
         return self._goal_state
         
-    def is_goal(self, state): 
+    def is_goal(self, state, backward=False): 
+        if backward:
+            return state == self._initial_state
         return state == self._goal_state
 
     def _get_peg_tops(self, state):
@@ -365,13 +364,14 @@ class TowersOfHanoiProblem:
         random.shuffle(nbs) # Shuffle neighbors to avoid bias in search. TJH Added along with peg order randomisation
         return nbs
 
-    def heuristic(self, state): 
+    def heuristic(self, state, backward=False): 
         """Calculates the standard admissible heuristic for Towers of Hanoi.
         Allows for degrading heuristic by ignoring disks
         Allows for inadmissable heuristic but A* still always finds optimal path.. 
         """
         h=0 
-        ctp=self.target_peg # current target peg for disk k
+        if backward: ctp=self.initial_peg # bdhs current target peg for disk k
+        else: ctp=self.target_peg 
         multiplier = 1
         ignored_disks = set(range(self.degradation))
 
@@ -394,11 +394,11 @@ class TowersOfHanoiProblem:
         """Cost is always 1 for Towers of Hanoi."""
         return 1
     
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
-                  path_type: str = '', output_file_ext: str = 'png',
-                  display: bool = False, return_image: bool = False):
-        """ Placeholder - see GridProblem for implemented example"""
-        return None
+#    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
+#                  path_type: str = '', output_file_ext: str = 'png',
+#                  display: bool = False, return_image: bool = False):
+#        """ Placeholder - see GridProblem for implemented example"""
+#        return None
 
     def __str__(self): 
         return self._str_repr
