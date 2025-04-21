@@ -10,6 +10,8 @@ import random
 import time
 import collections
 
+import util
+
 
 
 class HeuristicMCTSNode:  
@@ -118,8 +120,8 @@ def heuristic_mcts_search(problem,
     root = HeuristicMCTSNode(state=start_node, problem=problem) 
 
     if root.is_terminal(): 
-        return {"path": [root.state], "cost": 0, "nodes_expanded": 1, "time": time.time()-start_time, 
-                "algorithm": "Heuristic MCTS", "iterations": 0, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout}
+        return {"path": [root.state], "cost": 0, "nodes_expanded": 1, "time": time.time()-start_time, "optimal": False, "visual": "no file",
+                "iterations": 0, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout}
 
 
     for i in range(iterations):
@@ -250,17 +252,17 @@ def heuristic_mcts_search(problem,
                        queue.append((child, new_path_list, new_cost))
 
     # Prepare results dictionary
-    algo_name = f"Heuristic MCTS (SelW={heuristic_weight:.2f}, Rollout={heuristic_rollout})"
+    #algo_name = f"Heuristic MCTS (SelW={heuristic_weight:.2f}, Rollout={heuristic_rollout})"
     if best_path_found_list:
         return {"path": best_path_found_list, "cost": min_cost_in_tree, "nodes_expanded": nodes_explored_in_tree, 
-                "time": end_time - start_time, "algorithm": algo_name, "iterations": iterations, 
+                "time": end_time - start_time, "optimal": False, "visual": "no file", "iterations": iterations, 
                 "tree_root_visits": root.visits, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout }
     else:
          # If goal not found, return best guess for next move from root (greedy exploitation)
          best_first_move_node = root.best_child(exploration_weight=0, heuristic_weight=0) # Pure exploitation
          return {"path": None, "cost": -1, "nodes_expanded": nodes_explored_in_tree, 
-                 "time": end_time - start_time, "algorithm": algo_name, "iterations": iterations, 
-                 "best_next_state_estimate": best_first_move_node.state if best_first_move_node else None, 
+                 "time": end_time - start_time, "optimal": False, "visual": "no file", "iterations": iterations, 
+                 "best_next_state_estimate": util.make_prob_str(initial_state=best_first_move_node.state) if best_first_move_node else None, 
                  "tree_root_visits": root.visits, "h_weight": heuristic_weight, "h_rollout": heuristic_rollout}
 
 

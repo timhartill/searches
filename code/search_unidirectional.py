@@ -11,7 +11,7 @@ import heapq
 
 
 # --- Generic Unidirectional Search Function ---
-def generic_search(problem, priority_key='f', cstar=None, visualise=True):
+def generic_search(problem, priority_key='f', visualise=True):
     """
     Performs a generic best-first search using a closed set.
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
@@ -60,7 +60,8 @@ def generic_search(problem, priority_key='f', cstar=None, visualise=True):
             if visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=algorithm_name, visited_fwd=closed_set)
                 if not image_file: image_file = 'no file'
-            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": optimality_guaranteed, "visual": image_file}
+            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, 
+                    "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
 
         current_g_score = g_score.get(current_state)
         if current_g_score is None: continue # Should have g_score if reached here
@@ -91,7 +92,8 @@ def generic_search(problem, priority_key='f', cstar=None, visualise=True):
                 
 
     end_time = time.time()
-    return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "optimal": False, "visual": image_file }
+    return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, 
+            "optimal": False, "visual": image_file }
 
 
 def reconstruct_path(came_from, start_state, goal_state):

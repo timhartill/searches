@@ -12,6 +12,9 @@ import numpy as np
 from PIL import Image
 from typing import Dict, Tuple # Optional: for type hinting
 
+import util
+
+
 # Constants
 SQRT2 = math.sqrt(2)
 EMPTY = 0
@@ -48,7 +51,7 @@ DEFAULT_COLOR: Tuple[int, int, int] = (0, 0, 0) # Black for values outside the m
 
 
 def manhattan(dx, dy) -> float:
-    """manhattan heuristics"""
+    """manhattan heuristics - inadmissable of diagonal movement allowed"""
     return dx + dy
 
 
@@ -145,7 +148,7 @@ class GridProblem:
         self.degradation = degradation   
         self.cost_multiplier = cost_multiplier 
         cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}"
+        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -234,7 +237,8 @@ class GridProblem:
         return distance * self.h_multiplier
     
 
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, visited_fwd: set = None, visited_bwd: set = None,
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, 
+                  visited_fwd: set = None, visited_bwd: set = None,
                   path_type: str = '', output_file_ext: str = 'png',
                   display: bool = False, return_image: bool = False):
         """
@@ -253,10 +257,6 @@ class GridProblem:
             Exception: Catches potential errors during image saving.
         """
         # --- Input Validation ---
-        #if not isinstance(numpy_array, np.ndarray):
-        #    raise TypeError("Input must be a NumPy array.")
-        #if numpy_array.ndim != 2:
-        #    raise ValueError("Input array must be 2-dimensional.")
         if not isinstance(cell_size, int) or cell_size <= 0:
             raise ValueError("cell_size must be a positive integer.")
 
@@ -273,7 +273,7 @@ class GridProblem:
             for r, c in visited_fwd:
                 grid_draw[r, c] = EXPANDED_FWD
         if visited_bwd:
-            # If visited_bwd is provided, set expanded values in grid_draw to EXPANDED_BWD
+            # If visited_bwd is provided, set expanded values in grid_draw to EXPANDED_BWD or EXPANDED_BOTH
             for r, c in visited_bwd:
                 if grid_draw[r, c] == EXPANDED_FWD:
                     grid_draw[r, c] = EXPANDED_BOTH
@@ -325,14 +325,14 @@ class GridProblem:
         if path_type != '':
             out_dir = os.path.join(self.dirname, self.basename_no_ext)
             os.makedirs(out_dir, exist_ok=True)
-            output_filename = os.path.join(out_dir, f"{self.basename_no_ext}_{self._str_repr}_{path_type}.{output_file_ext}")
+            output_filename = os.path.join(out_dir, f"{self._str_repr}_{path_type}.{output_file_ext}")
             final_image.save(output_filename)  #saved in format inferred from file extension
         if display:
             final_image.show()
         if return_image:    
             return final_image
         elif path_type != '':
-            return output_filename
+            return os.path.basename(output_filename)
         return None
 
     def __str__(self): 

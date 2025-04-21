@@ -12,12 +12,14 @@ import time
 # --- Bidirectional A* (Updated for variable cost) ---
 def bidirectional_a_star_search(problem, visualise=True):
     """Performs Bidirectional A* search. Handles variable costs."""
-    algorithm_name = "Bidirectional Astar"
     image_file = 'no file'   
+    optimality_guaranteed = problem.optimality_guaranteed
+
     start_time = time.time()
     start_node = problem.initial_state()
     goal_node = problem.goal_state()
-    if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, "time": 0, "algorithm": algorithm_name, 'visual': image_file}
+    if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, 
+                                            "time": 0, "optimal": optimality_guaranteed, 'visual': image_file}
 
     h_start = problem.heuristic(start_node)
     frontier_fwd = [(h_start, start_node)]
@@ -94,7 +96,7 @@ def bidirectional_a_star_search(problem, visualise=True):
     if meeting_node:
         path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
         if visualise and hasattr(problem, 'visualise'):
-            image_file = problem.visualise(path=path, path_type=algorithm_name, 
+            image_file = problem.visualise(path=path, path_type="BiDirAStar", 
                                            meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd)
             if not image_file: image_file = 'no file'
         final_cost = -1
@@ -113,9 +115,11 @@ def bidirectional_a_star_search(problem, visualise=True):
         if cost_mismatch: 
             print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={best_path_cost}")
         final_reported_cost = best_path_cost # Report cost found by search
-        return {"path": path, "cost": final_reported_cost if path else -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "visual": image_file}
+        return {"path": path, "cost": final_reported_cost if path else -1, "nodes_expanded": nodes_expanded, 
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
     else:
-        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, "algorithm": algorithm_name, "visual": image_file}
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
 
 
 def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, goal_state, meeting_node):

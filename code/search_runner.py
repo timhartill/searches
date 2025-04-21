@@ -7,6 +7,9 @@ Partly generated from Gemini 2.5.
 import random
 import time
 import traceback # For error reporting
+import json
+
+import util
 
 # problems
 from puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
@@ -20,6 +23,8 @@ from search_bidirectional import bidirectional_a_star_search
 # --- Main Execution Logic ---
 if __name__ == "__main__":
     print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    out_dir = '/media/tim/dl3storage/gitprojects/searches/outputs'  #output dir (visualisations in subdirs off matrices)
+    out_file_base = f"{out_dir}/search_eval_{time.strftime('%Y%m%d_%H%M%S')}"
 
     random.seed(42)
 
@@ -67,8 +72,49 @@ if __name__ == "__main__":
 
     hanoi_disks = 7 # Optimal cost = 2^7 - 1 = 127
     hanoi_problem = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
-                                         make_heuristic_inadmissable=make_heuristic_inadmissable,
+                                         make_heuristic_inadmissable=False, heuristic='3PegStd',
                                          degradation=hanoi_degradation)
+    hanoi_problem_3_indmiss = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=True, heuristic='3PegStd',
+                                         degradation=hanoi_degradation)
+    hanoi_problem_3_d5 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=False, heuristic='3PegStd',
+                                         degradation=5)
+    hanoi_problem_3_infpeg = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+    hanoi_problem_3_infpeg_indmiss = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=True, heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+    hanoi_problem_3_infpeg_d5 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='C',
+                                         make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
+                                         degradation=5)
+
+
+
+    hanoi_problem_4Tower_3peg = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=False,  heuristic='3PegStd',
+                                         degradation=hanoi_degradation)
+
+    hanoi_problem_4Tower_InfPeg = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+
+
+    hanoi_problem_4Tower_3peg_inadmiss = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=True, heuristic='3PegStd',
+                                         degradation=hanoi_degradation)
+
+    hanoi_problem_4Tower_InfPeg_inadmiss = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=True, heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+    hanoi_problem_4Tower_InfPeg_d5 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
+                                         degradation=5)
+    hanoi_problem_4Tower_InfPeg_12disk = TowersOfHanoiProblem(num_disks=12, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
+                                         degradation=0)
+
 
     grid_easy_unit = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
@@ -189,33 +235,44 @@ if __name__ == "__main__":
 
 
     problems_to_solve = [
-        sliding_tile_unit_cost,
-        sliding_tile_var_cost,
-        pancake_unit_cost,
-        pancake_var_cost,
+#        sliding_tile_unit_cost,
+#        sliding_tile_var_cost,
+#        pancake_unit_cost,
+#        pancake_var_cost,
         hanoi_problem,
-        grid_easy_unit,
-        grid_easy_unit_diag_octile,
-        grid_easy_unit_diag_octile_d5,
-        grid_easy_unit_diag_manhattan,
-        grid_harder_unit,
-        grid_harder_unit_d500,
-        grid_harder_unit_diag_octile,
-        grid_harder_unit_diag_octile_d5,
-        grid_harder_unit_diag_euc,
-        grid_harder_unit_diag_euc_d5,
-        grid_harder_unit_diag_euc_d500,
-        grid_harder_unit_diag_che,
-        grid_harder_unit_diag_che_d5,
-        grid_harder_unit_diag_octile_d0,
-        grid_harder_unit_diag_euc_d0_cm1000,
-        grid_harder_unit_diag_euc_d500_cm1000,
-        grid_harder1000x1000_unit_diag_mh_d0_cm1,
-        grid_harder1000x1000_unit_diag_mh_d5_cm1,
-        grid_harder1000x1000_unit_diag_euc_d0_cm1,
-        grid_harder1000x1000_unit_diag_euc_d5_cm1,
-        grid_harder1000x1000_unit_nodiag_euc_d0_cm1,
-        grid_harder1000x1000_unit_nodiag_euc_d5_cm1,
+        hanoi_problem_3_indmiss,
+        hanoi_problem_3_d5,
+        hanoi_problem_3_infpeg,
+        hanoi_problem_3_infpeg_indmiss,
+        hanoi_problem_3_infpeg_d5,
+        hanoi_problem_4Tower_3peg,
+        hanoi_problem_4Tower_InfPeg,
+        hanoi_problem_4Tower_3peg_inadmiss,
+        hanoi_problem_4Tower_InfPeg_inadmiss,
+        hanoi_problem_4Tower_InfPeg_d5,
+#        hanoi_problem_4Tower_InfPeg_12disk,  # uniform costs takes but 4mins generates 16M expansions, only ~11GB ram
+#        grid_easy_unit,
+#        grid_easy_unit_diag_octile,
+#        grid_easy_unit_diag_octile_d5,
+#        grid_easy_unit_diag_manhattan,
+#        grid_harder_unit,
+#        grid_harder_unit_d500,
+#        grid_harder_unit_diag_octile,
+#        grid_harder_unit_diag_octile_d5,
+#        grid_harder_unit_diag_euc,
+#        grid_harder_unit_diag_euc_d5,
+#        grid_harder_unit_diag_euc_d500,
+#        grid_harder_unit_diag_che,
+#        grid_harder_unit_diag_che_d5,
+#        grid_harder_unit_diag_octile_d0,
+#        grid_harder_unit_diag_euc_d0_cm1000,
+#        grid_harder_unit_diag_euc_d500_cm1000,
+#        grid_harder1000x1000_unit_diag_mh_d0_cm1,
+#        grid_harder1000x1000_unit_diag_mh_d5_cm1,
+#        grid_harder1000x1000_unit_diag_euc_d0_cm1,
+#        grid_harder1000x1000_unit_diag_euc_d5_cm1,
+#        grid_harder1000x1000_unit_nodiag_euc_d0_cm1,
+#        grid_harder1000x1000_unit_nodiag_euc_d5_cm1,
     ]
 
     # --- Define Algorithms ---
@@ -240,9 +297,9 @@ if __name__ == "__main__":
     search_algorithms_runners = {
         "Uniform Cost": run_ucs,
         "Greedy Best-First": run_greedy_bfs,
-        "A*": run_astar,
-        "Bidirectional A*": run_bidir_astar,
-    #    "MCTS (Standard)": run_mcts_standard,
+        "AStar": run_astar,
+        "Bidirectional AStar": run_bidir_astar,
+        "MCTS (Standard)": run_mcts_standard,
     #    "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
     #    "MCTS (H-Rollout)": run_mcts_h_rollout,
     #    "MCTS (H-Both)": run_mcts_h_both,
@@ -251,19 +308,19 @@ if __name__ == "__main__":
 
     # --- Run Experiments ---
     all_results = []
-    for problem in problems_to_solve:
+    for problem in problems_to_solve:  # For each problem
         print(f"\n{'=' * 20}\nSolving: {problem}\nInitial State: {problem.initial_state()}\nGoal State:    {problem.goal_state()}\nInitial Heuristic: {problem.heuristic(problem.initial_state())}\n{'-' * 20}")
         problem_results = []
         
-        for algo_display_name, algo_func in search_algorithms_runners.items():
+        for algo_display_name, algo_func in search_algorithms_runners.items():  # For each algorithm
             print(f"Running {algo_display_name}...")
             result = None
             try:
                 result = algo_func(problem) # Call the runner
                 
                 # Set algorithm name in result consistently
-                if result and 'algorithm' in result: 
-                    result['algorithm'] = algo_display_name
+                #if result and 'algorithm' in result: 
+                result['algorithm'] = algo_display_name
                 
                 print(f"{algo_display_name} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
 
@@ -274,7 +331,13 @@ if __name__ == "__main__":
                            "algorithm": algo_display_name, "error": str(e)}
 
             if result: 
-                 result['problem'] = str(problem); problem_results.append(result); all_results.append(result)
+                 result['problem'] = str(problem)
+                 if 'path' in result and result['path']:
+                     result['unit_cost'] = len(result['path']) - 1
+                 else:
+                     result['unit_cost'] = -1
+                 problem_results.append(result)
+                 all_results.append(result)
 
         # --- Print Results for this Problem ---
         print(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
@@ -303,3 +366,15 @@ if __name__ == "__main__":
          optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
          algo_name = res.get('algorithm','N/A') 
          print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note}")
+
+    # --- Save Results to JSON ---
+    json_file_path = f"{out_file_base}.json"
+    with open(json_file_path, 'w') as json_file:
+        json.dump(all_results, json_file, indent=4)
+    print(f"Results saved to {json_file_path}") 
+
+    # --- Save Results to CSV ---
+    # Ensure all results have the same keys for CSV
+    # If some results are missing keys, fill them with None
+    csv_file_path = f"{out_file_base}.csv"
+    util.write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])

@@ -16,6 +16,8 @@ Supports
 import math
 import random
 
+import util
+
 
 
 # --- SlidingTileProblem (Corrected Formatting & use_variable_costs flag) ---
@@ -50,7 +52,8 @@ class SlidingTileProblem:
             self.h_multiplier = 1    
         self.degradation = degradation    
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self._str_repr = f"SlidingTile-{self.n}x{self.n}-{cost_type}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self.h_str = "Manhattan" # Manhattan distance heuristic
+        self._str_repr = f"SlidingTile-{self.n}x{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -158,7 +161,8 @@ class PancakeProblem:
             self.h_multiplier = 1    
         self.degradation = degradation
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self._str_repr = f"Pancake-{self.n}-{cost_type}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self.h_str = "SymGap" # Symmetric Gap heuristic
+        self._str_repr = f"Pancake-{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
         
     def initial_state(self): 
         return self.initial_state_tuple
@@ -285,9 +289,10 @@ class PancakeProblem:
 
 # --- TowersOfHanoiProblem (Corrected Formatting) ---
 class TowersOfHanoiProblem:
-    """Implements the Towers of Hanoi problem interface. Cost is always 1."""
-    def __init__(self, num_disks, initial_peg='A', target_peg='C', 
-                 make_heuristic_inadmissable=False, degradation=0): 
+    """Implements the Towers of Hanoi problem interface. Cost is always 1.
+    """
+    def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], 
+                 make_heuristic_inadmissable=False, degradation=0, heuristic="3PegStd"): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -295,19 +300,24 @@ class TowersOfHanoiProblem:
             self.h_multiplier = num_disks * (degradation+10)**2
             self.optimality_guaranteed = False
         else:
-            self.h_multiplier = 1    
+            self.h_multiplier = 1   
+        assert heuristic in ["3PegStd", "InfinitePegRelaxation"], \
+            f"Invalid heuristic: {heuristic}. Must be '3PegStd' or 'InfinitePegRelaxation'."
+        self.h_str = heuristic 
+        if len(pegs) > 3 and heuristic == "3PegStd": # definitely not optimal for bidirectional or A*
+            self.optimality_guaranteed = False   
         self.degradation = degradation    
         assert num_disks >= 1, "Number of disks must be at least 1."
         self.num_disks = num_disks
-        self.pegs=['A','B','C']
+        self.pegs=pegs
         assert initial_peg in self.pegs and target_peg in self.pegs and initial_peg != target_peg, \
             f"Invalid initial or target peg. Must be one of {self.pegs} and different."
         self.initial_peg = initial_peg
         self.target_peg = target_peg
         self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
-        self._initial_state=tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)
+        self._initial_state=tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self._goal_state=tuple([target_peg]*num_disks)      # (C, C, C, ..., C)
-        self._str_repr=f"TowersOfHanoi-{num_disks}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self._str_repr=f"TowersOfHanoi-{num_disks}-{util.make_prob_str(initial_state=self._initial_state, goal_state=self._goal_state)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}"
 
     def initial_state(self): 
         return self._initial_state
@@ -349,7 +359,6 @@ class TowersOfHanoiProblem:
         nbs=[] 
         pts=self._get_peg_tops(state);
         pegs = self.pegs.copy() 
-        random.shuffle(pegs)    #  TJH to avoid search bias
         for sp in pegs:
             dtm = pts[sp] # Disk To Move index (top disk on source)
             if dtm is not None: # If source peg is not empty
@@ -361,11 +370,11 @@ class TowersOfHanoiProblem:
                             nsl = list(state)
                             nsl[dtm] = dp # Move disk dtm to peg dp
                             nbs.append((tuple(nsl), 1)) # Append (new_state, cost)
-        random.shuffle(nbs) # Shuffle neighbors to avoid bias in search. TJH Added along with peg order randomisation
         return nbs
 
     def heuristic(self, state, backward=False): 
-        """Calculates the standard admissible heuristic for Towers of Hanoi.
+        """Calculates the standard admissible heuristic for 3 peg Towers of Hanoi and "Infinite Peg Relaxation" heuristic
+        which is admissable but relatively weak.
         Allows for degrading heuristic by ignoring disks
         Allows for inadmissable heuristic but A* still always finds optimal path.. 
         """
@@ -375,19 +384,54 @@ class TowersOfHanoiProblem:
         multiplier = 1
         ignored_disks = set(range(self.degradation))
 
-        for k in range(self.num_disks-1,-1,-1): # Iterate largest disk (N-1) down to smallest (0)
-            if k in ignored_disks: 
-                continue # Ignore disks in degradation
-            if state[k] != ctp: 
-                # If disk k is not where it should be relative to disk k+1 (or final target)
-                # it and all smaller disks must move. Lower bound cost is 2^k.
-                if self.make_heuristic_inadmissable:
-                    multiplier = random.choice(range(1,self.num_disks)) #TJH: It seems with anything based on k A* still finds optimal path 
-                h += 2**k * multiplier
-                # The new target for disk k-1 becomes the 'third' peg 
-                # (neither where k is, nor where k should have been)
-                ctp = next(p for p in self.pegs if p!=state[k] and p!=ctp)
-            # else: disk k is on the correct peg (ctp), so target for k-1 remains ctp.
+        if self.h_str == "3PegStd":
+            for k in range(self.num_disks-1,-1,-1): # Iterate largest disk (N-1) down to smallest (0)
+                if k in ignored_disks: 
+                    continue # Ignore disks in degradation
+                if state[k] != ctp: 
+                    # If disk k is not where it should be relative to disk k+1 (or final target)
+                    # it and all smaller disks must move. Lower bound cost is 2^k.
+                    if self.make_heuristic_inadmissable:
+                        multiplier = random.choice(range(1,self.num_disks)) #TJH: It seems with anything based on k A* still finds optimal path 
+                    h += 2**k * multiplier
+                    # The new target for disk k-1 becomes the 'third' peg 
+                    # (neither where k is, nor where k should have been)
+                    ctp = next(p for p in self.pegs if p!=state[k] and p!=ctp)
+                # else: disk k is on the correct peg (ctp), so target for k-1 remains ctp.
+        elif self.h_str == "InfinitePegRelaxation":
+            # See Additive Pattern databases, Felner et al 2004
+            # much weaker than pattern database heuristics but admissable for > 3 pegs and works in bidirectional
+            for peg in self.pegs:
+                if peg != ctp:
+                    # 1 Sum for non-goal pegs = 2 * # disks on peg - 1
+                    num_disks_on_peg = 0
+                    for k in range(self.num_disks):
+                        if k in ignored_disks: 
+                            continue
+                        if state[k] == peg:
+                            if self.make_heuristic_inadmissable:
+                                multiplier = random.choice(range(1,self.num_disks)) #k**k
+                            num_disks_on_peg += multiplier
+                    h += (2*num_disks_on_peg) - 1
+                else:  # goal peg    
+                    # 2 Sum for goal peg = 2 * each disk that must move to allow other disks to move onto goal. Count downward from largest until break
+                    goal_disks = []
+                    for k in range(self.num_disks-1,-1,-1):
+                        if state[k] == peg:
+                            goal_disks.append(k)
+                    start_count = False
+                    num_disks_on_peg = 0
+                    for i,k in enumerate(goal_disks):
+                        if i > 0 and goal_disks[i-1] - goal_disks[i] > 1:
+                            start_count = True
+                        if start_count:
+                            if k in ignored_disks: 
+                                continue
+                            if self.make_heuristic_inadmissable:
+                                multiplier = random.choice(range(1,self.num_disks)) #k**k
+                            num_disks_on_peg += multiplier
+                    h += 2*num_disks_on_peg
+
         return h * self.h_multiplier
 
     def get_cost(self, state1, state2, move_info=None): 
