@@ -210,7 +210,7 @@ class GridProblem:
             return move_info
 
         return euclidean(abs(state1[0] - state2[0]), 
-                            abs(state1[1] - state2[1])) * self.cost_multiplier
+                         abs(state1[1] - state2[1])) * self.cost_multiplier
 
 
     def heuristic(self, state, backward=False):

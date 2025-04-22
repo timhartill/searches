@@ -59,6 +59,26 @@ if __name__ == "__main__":
                                                make_heuristic_inadmissable=make_heuristic_inadmissable,
                                                degradation=tile_degradation)
 
+    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1, 10, 11, 9] # harder 4x3 unit C*=32
+    sliding_tile_unit_cost43 = SlidingTileProblem(initial_state=tile_initial, 
+                                                use_variable_costs=False, 
+                                                make_heuristic_inadmissable=False,
+                                                degradation=tile_degradation)
+    sliding_tile_var_cost43 = SlidingTileProblem(initial_state=tile_initial, 
+                                               use_variable_costs=True,
+                                               make_heuristic_inadmissable=False,
+                                               degradation=tile_degradation)
+    sliding_tile_unit_cost43_inadmiss = SlidingTileProblem(initial_state=tile_initial, 
+                                               use_variable_costs=False,
+                                               make_heuristic_inadmissable=True,
+                                               degradation=tile_degradation)
+    sliding_tile_unit_cost43_d5 = SlidingTileProblem(initial_state=tile_initial, 
+                                                use_variable_costs=False, 
+                                                make_heuristic_inadmissable=False,
+                                                degradation=5)
+
+
+
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
                                        use_variable_costs=False,
@@ -97,6 +117,16 @@ if __name__ == "__main__":
                                          degradation=hanoi_degradation)
 
     hanoi_problem_4Tower_InfPeg = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+
+    hanoi_problem_4Tower_InfPeg_state2 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         initial_state=['B', 'B', 'C', 'C', 'D', 'A', 'A'],
+                                         make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
+                                         degradation=hanoi_degradation)
+
+    hanoi_problem_4Tower_InfPeg_state3 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
+                                         initial_state=['B', 'A', 'C', 'B', 'A', 'C', 'A'],
                                          make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
                                          degradation=hanoi_degradation)
 
@@ -237,19 +267,25 @@ if __name__ == "__main__":
     problems_to_solve = [
 #        sliding_tile_unit_cost,
 #        sliding_tile_var_cost,
+#        sliding_tile_unit_cost43,
+#        sliding_tile_var_cost43,
+#        sliding_tile_unit_cost43_inadmiss,
+#        sliding_tile_unit_cost43_d5,
 #        pancake_unit_cost,
 #        pancake_var_cost,
-        hanoi_problem,
-        hanoi_problem_3_indmiss,
-        hanoi_problem_3_d5,
-        hanoi_problem_3_infpeg,
-        hanoi_problem_3_infpeg_indmiss,
-        hanoi_problem_3_infpeg_d5,
-        hanoi_problem_4Tower_3peg,
-        hanoi_problem_4Tower_InfPeg,
-        hanoi_problem_4Tower_3peg_inadmiss,
-        hanoi_problem_4Tower_InfPeg_inadmiss,
-        hanoi_problem_4Tower_InfPeg_d5,
+#        hanoi_problem,
+#        hanoi_problem_3_indmiss,
+#        hanoi_problem_3_d5,
+#        hanoi_problem_3_infpeg,
+#        hanoi_problem_3_infpeg_indmiss,
+#        hanoi_problem_3_infpeg_d5,
+#        hanoi_problem_4Tower_3peg,
+         hanoi_problem_4Tower_InfPeg,
+         hanoi_problem_4Tower_InfPeg_state2,
+         hanoi_problem_4Tower_InfPeg_state3,
+#        hanoi_problem_4Tower_3peg_inadmiss,
+#        hanoi_problem_4Tower_InfPeg_inadmiss,
+#        hanoi_problem_4Tower_InfPeg_d5,
 #        hanoi_problem_4Tower_InfPeg_12disk,  # uniform costs takes but 4mins generates 16M expansions, only ~11GB ram
 #        grid_easy_unit,
 #        grid_easy_unit_diag_octile,

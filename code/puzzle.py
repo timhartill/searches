@@ -32,12 +32,22 @@ class SlidingTileProblem:
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
-            raise ValueError("Invalid state length for a square puzzle.")
+            self.max_cols = self.n
+            # Check if the state is in the form of n x n or n+1 x n
+            max_rows, col_check = divmod(len(initial_state), self.max_cols)
+            if col_check != 0:
+                raise ValueError("Invalid state length for a sliding tile puzzle. Must be n x n or n+1 x n.")
+            self.max_rows = max_rows
+        else: # square puzzle
+            self.max_rows = self.n
+            self.max_cols = self.n
             
         if goal_state:
+            if len(goal_state) != len(initial_state):
+                raise ValueError("Goal state must be the same length as initial state.")
             self.goal_state_tuple = tuple(goal_state)
         else:
-            sorted_list = list(range(1, self.n * self.n)) + [0]
+            sorted_list = list(range(1, self.max_rows * self.max_cols)) + [0]
             self.goal_state_tuple = tuple(sorted_list)
             
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
@@ -53,7 +63,7 @@ class SlidingTileProblem:
         self.degradation = degradation    
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = "Manhattan" # Manhattan distance heuristic
-        self._str_repr = f"SlidingTile-{self.n}x{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -72,11 +82,11 @@ class SlidingTileProblem:
         """
         neighbors = []
         blank_index = state.index(0)    # index of blank in state list 
-        row, col = divmod(blank_index, self.n)
+        row, col = divmod(blank_index, self.max_cols)
         moves = {'up': (row - 1, col), 'down': (row + 1, col), 'left': (row, col - 1), 'right': (row, col + 1)}
         for move_dir, (new_row, new_col) in moves.items():
-            if 0 <= new_row < self.n and 0 <= new_col < self.n:  # if valid move
-                new_blank_index = new_row * self.n + new_col  # index of blank if move this direction
+            if 0 <= new_row < self.max_rows and 0 <= new_col < self.max_cols:  # if valid move
+                new_blank_index = new_row * self.max_cols + new_col  # index of blank if move this direction
                 new_state_list = list(state)
                 moved_tile_value = new_state_list[new_blank_index] 
                 # swap blank with the tile in the new position:
@@ -95,7 +105,7 @@ class SlidingTileProblem:
         if move_info is not None:
             moved_tile_value = move_info
             return max(1, moved_tile_value) 
-        else: 
+        else: # Used when reconstructing path cost post-search without move_info
             blank1_idx, blank2_idx, moved_tile = -1, -1, -1
             # Ensure state1 and state2 are tuples/sequences before len()
             if not hasattr(state1, '__len__') or not hasattr(state2, '__len__') or len(state1) != len(state2):
@@ -126,10 +136,10 @@ class SlidingTileProblem:
         ignored_tiles = set(range(self.degradation + 1))
         for i, tile in enumerate(state):
             if tile not in ignored_tiles:
-                current_pos = divmod(i, self.n)
+                current_pos = divmod(i, self.max_cols)
                 goal_idx = target_positions.get(tile)
                 if goal_idx is None: continue 
-                goal_pos = divmod(goal_idx, self.n)
+                goal_pos = divmod(goal_idx, self.max_cols)
                 if self.make_heuristic_inadmissable:
                     multiplier = i
                 distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
@@ -290,8 +300,13 @@ class PancakeProblem:
 # --- TowersOfHanoiProblem (Corrected Formatting) ---
 class TowersOfHanoiProblem:
     """Implements the Towers of Hanoi problem interface. Cost is always 1.
+    Heuristic is either standard 3 peg or "Infinite Peg Relaxation" heuristic.
+    Infinite Peg Relaxation is admissible but weak, std 3 peg only admissable for 3 peg problems.
+    Allows for degrading heuristic by ignoring disks.
+    Allows for inadmissible heuristic. 
+    State is a Tuple of current peg for each disk eg ('A', 'A', 'B', 'C', 'A', 'A', 'A') for 7 disks with idx 0 = smallest disk.
     """
-    def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], 
+    def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], initial_state=None,
                  make_heuristic_inadmissable=False, degradation=0, heuristic="3PegStd"): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
@@ -301,21 +316,29 @@ class TowersOfHanoiProblem:
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1   
-        assert heuristic in ["3PegStd", "InfinitePegRelaxation"], \
-            f"Invalid heuristic: {heuristic}. Must be '3PegStd' or 'InfinitePegRelaxation'."
+        if heuristic not in ["3PegStd", "InfinitePegRelaxation"]:
+            raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3PegStd' or 'InfinitePegRelaxation'.")
         self.h_str = heuristic 
-        if len(pegs) > 3 and heuristic == "3PegStd": # definitely not optimal for bidirectional or A*
+        if len(pegs) > 3 and heuristic == "3PegStd": # definitely not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False   
         self.degradation = degradation    
-        assert num_disks >= 1, "Number of disks must be at least 1."
+        if num_disks < 1: 
+            raise ValueError("Number of disks must be at least 1.")
         self.num_disks = num_disks
         self.pegs=pegs
-        assert initial_peg in self.pegs and target_peg in self.pegs and initial_peg != target_peg, \
-            f"Invalid initial or target peg. Must be one of {self.pegs} and different."
+        if not (initial_peg in self.pegs and target_peg in self.pegs and initial_peg != target_peg):
+            raise ValueError(f"Invalid initial or target peg. Must be one of {self.pegs} and different.")
         self.initial_peg = initial_peg
         self.target_peg = target_peg
-        self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
-        self._initial_state=tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
+        #self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
+        if initial_state is None:
+            initial_state = [initial_peg] * num_disks
+        else:
+            if len(initial_state) != num_disks:
+                raise ValueError(f"Initial state must have {num_disks} disks.")
+            if any(peg not in self.pegs for peg in initial_state):
+                raise ValueError(f"Invalid pegs in initial state. Must be one of {self.pegs}.")
+        self._initial_state = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self._goal_state=tuple([target_peg]*num_disks)      # (C, C, C, ..., C)
         self._str_repr=f"TowersOfHanoi-{num_disks}-{util.make_prob_str(initial_state=self._initial_state, goal_state=self._goal_state)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}"
 

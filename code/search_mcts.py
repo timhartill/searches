@@ -240,7 +240,7 @@ def heuristic_mcts_search(problem,
          if current_cost >= min_cost_in_tree: continue # Pruning BFS
 
          for child in current_node.children:
-             cost_step = problem.get_cost(current_node.state, child.state) 
+             cost_step = problem.get_cost(current_node.state, child.state) #NOTE: not using move_info
              new_cost = current_cost + cost_step
              
              if new_cost < visited_in_tree.get(child.state, float('inf')):

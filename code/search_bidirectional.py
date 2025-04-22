@@ -53,7 +53,13 @@ def bidirectional_a_star_search(problem, visualise=True):
                     meeting_node = current_state_fwd
             
             for neighbor_info in problem.get_neighbors(current_state_fwd):
-                neighbor_state, move_info = (neighbor_info if isinstance(neighbor_info, tuple) and len(neighbor_info)==2 else (neighbor_info, None))
+                # Handle cases where get_neighbors might return just state or (state, move_info)
+                if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                    neighbor_state = neighbor_info[0]
+                    move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
+                else:
+                    neighbor_state = neighbor_info
+                    move_info = None
                 if neighbor_state in closed_fwd: continue
                 cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                 tentative_g_score = current_g_fwd + cost
@@ -80,7 +86,14 @@ def bidirectional_a_star_search(problem, visualise=True):
                     meeting_node = current_state_bwd
 
             for neighbor_info in problem.get_neighbors(current_state_bwd):
-                neighbor_state, move_info = (neighbor_info if isinstance(neighbor_info, tuple) and len(neighbor_info)==2 else (neighbor_info, None))
+                # Handle cases where get_neighbors might return just state or (state, move_info)
+                if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                    neighbor_state = neighbor_info[0]
+                    move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
+                else:
+                    neighbor_state = neighbor_info
+                    move_info = None
+
                 if neighbor_state in closed_bwd: continue
                 cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
                 tentative_g_score = current_g_bwd + cost 
@@ -102,7 +115,7 @@ def bidirectional_a_star_search(problem, visualise=True):
         final_cost = -1
         recalculated_cost = 0
         cost_mismatch = False
-        if path:
+        if path:  # check path reconstruction - NOT NEEDED post debugging!!
              try:
                  for i in range(len(path) - 1):
                      recalculated_cost += problem.get_cost(path[i], path[i+1]) # Use fallback cost
