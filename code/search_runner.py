@@ -126,7 +126,7 @@ if __name__ == "__main__":
                                          degradation=hanoi_degradation)
 
     hanoi_problem_4Tower_InfPeg_state3 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
-                                         initial_state=['B', 'A', 'C', 'B', 'A', 'C', 'A'],
+                                         initial_state=['D', 'D', 'D', 'D', 'D', 'D', 'A'],
                                          make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
                                          degradation=hanoi_degradation)
 
@@ -265,13 +265,13 @@ if __name__ == "__main__":
 
 
     problems_to_solve = [
-#        sliding_tile_unit_cost,
+        sliding_tile_unit_cost,
 #        sliding_tile_var_cost,
 #        sliding_tile_unit_cost43,
 #        sliding_tile_var_cost43,
 #        sliding_tile_unit_cost43_inadmiss,
 #        sliding_tile_unit_cost43_d5,
-#        pancake_unit_cost,
+        pancake_unit_cost,
 #        pancake_var_cost,
 #        hanoi_problem,
 #        hanoi_problem_3_indmiss,
@@ -281,19 +281,19 @@ if __name__ == "__main__":
 #        hanoi_problem_3_infpeg_d5,
 #        hanoi_problem_4Tower_3peg,
          hanoi_problem_4Tower_InfPeg,
-         hanoi_problem_4Tower_InfPeg_state2,
-         hanoi_problem_4Tower_InfPeg_state3,
+#         hanoi_problem_4Tower_InfPeg_state2,
+#         hanoi_problem_4Tower_InfPeg_state3,
 #        hanoi_problem_4Tower_3peg_inadmiss,
 #        hanoi_problem_4Tower_InfPeg_inadmiss,
 #        hanoi_problem_4Tower_InfPeg_d5,
-#        hanoi_problem_4Tower_InfPeg_12disk,  # uniform costs takes but 4mins generates 16M expansions, only ~11GB ram
+#        hanoi_problem_4Tower_InfPeg_12disk,  # uniform costs takes 4mins, generates 16M expansions, only ~11GB ram
 #        grid_easy_unit,
 #        grid_easy_unit_diag_octile,
 #        grid_easy_unit_diag_octile_d5,
 #        grid_easy_unit_diag_manhattan,
 #        grid_harder_unit,
 #        grid_harder_unit_d500,
-#        grid_harder_unit_diag_octile,
+        grid_harder_unit_diag_octile,
 #        grid_harder_unit_diag_octile_d5,
 #        grid_harder_unit_diag_euc,
 #        grid_harder_unit_diag_euc_d5,

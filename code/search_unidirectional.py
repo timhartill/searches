@@ -7,7 +7,7 @@ A* Search                    (f = g + h)
 
 """
 import time
-import heapq
+import util
 
 
 # --- Generic Unidirectional Search Function ---
@@ -24,30 +24,40 @@ def generic_search(problem, priority_key='f', visualise=True):
 
     image_file = "no file"
 
-    start_time = time.time(); start_node = problem.initial_state()
+    start_time = time.time() 
+    start_node = problem.initial_state()
     h_initial = problem.heuristic(start_node) if priority_key in ['h', 'f'] else 0
     initial_g = 0
     if priority_key == 'g': initial_priority = initial_g
     elif priority_key == 'h': initial_priority = h_initial
     else: initial_priority = initial_g + h_initial # 'f'
 
-    frontier = [(initial_priority, start_node)] 
-    heapq.heapify(frontier)
-    came_from = {start_node: None} 
+    frontier = util.PriorityQueue(tiebreaker2='FIFO') # Priority queue
+    frontier.push(start_node, initial_priority, 0) # Push with priority and tiebreaker1
+    came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
     g_score = {start_node: initial_g}
     closed_set = set()
     nodes_expanded = 0
+    C = -1.0 # Current lowest cost on frontier
+    U = float('inf') # Current lowest cost found
+    found_path = None
     nodes_expanded_below_cstar = 0
 
-    while frontier:
-        current_priority, current_state = heapq.heappop(frontier)
+    while not frontier.isEmpty():
+
+        C = frontier.peek(priority_only=True) # Peek at the lowest priority element
+
+        if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            #print(f"Termination condition U ({U}) >= C ({C}) met.")
+            # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
+            break
+
+        current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
         
         # Optimization: If current_state's g_score is worse than recorded, skip
-        # This can happen with duplicate states in the queue with different priorities
-        #if current_state in g_score and g_score[current_state] < current_priority - (problem.heuristic(current_state) if priority_key != 'g' else 0):
-             # Check g_score derived from priority vs stored g_score if applicable
-             # Let's rely on the closed set check primarily
-             #pass 
+        # This can allegedly happen with duplicate states in the queue with different priorities
+        if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if priority_key != 'g' else 0)):
+            continue 
 
         if current_state in closed_set: continue
         nodes_expanded += 1
@@ -55,16 +65,14 @@ def generic_search(problem, priority_key='f', visualise=True):
 
         if problem.is_goal(current_state):
             end_time = time.time()
-            path = reconstruct_path(came_from, start_node, current_state)
-            final_g_score = g_score.get(current_state)
-            if visualise and hasattr(problem, 'visualise'):
-                image_file = problem.visualise(path=path, path_type=algorithm_name, visited_fwd=closed_set)
-                if not image_file: image_file = 'no file'
-            return {"path": path, "cost": final_g_score, "nodes_expanded": nodes_expanded, 
-                    "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
+            U = g_score.get(current_state)   
+            found_path = current_state
+            break 
 
         current_g_score = g_score.get(current_state)
-        if current_g_score is None: continue # Should have g_score if reached here
+        if current_g_score is None:
+            print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
+            continue # Should have g_score if reached here
 
         for neighbor_info in problem.get_neighbors(current_state):
             # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -88,12 +96,22 @@ def generic_search(problem, priority_key='f', visualise=True):
                     h_score = problem.heuristic(neighbor_state)
                     if priority_key == 'h': priority = h_score
                     elif priority_key == 'f': priority = tentative_g_score + h_score
-                heapq.heappush(frontier, (priority, neighbor_state))
+                frontier.push(neighbor_state, priority, -tentative_g_score) # Push with priority and tiebreaker1 = -g ie higher g popped first
                 
 
     end_time = time.time()
+
+    if found_path:
+        path = reconstruct_path(came_from, start_node, found_path)
+        if visualise and hasattr(problem, 'visualise'):
+            image_file = problem.visualise(path=path, path_type=algorithm_name, visited_fwd=closed_set)
+            if not image_file: image_file = 'no file'
+        return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, 
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
+                "max_heap_size": frontier.max_heap_size}
+
     return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, 
-            "optimal": False, "visual": image_file }
+            "optimal": optimality_guaranteed, "visual": image_file, "max_heap_size": frontier.max_heap_size }
 
 
 def reconstruct_path(came_from, start_state, goal_state):

@@ -4,9 +4,9 @@ BiDirectional Searches
 Bidirectional A*
 
 """
-import heapq
 import time
 
+import util
 
 
 # --- Bidirectional A* (Updated for variable cost) ---
@@ -19,38 +19,52 @@ def bidirectional_a_star_search(problem, visualise=True):
     start_node = problem.initial_state()
     goal_node = problem.goal_state()
     if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, 
-                                            "time": 0, "optimal": optimality_guaranteed, 'visual': image_file}
+                                            "time": 0, "optimal": optimality_guaranteed, 'visual': image_file, "max_heap_size": 0}
 
     h_start = problem.heuristic(start_node)
-    frontier_fwd = [(h_start, start_node)]
+    frontier_fwd = util.PriorityQueue(tiebreaker2='FIFO')
+    frontier_fwd.push(start_node, h_start, 0) # Push with priority and tiebreaker
     came_from_fwd = {start_node: None}
     g_score_fwd = {start_node: 0}
     closed_fwd = set() 
 
     h_goal = problem.heuristic(goal_node, backward=True)
-    frontier_bwd = [(h_goal, goal_node)]
+    frontier_bwd = util.PriorityQueue(tiebreaker2='FIFO')
+    frontier_bwd.push(goal_node, h_goal, 0) # Push with priority and tiebreaker
     came_from_bwd = {goal_node: None}
     g_score_bwd = {goal_node: 0}
     closed_bwd = set() 
 
     nodes_expanded = 0
-    best_path_cost = float('inf')
     meeting_node = None
+    max_heap_size_combined = 0
+    C = -1.0        # Current lowest cost on either frontier
+    U = float('inf') # Current lowest cost of path found
 
-    while frontier_fwd and frontier_bwd:
+    while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
+        C = min(frontier_fwd.peek(priority_only=True), 
+                frontier_bwd.peek(priority_only=True))
+        
+        if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            print(f"Termination condition U ({U}) >= C ({C}) met.")  # In practice this condition is not triggered
+            break
+
         # --- Forward Step ---
         if frontier_fwd:
-            _, current_state_fwd = heapq.heappop(frontier_fwd)
-            if current_state_fwd in closed_fwd: continue
+            current_state_fwd = frontier_fwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
+            if current_state_fwd in closed_fwd: 
+                continue
             current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-            if current_g_fwd >= best_path_cost: continue  #TODO check this vs bwd version below
+            if current_g_fwd  + problem.heuristic(current_state_fwd, backward=False) >= U: 
+                break   #continue  
             closed_fwd.add(current_state_fwd)
             nodes_expanded += 1
             if current_state_fwd in g_score_bwd: 
                 current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
-                if current_path_cost < best_path_cost:   #TODO keep going if found a path? - there is no stopping condition until both frontiers are empty!
-                    best_path_cost = current_path_cost
+                if current_path_cost < U:   #TODO keep going if found a path? - there is no stopping condition until both frontiers are empty!
+                    U = current_path_cost
                     meeting_node = current_state_fwd
+                    #break   #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
             
             for neighbor_info in problem.get_neighbors(current_state_fwd):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -68,22 +82,25 @@ def bidirectional_a_star_search(problem, visualise=True):
                     g_score_fwd[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) 
                     f_score = tentative_g_score + h_score
-                    if f_score < best_path_cost: 
-                        heapq.heappush(frontier_fwd, (f_score, neighbor_state))
+                    if f_score < U: 
+                        frontier_fwd.push(neighbor_state, f_score, -tentative_g_score)  # Use -g score as tiebreaker to prefer higher g_score
         
         # --- Backward Step ---
         if frontier_bwd:
-            _, current_state_bwd = heapq.heappop(frontier_bwd)
-            if current_state_bwd in closed_bwd: continue
+            current_state_bwd = frontier_bwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
+            if current_state_bwd in closed_bwd: 
+                continue
             current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
-            if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= best_path_cost: continue #TODO check vs fwd version that doesnt look at heuristic
+            if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= U: 
+                break   #continue 
             closed_bwd.add(current_state_bwd)
             nodes_expanded += 1
             if current_state_bwd in g_score_fwd: 
                 current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
-                if current_path_cost < best_path_cost: 
-                    best_path_cost = current_path_cost
+                if current_path_cost < U: 
+                    U = current_path_cost
                     meeting_node = current_state_bwd
+                    #break  #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
 
             for neighbor_info in problem.get_neighbors(current_state_bwd):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -102,8 +119,11 @@ def bidirectional_a_star_search(problem, visualise=True):
                     g_score_bwd[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state, backward=True)
                     f_score = tentative_g_score + h_score
-                    if f_score < best_path_cost: 
-                        heapq.heappush(frontier_bwd, (f_score, neighbor_state))
+                    if f_score < U: 
+                        frontier_bwd.push(neighbor_state, f_score, -tentative_g_score)  # Use -g score as tiebreaker to prefer higher g_score
+
+        if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
+            max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
         
     end_time = time.time()
     if meeting_node:
@@ -120,19 +140,21 @@ def bidirectional_a_star_search(problem, visualise=True):
                  for i in range(len(path) - 1):
                      recalculated_cost += problem.get_cost(path[i], path[i+1]) # Use fallback cost
                  final_cost = recalculated_cost
-                 if abs(final_cost - best_path_cost) > 1e-6: 
+                 if abs(final_cost - U) > 1e-6: 
                      cost_mismatch = True
              except Exception as e:
                  print(f"Error recalculating bidirectional path cost: {e}")
-                 final_cost = best_path_cost 
+                 final_cost = U 
         if cost_mismatch: 
-            print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={best_path_cost}")
-        final_reported_cost = best_path_cost # Report cost found by search
+            print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={U}")
+        final_reported_cost = U # Report cost found by search
         return {"path": path, "cost": final_reported_cost if path else -1, "nodes_expanded": nodes_expanded, 
-                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
+                "max_heap_size": max_heap_size_combined}
     else:
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
-                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file}
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
+                "max_heap_size": max_heap_size_combined} # No path found
 
 
 def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, goal_state, meeting_node):
