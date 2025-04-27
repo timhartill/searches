@@ -48,7 +48,7 @@ def generic_search(problem, priority_key='f', visualise=True):
         C = frontier.peek(priority_only=True) # Peek at the lowest priority element
 
         if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-            #print(f"Termination condition U ({U}) >= C ({C}) met.")
+            print(f"Termination condition U ({U}) >= C ({C}) met.")
             # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
             break
 

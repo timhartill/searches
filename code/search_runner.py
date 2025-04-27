@@ -12,8 +12,8 @@ import json
 import util
 
 # problems
-from puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
-from spatial import GridProblem
+from problem_puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
+from problem_spatial import GridProblem
 
 # searches
 from search_mcts import heuristic_mcts_search
