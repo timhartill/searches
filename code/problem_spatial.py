@@ -17,34 +17,25 @@ import util
 
 # Constants
 SQRT2 = math.sqrt(2)
-EMPTY = 0
-OBSTACLE = 1
-START = 2
-GOAL = 3
-PATH = 4
-MEET = 8
-EXPANDED_FWD = 6    # Yellow
-EXPANDED_BWD = 10   # GreenYellow
-EXPANDED_BOTH = 12  # MediumSpringGreen - bluish green
 
 # --- Color Mapping Definition ---
 # Using RGB tuples (Red, Green, Blue)  Obtain by:
 # from PIL import ImagePalette
 # ImagePalette.ImageColor.getrgb('mediumspringgreen')  # (0, 250, 154)
 COLOR_MAP: Dict[int, Tuple[int, int, int]] = {
-    0: (255, 255, 255),  # White - empty
-    1: (0, 255, 255),      # Cyan - obstacle
-    2: (0, 255, 0),      # Green - start
-    3: (255, 0, 0),      # Red - goal
-    4: (128, 0, 128),     # Purple - path
+    util.EMPTY: (255, 255, 255),  # White - empty
+    util.OBSTACLE: (0, 255, 255),      # Cyan - obstacle
+    util.START: (0, 255, 0),      # Green - start
+    util.GOAL: (255, 0, 0),      # Red - goal
+    util.PATH: (128, 0, 128),     # Purple - path
     5: (0, 0, 0),      # Black
-    6: (255, 255, 0),  # Yellow
+    util.EXPANDED_FWD: (255, 255, 0),  # Yellow
     7: (0, 0, 255),      # Blue
-    8: (255, 165, 0),  # Orange
+    util.MEET: (255, 165, 0),  # Orange
     9: (128, 128, 128), # Grey
-    10: (173, 255, 47), # GreenYellow
+    util.EXPANDED_BWD: (173, 255, 47), # GreenYellow
     11: (127, 255, 0), # Chartreuse
-    12: (0, 250, 154), # MediumSpringGreen
+    util.EXPANDED_BOTH: (0, 250, 154), # MediumSpringGreen - bluish green
 }
 DEFAULT_COLOR: Tuple[int, int, int] = (0, 0, 0) # Black for values outside the map
 
@@ -98,8 +89,17 @@ class GridProblem:
                  make_heuristic_inadmissable=False,
                  degradation=0,
                  allow_diagonal=False,
-                 heuristic='manhattan'):
-        self.grid = np.load(grid_file)
+                 heuristic='octile'):
+        if grid_file is None or not os.path.exists(grid_file):
+            raise ValueError(f"Grid file {grid_file} does not exist.")
+        if grid_file.endswith('.npy'):
+            self.grid = np.load(grid_file)
+        elif grid_file.endswith('.map'):
+            self.grid, heuristic_default = util.load_map_file(grid_file)
+            if heuristic is None and heuristic_default in h_map:
+                heuristic = heuristic_default
+        else:
+            raise ValueError(f"Grid file {grid_file} must be a .npy or .map file.")
         if len(self.grid.shape) != 2:
             raise ValueError("Grid must be a 2D numpy array of type int.")
         self.grid_file = grid_file
@@ -108,22 +108,22 @@ class GridProblem:
         self.basename_no_ext = os.path.splitext(self.basename)[0]
         self.max_rows, self.max_cols = self.grid.shape
         if initial_state is not None:
-            locations_to_clear = self.grid == START
+            locations_to_clear = self.grid == util.START
             if np.any(locations_to_clear):
-                self.grid[locations_to_clear] = EMPTY
-            self.grid[initial_state[0], initial_state[1]] = START
+                self.grid[locations_to_clear] = util.EMPTY
+            self.grid[initial_state[0], initial_state[1]] = util.START
         else:
-            r,c = np.where(self.grid==START)
+            r,c = np.where(self.grid==util.START)
             if r.shape[0] == 0 or c.shape[0] == 0:
                 raise ValueError("Grid does not contain a start position (2) and no initial start position was provided.")
             initial_state = [int(r[0]), int(c[0])]
         if goal_state is not None:
-            locations_to_clear = self.grid == GOAL
+            locations_to_clear = self.grid == util.GOAL
             if np.any(locations_to_clear):
-                self.grid[locations_to_clear] = EMPTY
-            self.grid[goal_state[0], goal_state[1]] = GOAL
+                self.grid[locations_to_clear] = util.EMPTY
+            self.grid[goal_state[0], goal_state[1]] = util.GOAL
         else:
-            r,c = np.where(self.grid==GOAL)
+            r,c = np.where(self.grid==util.GOAL)
             if r.shape[0] == 0 or c.shape[0] == 0:
                 raise ValueError("Grid does not contain a goal position (3) and no initial goal position was provided.")
             goal_state = [int(r[0]), int(c[0])]
@@ -172,7 +172,7 @@ class GridProblem:
         moves = {'north': (row-1, col), 'south': (row+1, col), 'east': (row, col+1), 'west': (row, col-1)}
         for move_dir, (new_row, new_col) in moves.items():
             if 0 <= new_row < self.max_rows and 0 <= new_col < self.max_cols:  # if on grid
-                if self.grid[new_row, new_col] == OBSTACLE: 
+                if self.grid[new_row, new_col] == util.OBSTACLE: 
                     continue  # if obstacle
                 new_state_tuple = (new_row, new_col)
                 neighbors.append( (new_state_tuple, self.cost_multiplier) )
@@ -183,7 +183,7 @@ class GridProblem:
             moves_diag = {'nw': (row-1, col-1), 'ne': (row-1, col+1), 'sw': (row+1, col-1), 'se': (row+1, col+1)}
             for move_dir, (new_row, new_col) in moves_diag.items():
                 if 0 <= new_row < self.max_rows and 0 <= new_col < self.max_cols:  # if on grid
-                    if self.grid[new_row, new_col] == OBSTACLE: 
+                    if self.grid[new_row, new_col] == util.OBSTACLE: 
                         continue  # if obstacle
 
                     # valid if either manhatten walk has no obstacle
@@ -271,14 +271,14 @@ class GridProblem:
         if visited_fwd:
             # If visited_fwd is provided, set expanded values in grid_draw to EXPANDED_FWD
             for r, c in visited_fwd:
-                grid_draw[r, c] = EXPANDED_FWD
+                grid_draw[r, c] = util.EXPANDED_FWD
         if visited_bwd:
             # If visited_bwd is provided, set expanded values in grid_draw to EXPANDED_BWD or EXPANDED_BOTH
             for r, c in visited_bwd:
-                if grid_draw[r, c] == EXPANDED_FWD:
-                    grid_draw[r, c] = EXPANDED_BOTH
+                if grid_draw[r, c] == util.EXPANDED_FWD:
+                    grid_draw[r, c] = util.EXPANDED_BOTH
                 else:
-                    grid_draw[r, c] = EXPANDED_BWD
+                    grid_draw[r, c] = util.EXPANDED_BWD
 
         if path:
             # If path is provided, set path values in grid_draw to PATH
@@ -289,9 +289,9 @@ class GridProblem:
  
             for r, c in path:
                 if r == meet_r and c == meet_c:
-                    grid_draw[r, c] = MEET
+                    grid_draw[r, c] = util.MEET
                 else:
-                    grid_draw[r, c] = PATH
+                    grid_draw[r, c] = util.PATH
 
         for r in range(rows):
             for c in range(cols):

@@ -264,6 +264,55 @@ if __name__ == "__main__":
                    allow_diagonal=False, heuristic='euclidean')
 
 
+    # Load grid problems from .map files
+    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/dao-scen/brc505d.map.scen')
+    
+    grid_dao1 = GridProblem(grid_scenarios[2]['map_dir'], 
+                            initial_state=[grid_scenarios[2]['start_y'], grid_scenarios[2]['start_x']], 
+                            goal_state=[grid_scenarios[2]['goal_y'], grid_scenarios[2]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=False, degradation=0,
+                            allow_diagonal=True, 
+                            heuristic='octile')
+
+    grid_dao2 = GridProblem(grid_scenarios[1509]['map_dir'], 
+                            initial_state=[grid_scenarios[1509]['start_y'], grid_scenarios[1509]['start_x']], 
+                            goal_state=[grid_scenarios[1509]['goal_y'], grid_scenarios[1509]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=False, degradation=0,
+                            allow_diagonal=True, 
+                            heuristic='octile')
+
+    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/maze-scen/maze512-32-9.map.scen')
+    
+    grid_dao3 = GridProblem(grid_scenarios[-2]['map_dir'], 
+                            initial_state=[grid_scenarios[-2]['start_y'], grid_scenarios[-2]['start_x']], 
+                            goal_state=[grid_scenarios[-2]['goal_y'], grid_scenarios[-2]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=False, degradation=0,
+                            allow_diagonal=True, 
+                            heuristic='octile')
+
+    grid_dao4 = GridProblem(grid_scenarios[-1]['map_dir'], 
+                            initial_state=[grid_scenarios[-1]['start_y'], grid_scenarios[-1]['start_x']], 
+                            goal_state=[grid_scenarios[-1]['goal_y'], grid_scenarios[-1]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=False, degradation=0,
+                            allow_diagonal=True, 
+                            heuristic='octile')
+
+    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/maze-scen/maze512-1-6.map.scen')
+    
+    grid_dao5 = GridProblem(grid_scenarios[12346]['map_dir'], 
+                            initial_state=[grid_scenarios[12346]['start_y'], grid_scenarios[12346]['start_x']], 
+                            goal_state=[grid_scenarios[12346]['goal_y'], grid_scenarios[12346]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=False, degradation=0,
+                            allow_diagonal=True, 
+                            heuristic='octile')
+
+
+
     problems_to_solve = [
         sliding_tile_unit_cost,
 #        sliding_tile_var_cost,
@@ -309,6 +358,11 @@ if __name__ == "__main__":
 #        grid_harder1000x1000_unit_diag_euc_d5_cm1,
 #        grid_harder1000x1000_unit_nodiag_euc_d0_cm1,
 #        grid_harder1000x1000_unit_nodiag_euc_d5_cm1,
+        grid_dao1,
+        grid_dao2,
+        grid_dao3,
+        grid_dao4,
+        grid_dao5,
     ]
 
     # --- Define Algorithms ---
