@@ -83,12 +83,14 @@ class GridProblem:
     Can use uniform horiz/vertical cost (1 and SQRT2) or fixed horiz/cost (cost_multiplier > 1). 
     If diagonal movement is allowed this will introduce variable edge cost and manhattan becomes inadmissable (can switch to octile for admissability)
     Can allow diagonal movement or not - if so, will prevent movement if an obstacle is present on either "manhattan" path 
+    Sturtevant grids c* annotations assume diagonal cost=2
     """
     def __init__(self, grid_file, initial_state=None, goal_state=None, 
                  cost_multiplier=1, 
                  make_heuristic_inadmissable=False,
                  degradation=0,
                  allow_diagonal=False,
+                 diag_cost = 2.0,
                  heuristic='octile'):
         if grid_file is None or not os.path.exists(grid_file):
             raise ValueError(f"Grid file {grid_file} does not exist.")
@@ -147,8 +149,9 @@ class GridProblem:
             self.h_multiplier = 1
         self.degradation = degradation   
         self.cost_multiplier = cost_multiplier 
+        self.diag_cost = diag_cost
         cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}"
+        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -179,7 +182,7 @@ class GridProblem:
                 valid_set.add(move_dir)
 
         if self.allow_diagonal and valid_set:  
-            cost = SQRT2 * self.cost_multiplier  # equiv to sqrt(cost_multiplier^2 + cost_multiplier^2)
+            cost = self.diag_cost * self.cost_multiplier #SQRT2 * self.cost_multiplier  # equiv to sqrt(cost_multiplier^2 + cost_multiplier^2)
             moves_diag = {'nw': (row-1, col-1), 'ne': (row-1, col+1), 'sw': (row+1, col-1), 'se': (row+1, col+1)}
             for move_dir, (new_row, new_col) in moves_diag.items():
                 if 0 <= new_row < self.max_rows and 0 <= new_col < self.max_cols:  # if on grid

@@ -2,7 +2,7 @@
 Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, Bidirectional A*, MCTS for Sliding Tile, Pancake, Towers of Hanoi
 - This code implements various search algorithms for solving the Sliding Tile, Pancake Sorting, Pathfinder and Towers of Hanoi problems.
 
-Partly generated from Gemini 2.5.
+Some code generated from Gemini 2.5.
 """
 import os
 import random
@@ -322,7 +322,7 @@ if __name__ == "__main__":
                             goal_state=[grid_scenarios[12346]['goal_y'], grid_scenarios[12346]['goal_x']], 
                             cost_multiplier=1,
                             make_heuristic_inadmissable=False, degradation=0,
-                            allow_diagonal=True, 
+                            allow_diagonal=True, diag_cost=2.0,
                             heuristic='octile')
 
 

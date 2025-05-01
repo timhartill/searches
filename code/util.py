@@ -92,8 +92,7 @@ def load_scen_file(file_path):
     The .scen files are in a directory named after the domain + "-scen" eg dao-scen
     The corresponding .map files are in a directory named after the domain + "-map" eg dao-map
 
-    Note: The optimal paths from our algorithms here are consistently slightly better than the "optimaml length" value supplied 
-          in the .scen files so we recommend using the optimal path length from our algorithms instead of the one in the .scen files.
+    Note: The optimal paths from our algorithms match the "optimaml length" value supplied when diag cost is 2 
     """
     if not file_path.endswith('.scen'):
         raise ValueError(f"File {file_path} is not a .scen file")
