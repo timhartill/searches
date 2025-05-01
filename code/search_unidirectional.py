@@ -10,108 +10,153 @@ import time
 import util
 
 
+algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "Astar"}
+
+
 # --- Generic Unidirectional Search Function ---
-def generic_search(problem, priority_key='f', visualise=True):
+class generic_search:
     """
     Performs a generic best-first search using a closed set.
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    if priority_key not in ['g', 'h', 'f']: raise ValueError("priority_key must be 'g', 'h', or 'f'")
-    algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "Astar"}
-    algorithm_name = algo_name_map[priority_key] #+ " (Generic)"
-    optimality_guaranteed = (priority_key == 'g') or (priority_key=='f' and problem.optimality_guaranteed)
+    def __init__(self, priority_key='f', visualise=True, tiebreaker1='-g', tiebreaker2 = 'NONE'):
+        """
+        :param problem: The search problem to solve
+        :param priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
+        :param visualise: If True, will output a visualisation of the search to a subdir off the problem input dir.
+        :param tiebreaker2: 2nd level Tiebreaker for the priority queue. Can be 'FIFO', 'LIFO', or 'NONE' for no 2nd level.
+        """
+        if priority_key not in ['g', 'h', 'f']: raise ValueError("priority_key must be 'g', 'h', or 'f'")
+        self.priority_key = priority_key
+        self.visualise = visualise
+        self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
+        self.tiebreaker2 = tiebreaker2
+        self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}"
 
-    image_file = "no file"
 
-    start_time = time.time() 
-    start_node = problem.initial_state()
-    h_initial = problem.heuristic(start_node) if priority_key in ['h', 'f'] else 0
-    initial_g = 0
-    if priority_key == 'g': initial_priority = initial_g
-    elif priority_key == 'h': initial_priority = h_initial
-    else: initial_priority = initial_g + h_initial # 'f'
+    def search(self, problem):
+        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
+        start_time = time.time() 
+        start_node = problem.initial_state()
+        h_initial = problem.heuristic(start_node) if self.priority_key in ['h', 'f'] else 0
+        initial_g = 0
+        if self.priority_key == 'g': initial_priority = initial_g
+        elif self.priority_key == 'h': initial_priority = h_initial
+        else: initial_priority = initial_g + h_initial # 'f'
 
-    frontier = util.PriorityQueue(tiebreaker2='FIFO') # Priority queue
-    frontier.push(start_node, initial_priority, 0) # Push with priority and tiebreaker1
-    came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
-    g_score = {start_node: initial_g}
-    closed_set = set()
-    nodes_expanded = 0
-    C = -1.0 # Current lowest cost on frontier
-    U = float('inf') # Current lowest cost found
-    found_path = None
-    nodes_expanded_below_cstar = 0
+        frontier = util.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
+        frontier.push(start_node, initial_priority, 0) # Push with priority and tiebreaker1
+        came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
+        g_score = {start_node: initial_g}
+        closed_set = set()
+        nodes_expanded = 0
+        C = -1.0         # Current lowest cost on frontier
+        U = float('inf') # Current lowest cost found
+        found_path = None
+        nodes_expanded_below_cstar = 0
 
-    while not frontier.isEmpty():
+        while not frontier.isEmpty():
 
-        C = frontier.peek(priority_only=True) # Peek at the lowest priority element
+            C = frontier.peek(priority_only=True) # Peek at the lowest priority element
 
-        if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-            print(f"Termination condition U ({U}) >= C ({C}) met.")
-            # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
-            break
+            if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                print(f"Termination condition U ({U}) >= C ({C}) met.")
+                # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
+                break
 
-        current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
-        
-        # Optimization: If current_state's g_score is worse than recorded, skip
-        # This can allegedly happen with duplicate states in the queue with different priorities
-        if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if priority_key != 'g' else 0)):
-            continue 
+            current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
+            
+            # Optimization: If current_state's g_score is worse than recorded, skip
+            # This can allegedly happen with duplicate states in the queue with different priorities
+            if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
+                continue 
 
-        if current_state in closed_set: continue
-        nodes_expanded += 1
-        closed_set.add(current_state) # Add after popping and checking
+            if current_state in closed_set: continue
+            nodes_expanded += 1
+            closed_set.add(current_state) # Add after popping and checking
 
-        if problem.is_goal(current_state):
-            end_time = time.time()
-            U = g_score.get(current_state)   
-            found_path = current_state
-            break 
+            if problem.is_goal(current_state):
+                end_time = time.time()
+                U = g_score.get(current_state)   
+                found_path = current_state
+                break 
 
-        current_g_score = g_score.get(current_state)
-        if current_g_score is None:
-            print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
-            continue # Should have g_score if reached here
+            current_g_score = g_score.get(current_state)
+            if current_g_score is None:
+                print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
+                continue # Should have g_score if reached here
 
-        for neighbor_info in problem.get_neighbors(current_state):
-            # Handle cases where get_neighbors might return just state or (state, move_info)
-            if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
-                 neighbor_state = neighbor_info[0]
-                 move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
-            else:
-                 neighbor_state = neighbor_info
-                 move_info = None
+            for neighbor_info in problem.get_neighbors(current_state):
+                # Handle cases where get_neighbors might return just state or (state, move_info)
+                if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                    neighbor_state = neighbor_info[0]
+                    move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
+                else:
+                    neighbor_state = neighbor_info
+                    move_info = None
 
-            if neighbor_state in closed_set: continue
+                if neighbor_state in closed_set: continue
 
-            cost = problem.get_cost(current_state, neighbor_state, move_info)
-            tentative_g_score = current_g_score + cost
+                cost = problem.get_cost(current_state, neighbor_state, move_info)
+                tentative_g_score = current_g_score + cost
 
-            if tentative_g_score < g_score.get(neighbor_state, float('inf')):
-                came_from[neighbor_state] = current_state 
-                g_score[neighbor_state] = tentative_g_score
-                priority = tentative_g_score # Default for 'g'
-                if priority_key in ['h', 'f']:
-                    h_score = problem.heuristic(neighbor_state)
-                    if priority_key == 'h': priority = h_score
-                    elif priority_key == 'f': priority = tentative_g_score + h_score
-                frontier.push(neighbor_state, priority, -tentative_g_score) # Push with priority and tiebreaker1 = -g ie higher g popped first
-                
+                if tentative_g_score < g_score.get(neighbor_state, float('inf')):
+                    came_from[neighbor_state] = current_state 
+                    g_score[neighbor_state] = tentative_g_score
+                    priority = tentative_g_score # Default for 'g'
+                    if self.priority_key in ['h', 'f']:
+                        h_score = problem.heuristic(neighbor_state)
+                        if self.priority_key == 'h': priority = h_score
+                        elif self.priority_key == 'f': priority = tentative_g_score + h_score
+                    else: # 'g'
+                        if self.tiebreaker1 in ['h', 'f']:  # enable "heuristic uni cost"
+                            h_score = problem.heuristic(neighbor_state)  
+                        else:      
+                            h_score = 0
+                    frontier.push(neighbor_state, priority, self.calc_tiebreak(g=tentative_g_score, 
+                                                                               h=h_score, 
+                                                                               count_tb1=frontier.count_tb1)) # Push with priority and tiebreaker1 calculated priority
+                    
+        end_time = time.time()
+        image_file = 'no file'
 
-    end_time = time.time()
+        if found_path:
+            path = reconstruct_path(came_from, start_node, found_path)
+            if self.visualise and hasattr(problem, 'visualise'):
+                image_file = problem.visualise(path=path, path_type=self._str_repr, 
+                                               visited_fwd=closed_set)
+                if not image_file: 
+                    image_file = 'no file'
 
-    if found_path:
-        path = reconstruct_path(came_from, start_node, found_path)
-        if visualise and hasattr(problem, 'visualise'):
-            image_file = problem.visualise(path=path, path_type=algorithm_name, visited_fwd=closed_set)
-            if not image_file: image_file = 'no file'
-        return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, 
-                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
-                "max_heap_size": frontier.max_heap_size}
+            return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, 
+                    "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
+                    "max_heap_size": frontier.max_heap_size}
 
-    return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, 
-            "optimal": optimality_guaranteed, "visual": image_file, "max_heap_size": frontier.max_heap_size }
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, 
+                "optimal": optimality_guaranteed, "visual": image_file, "max_heap_size": frontier.max_heap_size }
+
+
+    def calc_tiebreak(self, g, h, count_tb1):
+        """Calculates the tiebreaker value based on the type and values of g and h"""
+        if self.tiebreaker1 == 'g':
+            return g
+        elif self.tiebreaker1 == '-g':  # higher g popped first
+            return -g
+        elif self.tiebreaker1 == 'h':
+            return h
+        elif self.tiebreaker1 == 'f':
+            return g + h
+        elif self.tiebreaker1 in ['FIFO', 'LIFO']:
+            return count_tb1
+        elif self.tiebreaker1 == 'NONE':
+            return 0
+        else:
+            raise ValueError(f"Invalid tiebreaker1: {self.tiebreaker1}")
+
+
+    def __str__(self): # enable str(object) to return algo name
+        return self._str_repr
 
 
 def reconstruct_path(came_from, start_state, goal_state):

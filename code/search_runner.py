@@ -1,13 +1,14 @@
 """
 Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, Bidirectional A*, MCTS for Sliding Tile, Pancake, Towers of Hanoi
-- This code implements various search algorithms for solving the Sliding Tile, Pancake Sorting, and Towers of Hanoi problems.
+- This code implements various search algorithms for solving the Sliding Tile, Pancake Sorting, Pathfinder and Towers of Hanoi problems.
 
 Partly generated from Gemini 2.5.
 """
+import os
 import random
 import time
-import traceback # For error reporting
 import json
+import argparse
 
 import util
 
@@ -22,11 +23,21 @@ from search_bidirectional import bidirectional_a_star_search
 
 # --- Main Execution Logic ---
 if __name__ == "__main__":
-    print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    out_dir = '/media/tim/dl3storage/gitprojects/searches/outputs'  #output dir (visualisations in subdirs off matrices)
-    out_file_base = f"{out_dir}/search_eval_{time.strftime('%Y%m%d_%H%M%S')}"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out_dir", default='/media/tim/dl3storage/gitprojects/searches/outputs', type=str,
+                        help="Full path to output directory. CSV and JSON output files will be written here.")  #TJH , required=True)
+    parser.add_argument("--out_prefix", default='search_eval', type=str,
+                        help="CSV and JSON output file prefix. Date and time will be added to make unique.")  #TJH , required=True)
+    parser.add_argument('--seed', default=42, type=int,
+                        help="random seed") 
+    #parser.add_argument("--do_train", action='store_true')  # example boolean
+    #parser.add_argument("--learning_rate", default=1e-5, type=float)  # example float
+    args = parser.parse_args()
 
-    random.seed(42)
+    print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(args)
+
+    random.seed(args.seed)
 
     # Problem parameters - set here globally or individually in problem definition section
     make_heuristic_inadmissable = False # Set to True to make all heuristics for all problems inadmissible
@@ -34,7 +45,7 @@ if __name__ == "__main__":
     pancake_degradation = 4
     hanoi_degradation = 0
 
-    grid_prob = 'matrix_10yX10x.npy'   # w/o diagonal C*=22 allowing diag C* = 15.899
+    #matrix_10yX10x.npy   # w/o diagonal C*=22 allowing diag C* = 15.899
     #matrix_20yX100x.npy w/o diag C*=176 with diag C*= 152.58
     #matrix_1000yX1000x.npy w/o diag C*= 4330 with diag C* = 3881.87
 
@@ -146,119 +157,122 @@ if __name__ == "__main__":
                                          degradation=0)
 
 
-    grid_easy_unit = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+    matrices_base = '/media/tim/dl3storage/gitprojects/searches/problems/matrices/'
+    numpy_probs = os.path.join(matrices_base, 'numpy_probs')
+
+    grid_easy_unit = GridProblem(f'{numpy_probs}/matrix_10yX10x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=False, heuristic='manhattan')
 
-    grid_easy_unit_diag_octile = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+    grid_easy_unit_diag_octile = GridProblem(f'{numpy_probs}/matrix_10yX10x.npy',
                     initial_state=None, goal_state=None, cost_multiplier=1,
                     make_heuristic_inadmissable=False, degradation=0,
                     allow_diagonal=True, heuristic='octile')
 
-    grid_easy_unit_diag_octile_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+    grid_easy_unit_diag_octile_d5 = GridProblem(f'{numpy_probs}/matrix_10yX10x.npy',
                     initial_state=None, goal_state=None, cost_multiplier=1,
                     make_heuristic_inadmissable=False, degradation=5,
                     allow_diagonal=True, heuristic='octile')
 
 
-    grid_easy_unit_diag_manhattan = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
+    grid_easy_unit_diag_manhattan = GridProblem(f'{numpy_probs}/matrix_10yX10x.npy',
                     initial_state=None, goal_state=None, cost_multiplier=1,
                     make_heuristic_inadmissable=False, degradation=0,
                     allow_diagonal=True, heuristic='manhattan')
     
-    grid_harder_unit = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=False, heuristic='manhattan')
 
-    grid_harder_unit_d500 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_d500 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=500,
                    allow_diagonal=False, heuristic='manhattan')
 
 
-    grid_harder_unit_diag_octile = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_octile = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=True, heuristic='octile')
 
-    grid_harder_unit_diag_octile_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_octile_d5 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=True, heuristic='octile')
 
 
-    grid_harder_unit_diag_euc = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_euc = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=True, heuristic='euclidean')
 
-    grid_harder_unit_diag_euc_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_euc_d5 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=True, heuristic='euclidean')
 
-    grid_harder_unit_diag_euc_d500 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_euc_d500 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=500,
                    allow_diagonal=True, heuristic='euclidean')
 
 
-    grid_harder_unit_diag_che = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_che = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=True, heuristic='chebyshev')
 
-    grid_harder_unit_diag_che_d5 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_che_d5 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=True, heuristic='chebyshev')
 
 
-    grid_harder_unit_diag_octile_d0 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_octile_d0 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=True, degradation=0,
                    allow_diagonal=True, heuristic='octile')
 
-    grid_harder_unit_diag_euc_d0_cm1000 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_euc_d0_cm1000 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1000,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=True, heuristic='euclidean')
 
-    grid_harder_unit_diag_euc_d500_cm1000 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
+    grid_harder_unit_diag_euc_d500_cm1000 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1000,
                    make_heuristic_inadmissable=False, degradation=500,
                    allow_diagonal=True, heuristic='euclidean')
 
 
-    grid_harder1000x1000_unit_diag_mh_d0_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_diag_mh_d0_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=False, heuristic='manhattan')
 
-    grid_harder1000x1000_unit_diag_mh_d5_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_diag_mh_d5_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=False, heuristic='manhattan')
 
 
-    grid_harder1000x1000_unit_diag_euc_d0_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_diag_euc_d0_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=True, heuristic='euclidean')
 
-    grid_harder1000x1000_unit_diag_euc_d5_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_diag_euc_d5_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=True, heuristic='euclidean')
 
-    grid_harder1000x1000_unit_nodiag_euc_d0_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_nodiag_euc_d0_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=False, heuristic='euclidean')
 
-    grid_harder1000x1000_unit_nodiag_euc_d5_cm1 = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_1000yX1000x.npy',
+    grid_harder1000x1000_unit_nodiag_euc_d5_cm1 = GridProblem(f'{numpy_probs}/matrix_1000yX1000x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=5,
                    allow_diagonal=False, heuristic='euclidean')
@@ -313,7 +327,7 @@ if __name__ == "__main__":
 
 
 
-    problems_to_solve = [
+    problems = [
         sliding_tile_unit_cost,
 #        sliding_tile_var_cost,
 #        sliding_tile_unit_cost43,
@@ -365,106 +379,41 @@ if __name__ == "__main__":
         grid_dao5,
     ]
 
-    # --- Define Algorithms ---
-    def run_ucs(problem): return generic_search(problem, priority_key='g')
-    def run_greedy_bfs(problem): return generic_search(problem, priority_key='h')
-    def run_astar(problem): return generic_search(problem, priority_key='f')
-    def run_bidir_astar(problem): return bidirectional_a_star_search(problem)
-    def run_mcts_standard(problem): 
-        # Wrapper for standard MCTS (no heuristic guidance)
-        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=0.0, heuristic_rollout=False)
-    def run_mcts_h_select(problem): 
-        # MCTS with heuristic in selection only
-        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=heuristic_weight, heuristic_rollout=False) # Tune weight
-    def run_mcts_h_rollout(problem): 
-        # MCTS with heuristic in rollout only
-        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=0.0, heuristic_rollout=True)
-    def run_mcts_h_both(problem): 
-        # MCTS with heuristic in both selection and rollout
-        return heuristic_mcts_search(problem, iterations=iterations, max_depth=max_depth, heuristic_weight=heuristic_weight, heuristic_rollout=True) # Tune weight
+    # --- Define Algorithms ie give algorithm setups with differing params, unique fn names ---
+    run_ucs = generic_search(priority_key='g', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
+    run_hucs = generic_search(priority_key='g', tiebreaker1='f', tiebreaker2='NONE', visualise=True)
+    run_greedy_bfs = generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
+    run_astar = generic_search(priority_key='f', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
+    run_astar1 = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True)
+    run_astar2 = generic_search(priority_key='f', tiebreaker1='FIFO', tiebreaker2='NONE', visualise=True)
+    run_bidir_astar = bidirectional_a_star_search(tiebreaker1='-g', tiebreaker2='NONE', visualise=True)
+    # Wrapper for standard MCTS (no heuristic guidance)
+    run_mcts_standard = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
+                                              heuristic_weight=0.0, heuristic_rollout=False)
+    # MCTS with heuristic in selection only
+    run_mcts_h_select = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
+                                              heuristic_weight=heuristic_weight, heuristic_rollout=False) # Tune weight
+    # MCTS with heuristic in rollout only
+    run_mcts_h_rollout = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
+                                               heuristic_weight=0.0, heuristic_rollout=True)
+    # MCTS with heuristic in both selection and rollout
+    run_mcts_h_both = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
+                                            heuristic_weight=heuristic_weight, heuristic_rollout=True) # Tune weight
 
 
-    search_algorithms_runners = {
-        "Uniform Cost": run_ucs,
-        "Greedy Best-First": run_greedy_bfs,
-        "AStar": run_astar,
-        "Bidirectional AStar": run_bidir_astar,
-        "MCTS (Standard)": run_mcts_standard,
-    #    "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
-    #    "MCTS (H-Rollout)": run_mcts_h_rollout,
-    #    "MCTS (H-Both)": run_mcts_h_both,
-    }
 
+    algorithms = [
+        run_ucs,
+        run_greedy_bfs,
+        run_astar1,
+        run_bidir_astar,
+        run_mcts_standard,
+#        "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
+#        "MCTS (H-Rollout)": run_mcts_h_rollout,
+#        "MCTS (H-Both)": run_mcts_h_both,
+    ]
 
     # --- Run Experiments ---
-    all_results = []
-    for problem in problems_to_solve:  # For each problem
-        print(f"\n{'=' * 20}\nSolving: {problem}\nInitial State: {problem.initial_state()}\nGoal State:    {problem.goal_state()}\nInitial Heuristic: {problem.heuristic(problem.initial_state())}\n{'-' * 20}")
-        problem_results = []
-        
-        for algo_display_name, algo_func in search_algorithms_runners.items():  # For each algorithm
-            print(f"Running {algo_display_name}...")
-            result = None
-            try:
-                result = algo_func(problem) # Call the runner
-                
-                # Set algorithm name in result consistently
-                #if result and 'algorithm' in result: 
-                result['algorithm'] = algo_display_name
-                
-                print(f"{algo_display_name} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
+    util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, seed=args.seed)
 
-            except Exception as e:
-                print(f"!!! ERROR during {algo_display_name} on {problem}: {e}")
-                traceback.print_exc() 
-                result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
-                           "algorithm": algo_display_name, "error": str(e)}
-
-            if result: 
-                 result['problem'] = str(problem)
-                 if 'path' in result and result['path']:
-                     result['unit_cost'] = len(result['path']) - 1
-                 else:
-                     result['unit_cost'] = -1
-                 problem_results.append(result)
-                 all_results.append(result)
-
-        # --- Print Results for this Problem ---
-        print(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
-        for res in problem_results:
-            print(f"\nAlgorithm: {res.get('algorithm','N/A')}")
-            if 'optimal' in res: print(f"Optimality Guaranteed: {res['optimal']}")
-            if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : print(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
-            if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : print(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
-            print(f"Time Taken: {res.get('time', -1):.4f} seconds")
-            print(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
-            print(f"Path Found: {'Yes' if res.get('path') else 'No'}")
-            if res.get('path'): print(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
-            else:
-                 print("Path Cost: N/A")
-                 if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: print(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
-                 if 'error' in res: print(f"ERROR during run: {res['error']}")
-        print("=" * (34 + len(str(problem)))) # Adjusted length
-
-    # Overall Summary
-    print(f"\n{'*'*15} Overall Summary {'*'*15}")
-    for res in all_results:
-         status = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}" if res.get('path') else ("No Path Found" if 'error' not in res else f"ERROR: {res['error']}")
-             # print(f"Path Length: {len(res['path'])}") # Should be sum(unit cost) + 1
-            #print("Path:", res['path']) # Uncomment to see the full path states
-
-         optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
-         algo_name = res.get('algorithm','N/A') 
-         print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note}")
-
-    # --- Save Results to JSON ---
-    json_file_path = f"{out_file_base}.json"
-    with open(json_file_path, 'w') as json_file:
-        json.dump(all_results, json_file, indent=4)
-    print(f"Results saved to {json_file_path}") 
-
-    # --- Save Results to CSV ---
-    # Ensure all results have the same keys for CSV
-    # If some results are missing keys, fill them with None
-    csv_file_path = f"{out_file_base}.csv"
-    util.write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
+    print(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")

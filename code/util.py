@@ -4,6 +4,10 @@ Misc Utility fns
 
 import os
 import csv
+import json
+import time
+import random
+import traceback # For error reporting
 import numpy as np
 import heapq
 
@@ -19,8 +23,8 @@ EXPANDED_BWD = 10   # GreenYellow
 EXPANDED_BOTH = 12  # MediumSpringGreen - bluish green
 
 # The following dicts are for loading scenario files from the MovingAI benchmarks
-SCEN_COL_MAP = {"Bucket":0, "map": 1, "width": 2, "height": 3, "start_x": 4, "start_y": 5, "goal_x": 6,	"goal_y": 7, "cstar": 8}
-SCEN_COL_TYPES = {"Bucket": str, "map": str, "width": int, "height": int, "start_x": int, "start_y": int, "goal_x": int, "goal_y": int, "cstar": float}
+SCEN_COL_MAP = {"Bucket":0, "map": 1, "width": 2, "height": 3, "start_x": 4, "start_y": 5, "goal_x": 6,	"goal_y": 7, "movingai_cstar": 8}
+SCEN_COL_TYPES = {"Bucket": str, "map": str, "width": int, "height": int, "start_x": int, "start_y": int, "goal_x": int, "goal_y": int, "movingai_cstar": float}
 
 # Values in movingAI map files mapped to our equivalent values
 GRID_MAP = {
@@ -87,6 +91,9 @@ def load_scen_file(file_path):
 
     The .scen files are in a directory named after the domain + "-scen" eg dao-scen
     The corresponding .map files are in a directory named after the domain + "-map" eg dao-map
+
+    Note: The optimal paths from our algorithms here are consistently slightly better than the "optimaml length" value supplied 
+          in the .scen files so we recommend using the optimal path length from our algorithms instead of the one in the .scen files.
     """
     if not file_path.endswith('.scen'):
         raise ValueError(f"File {file_path} is not a .scen file")
@@ -148,32 +155,137 @@ def load_map_file(file_path):
     return matrix_data, heuristic
 
 
+def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', seed=42):
+    """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
+    and a json file (with path) in the specified output directory.
+    Args:
+        problems (list): List of problems to solve
+        algorithms (list): List of algorithms to use
+        output_dir (str): Directory to save the results
+    """
+    out_file_base = f"{out_dir}/{out_prefix}_{time.strftime('%Y%m%d_%H%M%S')}"
+    all_results = []
+    for problem in problems:  # For each problem
+        print(f"\n{'=' * 20}\nSolving: {problem}\nInitial State: {problem.initial_state()}\nGoal State:    {problem.goal_state()}\nInitial Heuristic: {problem.heuristic(problem.initial_state())}\n{'-' * 20}")
+        problem_results = []
+        
+        for algo in algorithms:  # For each algorithm
+            print(f"Running {str(algo)}...")
+            result = None
+            random.seed(seed)  # Reset random seed for reproducibility before each algorithm run on each problem
+            try:
+                result = algo.search(problem) # Call the runner                
+                # Set algorithm name in result consistently
+                result['algorithm'] = str(algo)                
+                print(f"{str(algo)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
+
+            except Exception as e:
+                print(f"!!! ERROR during {str(algo)} on {problem}: {e}")
+                traceback.print_exc() 
+                result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
+                           "algorithm": str(algo), "error": str(e)}
+
+            if result: 
+                 result['problem'] = str(problem)
+                 if 'path' in result and result['path']:
+                     result['unit_cost'] = len(result['path']) - 1
+                 else:
+                     result['unit_cost'] = -1
+                 problem_results.append(result)
+                 all_results.append(result)
+
+        # --- Print Results for this Problem ---
+        print(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
+        for res in problem_results:
+            print(f"\nAlgorithm: {res.get('algorithm','N/A')}")
+            if 'optimal' in res: print(f"Optimality Guaranteed: {res['optimal']}")
+            if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : print(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
+            if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : print(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
+            print(f"Time Taken: {res.get('time', -1):.4f} seconds")
+            print(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
+            print(f"Path Found: {'Yes' if res.get('path') else 'No'}")
+            if res.get('path'): print(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
+            else:
+                 print("Path Cost: N/A")
+                 if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: print(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
+                 if 'error' in res: print(f"ERROR during run: {res['error']}")
+        print("=" * (34 + len(str(problem)))) # Adjusted length
+
+    # Overall Summary
+    print(f"\n{'*'*15} Overall Summary {'*'*15}")
+    for res in all_results:
+         status = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}" if res.get('path') else ("No Path Found" if 'error' not in res else f"ERROR: {res['error']}")
+         #print("Path:", res['path']) # Uncomment to see the full path states
+
+         optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
+         algo_name = res.get('algorithm','N/A') 
+         print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note}")
+
+    # --- Save Results to JSON ---
+    json_file_path = f"{out_file_base}.json"
+    with open(json_file_path, 'w') as json_file:
+        json.dump(all_results, json_file, indent=4)
+    print(f"Results saved to {json_file_path}") 
+
+    # --- Save Results to CSV ---
+    # Ensure all results have the same keys for CSV
+    # If some results are missing keys, fill them with None
+    csv_file_path = f"{out_file_base}.csv"
+    write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
+    return csv_file_path
+
+
+
 class PriorityQueue:
-    """ Priority Queue implementation supporting 3 levels of priority: heuristic value, tiebreaker1, tiebreaker2
+    """ Priority Queue implementation optionally supporting 3 levels of priority: 
+            heuristic value, tiebreaker1, tiebreaker2
+            tb2 is currently purely internally calculated for fifo/lifo
+            the tb1 value is always passed in by the caller but setting up the PriorityQueue with 
+            A tiebreaker1 of 'FIFO' OR 'LIFO' mode will set self.count_tb1 to be incremented or decremented 
+            so that the caller can access it and pass it in as the tiebreaker1 value
     ie list of tuples (priority, tiebreaker1, tiebreaker2, item)
     """
-    def __init__(self, tiebreaker2='FIFO'):
+    def __init__(self, tiebreaker1='FIFO', tiebreaker2='NONE'):
         self.heap = []
+
+        self.tiebreaker1 = tiebreaker1
+        if tiebreaker1 == 'FIFO':
+            self.increment_tb1 = 1
+        elif tiebreaker1 == 'LIFO':
+            self.increment_tb1 = -1
+        else:
+            self.increment_tb1 = 0
+        self.count_tb1 = 0
+
         self.tiebreaker2 = tiebreaker2
         if tiebreaker2 == 'FIFO':
-            self.increment = 1
+            self.increment_tb2 = 1
         elif tiebreaker2 == 'LIFO':
-            self.increment = -1
+            self.increment_tb2 = -1
         else:
-            raise ValueError("tiebreaker2 must be either 'FIFO' or 'LIFO'")
-        self.count = 0
+            self.increment_tb2 = 0
+        self.count_tb2 = 0
+
         self.max_heap_size = 0
 
     def push(self, item, priority, tiebreaker1=0):
-        entry = (priority, tiebreaker1, self.count, item)
+        if self.increment_tb2:
+            entry = (priority, tiebreaker1, self.count_tb2, item)
+            self.count_tb2 += self.increment_tb2
+        else:
+            entry = (priority, tiebreaker1, item)
+        self.count_tb1 += self.increment_tb1
         heapq.heappush(self.heap, entry)
-        self.count += self.increment
         if self.max_heap_size < len(self.heap):
             self.max_heap_size = len(self.heap)
 
     def pop(self, item_only=True):
         if not self.isEmpty():
-            priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
+            if self.increment_tb2:
+                priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
+            else:
+                priority, tiebreaker1, item = heapq.heappop(self.heap)
+                tiebreaker2 = None
             if item_only:
                 return item
             return item, priority, tiebreaker1, tiebreaker2

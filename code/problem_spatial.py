@@ -186,7 +186,7 @@ class GridProblem:
                     if self.grid[new_row, new_col] == util.OBSTACLE: 
                         continue  # if obstacle
 
-                    # valid if either manhatten walk has no obstacle
+                    # valid if either manhattan walk has no obstacle
                     if move_dir == 'nw' and ('north' in valid_set or 'west' in valid_set):  
                         new_state_tuple = (new_row, new_col)
                         neighbors.append( (new_state_tuple, cost) )
