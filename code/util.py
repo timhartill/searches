@@ -23,8 +23,13 @@ EXPANDED_BWD = 10   # GreenYellow
 EXPANDED_BOTH = 12  # MediumSpringGreen - bluish green
 
 # The following dicts are for loading scenario files from the MovingAI benchmarks
-SCEN_COL_MAP = {"Bucket":0, "map": 1, "width": 2, "height": 3, "start_x": 4, "start_y": 5, "goal_x": 6,	"goal_y": 7, "movingai_cstar": 8}
-SCEN_COL_TYPES = {"Bucket": str, "map": str, "width": int, "height": int, "start_x": int, "start_y": int, "goal_x": int, "goal_y": int, "movingai_cstar": float}
+SCEN_COL_MAP = {"Bucket":0, "map": 1, "width": 2, "height": 3, "start_x": 4, "start_y": 5, "goal_x": 6,	"goal_y": 7, "cstar": 8}
+SCEN_COL_TYPES = {"Bucket": str, "map": str, "width": int, "height": int, "start_x": int, "start_y": int, "goal_x": int, "goal_y": int, "cstar": float}
+
+# Dicts for loading our problem files
+#PROBLEM_COL_MAP = {"problem_type": 0, "initial_state": 2, "goal_state": 3, "cstar": 4}
+PROBLEM_COL_TYPES = {"problem_type": str, "initial_state": json.loads, "goal_state": json.loads, "cstar": float}
+
 
 # Values in movingAI map files mapped to our equivalent values
 GRID_MAP = {
@@ -88,11 +93,12 @@ def load_scen_file(file_path):
     The first line is the version and is skipped
     Remaining lines are tab delimited columns: 
     Bucket	map	map width	map height	start x-coordinate	start y-coordinate	goal x-coordinate	goal y-coordinate	optimal length 
-
+    Code assumes all columns have valid values ie no missing values handling
+    
     The .scen files are in a directory named after the domain + "-scen" eg dao-scen
     The corresponding .map files are in a directory named after the domain + "-map" eg dao-map
 
-    Note: The optimal paths from our algorithms match the "optimaml length" value supplied when diag cost is 2 
+    Note: The optimal paths from our algorithms match the "optimal length" value supplied when diag cost is 2 
     """
     if not file_path.endswith('.scen'):
         raise ValueError(f"File {file_path} is not a .scen file")
@@ -154,6 +160,40 @@ def load_map_file(file_path):
     return matrix_data, heuristic
 
 
+def load_csv_file(file_path, delimiter=';', apply_col_types=True):
+    """ load a generic semicolon-delimited problem file with header 
+        (well actually it can load any delimited text file with a header, just set apply_col_types=False)
+    columns:
+    problem_type; problem_id; initial_state; goal_state; cstar
+
+    If cstar is supplied it will be the based on unit costs = 1.
+    If goal_state is not supplied it will be created in problem classes as the standard goal state for that problem type. 
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File {file_path} does not exist")
+    data = []
+    with open(file_path, 'r') as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=delimiter)  # csv.DictReader automatically uses the first row as headers
+        for row in reader:
+            data.append(row)  # DictReader yields dictionaries of strings directly
+    if apply_col_types:
+        for problem in data:
+            for col_name, col_value in problem.items():
+                if col_name in PROBLEM_COL_TYPES:   # if not, retain as str
+                    convert_func = PROBLEM_COL_TYPES[col_name]
+                    if convert_func != str:         # already str
+                        if col_value.lower().strip() in ["", "[]", "()", "none", "null"]:
+                            problem[col_name] = None
+                        else:
+                            try:
+                                problem[col_name] = convert_func(col_value)
+                            except Exception as e:
+                                print(f"Error converting column {col_name} with value {col_value} to {convert_func}: {e}")
+    return data
+    
+
+
+
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', seed=42):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
     and a json file (with path) in the specified output directory.
@@ -162,7 +202,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
         algorithms (list): List of algorithms to use
         output_dir (str): Directory to save the results
     """
-    out_file_base = f"{out_dir}/{out_prefix}_{time.strftime('%Y%m%d_%H%M%S')}"
+    out_file_base = f"{out_dir}/{out_prefix}_{time.strftime('%Y-%m-%d_%H-%M-%S')}"
     all_results = []
     for problem in problems:  # For each problem
         print(f"\n{'=' * 20}\nSolving: {problem}\nInitial State: {problem.initial_state()}\nGoal State:    {problem.goal_state()}\nInitial Heuristic: {problem.heuristic(problem.initial_state())}\n{'-' * 20}")

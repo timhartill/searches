@@ -20,7 +20,7 @@ class generic_search:
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    def __init__(self, priority_key='f', visualise=True, tiebreaker1='-g', tiebreaker2 = 'NONE'):
+    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', visualise=True, visualise_dirname=''):
         """
         :param problem: The search problem to solve
         :param priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
@@ -30,6 +30,7 @@ class generic_search:
         if priority_key not in ['g', 'h', 'f']: raise ValueError("priority_key must be 'g', 'h', or 'f'")
         self.priority_key = priority_key
         self.visualise = visualise
+        self.visualise_dirname = visualise_dirname
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
         self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}"
@@ -54,6 +55,10 @@ class generic_search:
         C = -1.0         # Current lowest cost on frontier
         U = float('inf') # Current lowest cost found
         found_path = None
+        if hasattr(problem, "cstar"):
+            cstar = problem.cstar
+        else:
+            cstar = None
         nodes_expanded_below_cstar = 0
 
         while not frontier.isEmpty():
@@ -74,18 +79,22 @@ class generic_search:
 
             if current_state in closed_set: continue
             nodes_expanded += 1
+            
             closed_set.add(current_state) # Add after popping and checking
+
+
+            current_g_score = g_score.get(current_state)
+            #if current_g_score is None:
+            #    print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
+            #    continue # Should have g_score if reached here
+            if cstar and current_g_score < cstar:
+                nodes_expanded_below_cstar += 1
 
             if problem.is_goal(current_state):
                 end_time = time.time()
                 U = g_score.get(current_state)   
                 found_path = current_state
                 break 
-
-            current_g_score = g_score.get(current_state)
-            if current_g_score is None:
-                print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
-                continue # Should have g_score if reached here
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -125,20 +134,21 @@ class generic_search:
             path = reconstruct_path(came_from, start_node, found_path)
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
-                                               visited_fwd=closed_set)
+                                               visited_fwd=closed_set, visualise_dirname=self.visualise_dirname)
                 if not image_file: 
                     image_file = 'no file'
 
-            return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, 
+            return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                     "max_heap_size": frontier.max_heap_size}
 
-        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "time": end_time - start_time, 
-                "optimal": optimality_guaranteed, "visual": image_file, "max_heap_size": frontier.max_heap_size }
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
+                "max_heap_size": frontier.max_heap_size }
 
 
     def calc_tiebreak(self, g, h, count_tb1):
-        """Calculates the tiebreaker value based on the type and values of g and h"""
+        """Calculates the tiebreaker value based on the type and values of g and h and count_tb1"""
         if self.tiebreaker1 == 'g':
             return g
         elif self.tiebreaker1 == '-g':  # higher g popped first

@@ -12,8 +12,9 @@ import util
 # --- Bidirectional A* (Updated for variable cost) ---
 class bidirectional_a_star_search:
     """Performs Bidirectional A* search. Handles variable costs."""
-    def __init__(self, visualise=True, tiebreaker1='-g', tiebreaker2='NONE'):
+    def __init__(self, tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname = ''):
         self.visualise = visualise
+        self.visualise_dirname = visualise_dirname
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
         self._str_repr = f"Bidirectional AStar-pf-tb1{tiebreaker1}-tb2{tiebreaker2}"
@@ -25,7 +26,7 @@ class bidirectional_a_star_search:
         start_time = time.time()
         start_node = problem.initial_state()
         goal_node = problem.goal_state()
-        if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, 
+        if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, "nodes_expanded_below_cstar": 0,
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
         h_start = problem.heuristic(start_node)
@@ -48,12 +49,19 @@ class bidirectional_a_star_search:
         C = -1.0        # Current lowest cost on either frontier
         U = float('inf') # Current lowest cost of path found
 
+        if hasattr(problem, "cstar"):
+            cstar = problem.cstar
+        else:
+            cstar = None
+        nodes_expanded_below_cstar = 0
+
+
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
             C = min(frontier_fwd.peek(priority_only=True), 
                     frontier_bwd.peek(priority_only=True))
             
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                print(f"Termination condition U ({U}) >= C ({C}) met.")  # In practice this condition is not triggered
+                print(f"1. Termination condition U ({U}) >= C ({C}) met.")  # In practice this condition isnt triggered because of the optimization below in expansion: if f_score < U ...
                 break
 
             # --- Forward Step ---
@@ -63,15 +71,21 @@ class bidirectional_a_star_search:
                     continue
                 current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
                 if current_g_fwd  + problem.heuristic(current_state_fwd, backward=False) >= U: 
-                    break   #continue  
+                    continue  
                 closed_fwd.add(current_state_fwd)
                 nodes_expanded += 1
+                if cstar and current_g_fwd < cstar:
+                    nodes_expanded_below_cstar += 1
+
                 if current_state_fwd in g_score_bwd: 
                     current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
                     if current_path_cost < U:   
                         U = current_path_cost
                         meeting_node = current_state_fwd
                         #break   #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
+                    #else:  # finds nonoptimal paths
+                    #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
+                    #    break    
                 
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -102,15 +116,21 @@ class bidirectional_a_star_search:
                     continue
                 current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
                 if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= U: 
-                    break   #continue 
+                    continue 
                 closed_bwd.add(current_state_bwd)
                 nodes_expanded += 1
+                if cstar and current_g_bwd < cstar:
+                    nodes_expanded_below_cstar += 1
+
                 if current_state_bwd in g_score_fwd: 
                     current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
                     if current_path_cost < U: 
                         U = current_path_cost
                         meeting_node = current_state_bwd
                         #break  #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
+                    #else: #finds non-optimal paths
+                    #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
+                    #    break    
 
                 for neighbor_info in problem.get_neighbors(current_state_bwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -144,7 +164,8 @@ class bidirectional_a_star_search:
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
-                                            meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd)
+                                            meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd, 
+                                            visualise_dirname=self.visualise_dirname)
                 if not image_file: image_file = 'no file'
             final_cost = -1
             recalculated_cost = 0
@@ -162,11 +183,12 @@ class bidirectional_a_star_search:
             if cost_mismatch: 
                 print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={U}")
             final_reported_cost = U # Report cost found by search
-            return {"path": path, "cost": final_reported_cost if path else -1, "nodes_expanded": nodes_expanded, 
+            return {"path": path, "cost": final_reported_cost if path else -1, 
+                    "nodes_expanded": nodes_expanded,  "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_size": max_heap_size_combined}
         else:
-            return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
+            return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_size": max_heap_size_combined} # No path found
 

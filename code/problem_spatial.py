@@ -86,12 +86,13 @@ class GridProblem:
     Sturtevant grids c* annotations assume diagonal cost=2
     """
     def __init__(self, grid_file, initial_state=None, goal_state=None, 
-                 cost_multiplier=1, 
+                 cost_multiplier=1.0, 
                  make_heuristic_inadmissable=False,
                  degradation=0,
                  allow_diagonal=False,
                  diag_cost = 2.0,
-                 heuristic='octile'):
+                 heuristic='octile',
+                 cstar=None):
         if grid_file is None or not os.path.exists(grid_file):
             raise ValueError(f"Grid file {grid_file} does not exist.")
         if grid_file.endswith('.npy'):
@@ -150,8 +151,9 @@ class GridProblem:
         self.degradation = degradation   
         self.cost_multiplier = cost_multiplier 
         self.diag_cost = diag_cost
+        self.cstar = cstar
         cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}"
+        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}-cs{cstar}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -207,13 +209,16 @@ class GridProblem:
     def get_cost(self, state1, state2, move_info=None):
         """
         Returns cost of move. 
-        If diagonal, cost is sqrt(2) * cost_multiplier, otherwise, cost is 1 * cost_multiplier.
+        If diagonal, cost is diag_cost * cost_multiplier, otherwise, cost is 1 * cost_multiplier.
         """
         if move_info is not None:
             return move_info
 
-        return euclidean(abs(state1[0] - state2[0]), 
-                         abs(state1[1] - state2[1])) * self.cost_multiplier
+        cost = euclidean(abs(state1[0] - state2[0]), 
+                         abs(state1[1] - state2[1]))
+        if cost == SQRT2:
+            cost = self.diag_cost
+        return cost * self.cost_multiplier
 
 
     def heuristic(self, state, backward=False):
@@ -243,7 +248,8 @@ class GridProblem:
     def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, 
                   visited_fwd: set = None, visited_bwd: set = None,
                   path_type: str = '', output_file_ext: str = 'png',
-                  display: bool = False, return_image: bool = False):
+                  display: bool = False, return_image: bool = False,
+                  visualise_dirname: str = ''):
         """
         Converts a 2D NumPy array of integers into an image file, mapping
         values to specific colors and creating blocks of pixels.
@@ -326,7 +332,7 @@ class GridProblem:
             final_image = small_image
 
         if path_type != '':
-            out_dir = os.path.join(self.dirname, self.basename_no_ext)
+            out_dir = os.path.join(visualise_dirname, self.basename_no_ext)
             os.makedirs(out_dir, exist_ok=True)
             output_filename = os.path.join(out_dir, f"{self._str_repr}_{path_type}.{output_file_ext}")
             final_image.save(output_filename)  #saved in format inferred from file extension

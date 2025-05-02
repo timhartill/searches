@@ -28,7 +28,7 @@ class SlidingTileProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0):
+                 degradation=0, cstar=None):
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
@@ -61,9 +61,10 @@ class SlidingTileProblem:
         else:
             self.h_multiplier = 1    
         self.degradation = degradation    
+        self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = "Manhattan" # Manhattan distance heuristic
-        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -156,7 +157,7 @@ class PancakeProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0):
+                 degradation=0, cstar=None):
         self.initial_state_tuple=tuple(initial_state) 
         self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
@@ -170,9 +171,10 @@ class PancakeProblem:
         else:
             self.h_multiplier = 1    
         self.degradation = degradation
+        self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = "SymGap" # Symmetric Gap heuristic
-        self._str_repr = f"Pancake-{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}"
+        self._str_repr = f"Pancake-{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
         
     def initial_state(self): 
         return self.initial_state_tuple
@@ -307,7 +309,7 @@ class TowersOfHanoiProblem:
     State is a Tuple of current peg for each disk eg ('A', 'A', 'B', 'C', 'A', 'A', 'A') for 7 disks with idx 0 = smallest disk.
     """
     def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], initial_state=None,
-                 make_heuristic_inadmissable=False, degradation=0, heuristic="3PegStd"): 
+                 make_heuristic_inadmissable=False, degradation=0, heuristic="3PegStd", cstar=None): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -340,7 +342,8 @@ class TowersOfHanoiProblem:
                 raise ValueError(f"Invalid pegs in initial state. Must be one of {self.pegs}.")
         self._initial_state = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self._goal_state=tuple([target_peg]*num_disks)      # (C, C, C, ..., C)
-        self._str_repr=f"TowersOfHanoi-{num_disks}-{util.make_prob_str(initial_state=self._initial_state, goal_state=self._goal_state)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}"
+        self.cstar = cstar
+        self._str_repr=f"TowersOfHanoi-{num_disks}-{util.make_prob_str(initial_state=self._initial_state, goal_state=self._goal_state)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
         return self._initial_state

@@ -25,14 +25,39 @@ from search_bidirectional import bidirectional_a_star_search
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out_dir", default='/media/tim/dl3storage/gitprojects/searches/outputs', type=str,
-                        help="Full path to output directory. CSV and JSON output files will be written here.")  #TJH , required=True)
-    parser.add_argument("--out_prefix", default='search_eval', type=str,
-                        help="CSV and JSON output file prefix. Date and time will be added to make unique.")  #TJH , required=True)
+                        help="Full path to output directory. CSV and JSON output files will be written here.")  
+    parser.add_argument("--out_prefix", default='search-eval', type=str,
+                        help="CSV and JSON output file prefix. Date and time will be added to make unique.")  
+    parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
+                        help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have numpy_probs and eg dao-map and dao-scen off it.")
+    parser.add_argument("--run_matrices", default='', type=str,
+                        help="domain portion of the grid problems to run eg dao. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
+    parser.add_argument('--run_matrices_max_per_scen', default=21, type=int,
+                        help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
+    parser.add_argument("--run_tiles", default='', type=str,
+                        help="file name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv. Should be in the tiles subdir.")
+    parser.add_argument('--run_tiles_max', default=100, type=int,
+                        help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems in the file we will run 100 tile problems in total")
+    parser.add_argument("--run_pancakes", default='', type=str,
+                        help="file name of the pancake problems to run. Should be in the pancake subdir.")
+    parser.add_argument('--run_pancakes_max', default=50, type=int,
+                        help="Max number of pancake problems to run from the chosen pancake file. Eg if 100 and 1000 problems in the file we will run 100 pancake problems in total")
+    parser.add_argument("--run_toh", default='', type=str,
+                        help="file name of the towers of hanoi problems to run. Should be in the toh subdir.")
+    parser.add_argument('--run_toh_max', default=50, type=int,
+                        help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
     parser.add_argument('--seed', default=42, type=int,
                         help="random seed") 
+    #TODO: foreach prob type add heuristic, degradation list, add inadmissable, cost_multiplier, use variable costs, allow diagonal, diagonal cost
+    #TODO: add these as strings parsable into lists
     #parser.add_argument("--do_train", action='store_true')  # example boolean
     #parser.add_argument("--learning_rate", default=1e-5, type=float)  # example float
     args = parser.parse_args()
+
+    # Set up output directories if they don't exist
+    os.makedirs(args.out_dir, exist_ok=True)
+    args.visualise_dir = os.path.join(args.out_dir, 'visualise')
+    os.makedirs(args.visualise_dir, exist_ok=True)
 
     print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(args)
@@ -64,7 +89,7 @@ if __name__ == "__main__":
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                                degradation=tile_degradation)
+                                                degradation=tile_degradation, cstar=31)
     sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                use_variable_costs=True,
                                                make_heuristic_inadmissable=make_heuristic_inadmissable,
@@ -88,13 +113,13 @@ if __name__ == "__main__":
                                                 make_heuristic_inadmissable=False,
                                                 degradation=5)
 
-
+    #korf_15puzzle_100 = util
 
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
                                        use_variable_costs=False,
                                        make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                       degradation=pancake_degradation)
+                                       degradation=pancake_degradation, cstar=8)
 
     pancake_var_cost = PancakeProblem(initial_state=pancake_initial, 
                                       use_variable_costs=True,
@@ -129,7 +154,7 @@ if __name__ == "__main__":
 
     hanoi_problem_4Tower_InfPeg = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
                                          make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
-                                         degradation=hanoi_degradation)
+                                         degradation=hanoi_degradation, cstar=25)
 
     hanoi_problem_4Tower_InfPeg_state2 = TowersOfHanoiProblem(num_disks=hanoi_disks, initial_peg='A', target_peg='D', pegs=['A', 'B', 'C', 'D'],
                                          initial_state=['B', 'B', 'C', 'C', 'D', 'A', 'A'],
@@ -233,7 +258,7 @@ if __name__ == "__main__":
     grid_harder_unit_diag_octile_d0 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=True, degradation=0,
-                   allow_diagonal=True, heuristic='octile')
+                   allow_diagonal=True, heuristic='octile', cstar=176)
 
     grid_harder_unit_diag_euc_d0_cm1000 = GridProblem(f'{numpy_probs}/matrix_20yX100x.npy',
                    initial_state=None, goal_state=None, cost_multiplier=1000,
@@ -323,8 +348,15 @@ if __name__ == "__main__":
                             cost_multiplier=1,
                             make_heuristic_inadmissable=False, degradation=0,
                             allow_diagonal=True, diag_cost=2.0,
-                            heuristic='octile')
+                            heuristic='octile', cstar=grid_scenarios[12346]['cstar'])
 
+    grid_dao6 = GridProblem(grid_scenarios[12346]['map_dir'], 
+                            initial_state=[grid_scenarios[12346]['start_y'], grid_scenarios[12346]['start_x']], 
+                            goal_state=[grid_scenarios[12346]['goal_y'], grid_scenarios[12346]['goal_x']], 
+                            cost_multiplier=1,
+                            make_heuristic_inadmissable=True, degradation=0,
+                            allow_diagonal=True, diag_cost=2.0,
+                            heuristic='octile')
 
 
     problems = [
@@ -377,16 +409,17 @@ if __name__ == "__main__":
         grid_dao3,
         grid_dao4,
         grid_dao5,
+        grid_dao6,
     ]
 
     # --- Define Algorithms ie give algorithm setups with differing params, unique fn names ---
-    run_ucs = generic_search(priority_key='g', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
-    run_hucs = generic_search(priority_key='g', tiebreaker1='f', tiebreaker2='NONE', visualise=True)
-    run_greedy_bfs = generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
-    run_astar = generic_search(priority_key='f', tiebreaker1='g', tiebreaker2='NONE', visualise=True)
-    run_astar1 = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True)
-    run_astar2 = generic_search(priority_key='f', tiebreaker1='FIFO', tiebreaker2='NONE', visualise=True)
-    run_bidir_astar = bidirectional_a_star_search(tiebreaker1='-g', tiebreaker2='NONE', visualise=True)
+    run_ucs = generic_search(priority_key='g', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_hucs = generic_search(priority_key='g', tiebreaker1='f', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_greedy_bfs = generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_astar = generic_search(priority_key='f', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_astar1 = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_astar2 = generic_search(priority_key='f', tiebreaker1='FIFO', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_bidir_astar = bidirectional_a_star_search(tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     # Wrapper for standard MCTS (no heuristic guidance)
     run_mcts_standard = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
                                               heuristic_weight=0.0, heuristic_rollout=False)
