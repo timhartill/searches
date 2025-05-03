@@ -1,0 +1,2 @@
+problem_type;initial_state;goal_state;cstar
+pancake;[8, 3, 5, 1, 6, 4, 2, 7];;8

@@ -23,35 +23,74 @@ from search_bidirectional import bidirectional_a_star_search
 
 # --- Main Execution Logic ---
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Search Algorithm Comparison Runner")
     parser.add_argument("--out_dir", default='/media/tim/dl3storage/gitprojects/searches/outputs', type=str,
                         help="Full path to output directory. CSV and JSON output files will be written here.")  
     parser.add_argument("--out_prefix", default='search-eval', type=str,
                         help="CSV and JSON output file prefix. Date and time will be added to make unique.")  
     parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have numpy_probs and eg dao-map and dao-scen off it.")
-    parser.add_argument("--run_matrices", default='', type=str,
-                        help="domain portion of the grid problems to run eg dao. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
-    parser.add_argument('--run_matrices_max_per_scen', default=21, type=int,
-                        help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
-    parser.add_argument("--run_tiles", default='', type=str,
-                        help="file name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv. Should be in the tiles subdir.")
-    parser.add_argument('--run_tiles_max', default=100, type=int,
-                        help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems in the file we will run 100 tile problems in total")
-    parser.add_argument("--run_pancakes", default='', type=str,
-                        help="file name of the pancake problems to run. Should be in the pancake subdir.")
-    parser.add_argument('--run_pancakes_max', default=50, type=int,
-                        help="Max number of pancake problems to run from the chosen pancake file. Eg if 100 and 1000 problems in the file we will run 100 pancake problems in total")
-    parser.add_argument("--run_toh", default='', type=str,
-                        help="file name of the towers of hanoi problems to run. Should be in the toh subdir.")
-    parser.add_argument('--run_toh_max', default=50, type=int,
-                        help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
     parser.add_argument('--seed', default=42, type=int,
                         help="random seed") 
-    #TODO: foreach prob type add heuristic, degradation list, add inadmissable, cost_multiplier, use variable costs, allow diagonal, diagonal cost
+    # Matrices / Grids params
+    parser.add_argument("--grid", default='', type=str,
+                        help="Domain portion of the grid problems to run eg dao. '' means don't run. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
+    parser.add_argument('--grid_max_per_scen', default=21, type=int,
+                        help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
+    parser.add_argument('--grid_heur', nargs="*", default="octile", type=str, 
+                        help="grid heuristics. Eg --grid_heur octile euclidean chebyshev manhattan")
+    parser.add_argument('--grid_degs', nargs="*", default=0, type=int, 
+                        help="grid heuristic degradation(s) to run. Eg 0 1 2 3")
+    parser.add_argument('--grid_admiss', nargs="*", default="admissable", type=str, 
+                        help="grid heuristic admissable (a), inadmissable (i) or both. Eg --matrices_admiss a i")
+    parser.add_argument('--grid_cost_multipier', default=1.0, type=float,
+                        help="Any number > 1.0 will multiply the unit cost, hence weakening the heuristic which isn't multiplied by this number.")
+    parser.add_argument("--grid_allow_diag", action='store_true',
+                        help="Allow diagonal movement in the grid problems. Default is False. Note when enabled this sets the variable cost flag.")
+    parser.add_argument('--grid_diag_cost', default=2.0, type=float,
+                        help="Cost of diagonal move before cost multiplication. HOG2 grid Cstar calculations in .scen files use 2.0. Some papers use 1.5. Heuristic (and correct) estimate remains sqrt(2)=1.4142135623730951.")
+    
+    # Sliding Tiles params
+    parser.add_argument("--tiles", default='', type=str,
+                        help="File name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv or '' to skip. Should be in the tiles subdir.")
+    parser.add_argument('--tiles_max', default=100, type=int,
+                        help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems in the file we will run 100 tile problems in total")
+    parser.add_argument('--tiles_heur', nargs="*", default="manhattan", type=str, 
+                        help="tiles heuristics. Only manhattan implemented. Eg --tiles_heur manhattan")
+    parser.add_argument('--tiles_degs', nargs="*", default=0, type=int, 
+                        help="tiles heuristic degradation(s) to run. Eg 0 1 2 3")
+    parser.add_argument('--tiles_admiss', nargs="*", default="admissable", type=str, 
+                        help="tiles heuristic admissable (a), inadmissable (i) or both. Eg --tiles_admiss a i")
+    parser.add_argument("--tiles_var_cost", action='store_true',
+                        help="When enabled this uses the tile value as the cost rather than 1. Default is false.")
+
+    # Pancake params
+    parser.add_argument("--pancakes", default='', type=str,
+                        help="File name of the pancake problems to run or '' to skip. Should be in the pancake subdir.")
+    parser.add_argument('--pancakes_max', default=50, type=int,
+                        help="Max number of pancake problems to run from the chosen pancake file. Eg if 100 and 1000 problems in the file we will run 100 pancake problems in total")
+    parser.add_argument('--pancakes_heur', nargs="*", default="symgap", type=str, 
+                        help="pancakes heuristics. Only symmetric gap implemented. Eg --pancakes_heur symgap")
+    parser.add_argument('--pancakes_degs', nargs="*", default=0, type=int, 
+                        help="pancakes heuristic degradation(s) to run. Eg 0 1 2 3")
+    parser.add_argument('--pancakes_admiss', nargs="*", default="admissable", type=str, 
+                        help="pancakes heuristic admissable (a), inadmissable (i) or both. Eg --pancakes_admiss a i")
+    parser.add_argument("--pancakes_var_cost", action='store_true',
+                        help="When enabled this uses the num pancakes flipped as the cost rather than 1. Default is false.")
+
+    # Tower of Hanoi params
+    parser.add_argument("--toh", default='', type=str,
+                        help="File name of the towers of hanoi problems to run or '' to skip. Should be in the toh subdir.")
+    parser.add_argument('--toh_max', default=50, type=int,
+                        help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
+    parser.add_argument('--toh_heur', nargs="*", default="infinitepegrelaxation", type=str, 
+                        help="toh heuristics. Only symmetric gap implemented. Eg --toh_heur 3pegstd, infinitepegrelaxation")
+    parser.add_argument('--toh_degs', nargs="*", default=0, type=int, 
+                        help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
+    parser.add_argument('--toh_admiss', nargs="*", default="admissable", type=str, 
+                        help="toh heuristic admissable (a), inadmissable (i) or both. Eg --toh_admiss a i")
+    #TODO: foreach algo add visualise, priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
     #TODO: add these as strings parsable into lists
-    #parser.add_argument("--do_train", action='store_true')  # example boolean
-    #parser.add_argument("--learning_rate", default=1e-5, type=float)  # example float
     args = parser.parse_args()
 
     # Set up output directories if they don't exist

@@ -28,7 +28,7 @@ class SlidingTileProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, cstar=None):
+                 degradation=0, heuristic="manhattan", cstar=None):
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
@@ -63,7 +63,7 @@ class SlidingTileProblem:
         self.degradation = degradation    
         self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self.h_str = "Manhattan" # Manhattan distance heuristic
+        self.h_str = heuristic  #"Manhattan" # Manhattan distance heuristic is the only one implemented
         self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
@@ -157,7 +157,7 @@ class PancakeProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, cstar=None):
+                 degradation=0, heuristic = "SymGap", cstar=None):
         self.initial_state_tuple=tuple(initial_state) 
         self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
@@ -173,7 +173,7 @@ class PancakeProblem:
         self.degradation = degradation
         self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self.h_str = "SymGap" # Symmetric Gap heuristic
+        self.h_str = heuristic   #"SymGap" # Symmetric Gap heuristic is the only one implemented
         self._str_repr = f"Pancake-{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
         
     def initial_state(self): 
@@ -194,7 +194,7 @@ class PancakeProblem:
             if k > 1: 
                 flipped_part = state[:k][::-1]
                 rest_part = state[k:]
-                neighbors.append((flipped_part + rest_part, k)) 
+                neighbors.append((flipped_part + rest_part, k))
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -309,7 +309,7 @@ class TowersOfHanoiProblem:
     State is a Tuple of current peg for each disk eg ('A', 'A', 'B', 'C', 'A', 'A', 'A') for 7 disks with idx 0 = smallest disk.
     """
     def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], initial_state=None,
-                 make_heuristic_inadmissable=False, degradation=0, heuristic="3PegStd", cstar=None): 
+                 make_heuristic_inadmissable=False, degradation=0, heuristic="infinitepegrelaxation", cstar=None): 
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -317,12 +317,13 @@ class TowersOfHanoiProblem:
             self.h_multiplier = num_disks * (degradation+10)**2
             self.optimality_guaranteed = False
         else:
-            self.h_multiplier = 1   
-        if heuristic not in ["3PegStd", "InfinitePegRelaxation"]:
-            raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3PegStd' or 'InfinitePegRelaxation'.")
+            self.h_multiplier = 1
+        heuristic = heuristic.lower()   
+        if heuristic not in ["3pegstd", "infinitepegrelaxation"]:
+            raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation'.")
         self.h_str = heuristic 
-        if len(pegs) > 3 and heuristic == "3PegStd": # definitely not optimal for bidirectional or A* for > 3 pegs
-            self.optimality_guaranteed = False   
+        if len(pegs) > 3 and heuristic == "3pegstd": # definitely not optimal for bidirectional or A* for > 3 pegs
+            self.optimality_guaranteed = False
         self.degradation = degradation    
         if num_disks < 1: 
             raise ValueError("Number of disks must be at least 1.")
@@ -410,7 +411,7 @@ class TowersOfHanoiProblem:
         multiplier = 1
         ignored_disks = set(range(self.degradation))
 
-        if self.h_str == "3PegStd":
+        if self.h_str == "3pegstd":
             for k in range(self.num_disks-1,-1,-1): # Iterate largest disk (N-1) down to smallest (0)
                 if k in ignored_disks: 
                     continue # Ignore disks in degradation
@@ -424,7 +425,7 @@ class TowersOfHanoiProblem:
                     # (neither where k is, nor where k should have been)
                     ctp = next(p for p in self.pegs if p!=state[k] and p!=ctp)
                 # else: disk k is on the correct peg (ctp), so target for k-1 remains ctp.
-        elif self.h_str == "InfinitePegRelaxation":
+        elif self.h_str == "infinitepegrelaxation":
             # See Additive Pattern databases, Felner et al 2004
             # much weaker than pattern database heuristics but admissable for > 3 pegs and works in bidirectional
             for peg in self.pegs:

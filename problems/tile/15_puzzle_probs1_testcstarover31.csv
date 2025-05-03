@@ -1,0 +1,2 @@
+problem_type;initial_state;goal_state;cstar
+tile;[15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1];;
