@@ -151,7 +151,12 @@ if __name__ == "__main__":
                                                 make_heuristic_inadmissable=False,
                                                 degradation=5)
 
-    #korf_15puzzle_100 = util
+    tile_scenarios = util.load_csv_file('/media/tim/dl3storage/gitprojects/searches/problems/tile/15_puzzle_probs100_korf_std.csv')
+    sliding_tile_korf8 = SlidingTileProblem(initial_state=tile_scenarios[8]['initial_state'], 
+                                                use_variable_costs=False, 
+                                                make_heuristic_inadmissable=False,
+                                                degradation=0, cstar=tile_scenarios[8]['cstar'])
+
 
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
@@ -379,6 +384,7 @@ if __name__ == "__main__":
 #        sliding_tile_var_cost43,
 #        sliding_tile_unit_cost43_inadmiss,
 #        sliding_tile_unit_cost43_d5,
+        sliding_tile_korf8,
         pancake_unit_cost,
 #        pancake_var_cost,
         hanoi_problem_3peg,
@@ -412,7 +418,7 @@ if __name__ == "__main__":
 #        grid_harder_unit_diag_octile_d0,
 #        grid_harder_unit_diag_euc_d0_cm1000,
 #        grid_harder_unit_diag_euc_d500_cm1000,
-        grid_harder1000x1000_unit_diag_mh_d0_cm1,
+#        grid_harder1000x1000_unit_diag_mh_d0_cm1,
 #        grid_harder1000x1000_unit_diag_mh_d5_cm1,
 #        grid_harder1000x1000_unit_diag_euc_d0_cm1,
 #        grid_harder1000x1000_unit_diag_euc_d5_cm1,
@@ -449,8 +455,8 @@ if __name__ == "__main__":
 
 
     algorithms = [
-        run_ucs,
-        run_greedy_bfs,
+#        run_ucs,
+#        run_greedy_bfs,
         run_astar1,
         #run_astar2,
         run_bidir_astar,
