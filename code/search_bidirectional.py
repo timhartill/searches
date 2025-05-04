@@ -7,6 +7,7 @@ Bidirectional A*
 import time
 
 import util
+import data_structures
 
 
 # --- Bidirectional A* (Updated for variable cost) ---
@@ -30,14 +31,14 @@ class bidirectional_a_star_search:
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
         h_start = problem.heuristic(start_node)
-        frontier_fwd = util.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_fwd = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
         frontier_fwd.push(start_node, h_start, 0) # Push with priority and tiebreaker
         came_from_fwd = {start_node: None}
         g_score_fwd = {start_node: 0}
         closed_fwd = set() 
 
         h_goal = problem.heuristic(goal_node, backward=True)
-        frontier_bwd = util.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_bwd = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
         frontier_bwd.push(goal_node, h_goal, 0) # Push with priority and tiebreaker
         came_from_bwd = {goal_node: None}
         g_score_bwd = {goal_node: 0}
@@ -61,7 +62,7 @@ class bidirectional_a_star_search:
                     frontier_bwd.peek(priority_only=True))
             
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                print(f"1. Termination condition U ({U}) >= C ({C}) met.")  # In practice this condition isnt triggered because of the optimization below in expansion: if f_score < U ...
+                print(f"1. Termination condition U ({U}) >= C ({C}) met.")  
                 break
 
             # --- Forward Step ---
@@ -105,9 +106,7 @@ class bidirectional_a_star_search:
                         f_score = tentative_g_score + h_score
                         if f_score < U: 
                             frontier_fwd.push(neighbor_state, f_score, 
-                                              self.calc_tiebreak(g=tentative_g_score, 
-                                                                 h=h_score, 
-                                                                 count_tb1=frontier_fwd.count_tb1))  # Use -g score as tiebreaker to prefer higher g_score
+                                              frontier_fwd.calc_tiebreak1(g=tentative_g_score,  h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
             if frontier_bwd:
@@ -151,9 +150,7 @@ class bidirectional_a_star_search:
                         f_score = tentative_g_score + h_score
                         if f_score < U: 
                             frontier_bwd.push(neighbor_state, f_score, 
-                                              self.calc_tiebreak(g=tentative_g_score, 
-                                                                 h=h_score, 
-                                                                 count_tb1=frontier_fwd.count_tb1))  # Use -g score as tiebreaker to prefer higher g_score
+                                              frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
 
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
                 max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
@@ -191,24 +188,6 @@ class bidirectional_a_star_search:
             return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_size": max_heap_size_combined} # No path found
-
-
-    def calc_tiebreak(self, g, h, count_tb1):
-        """Calculates the tiebreaker value based on the type and values of g and h"""
-        if self.tiebreaker1 == 'g':
-            return g
-        elif self.tiebreaker1 == '-g':  # higher g popped first
-            return -g
-        elif self.tiebreaker1 == 'h':
-            return h
-        elif self.tiebreaker1 == 'f':
-            return g + h
-        elif self.tiebreaker1 in ['FIFO', 'LIFO']:
-            return count_tb1
-        elif self.tiebreaker1 == 'NONE':
-            return 0
-        else:
-            raise ValueError(f"Invalid tiebreaker1: {self.tiebreaker1}")
 
 
     def __str__(self): # enable str(object) to return algo name

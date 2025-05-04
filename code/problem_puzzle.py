@@ -157,7 +157,7 @@ class PancakeProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, heuristic = "SymGap", cstar=None):
+                 degradation=0, heuristic = "symgap", cstar=None):
         self.initial_state_tuple=tuple(initial_state) 
         self.n=len(initial_state)
         if goal_state: self.goal_state_tuple=tuple(goal_state) 
@@ -307,55 +307,64 @@ class TowersOfHanoiProblem:
     Allows for degrading heuristic by ignoring disks.
     Allows for inadmissible heuristic. 
     State is a Tuple of current peg for each disk eg ('A', 'A', 'B', 'C', 'A', 'A', 'A') for 7 disks with idx 0 = smallest disk.
+    For simplicity, initial peg is always 'A', goal state is list(target peg*num_disks) and number of pegs is ord(target peg)-ord(initial peg).
     """
-    def __init__(self, num_disks, initial_peg='A', target_peg='C', pegs=['A', 'B', 'C'], initial_state=None,
-                 make_heuristic_inadmissable=False, degradation=0, heuristic="infinitepegrelaxation", cstar=None): 
+    def __init__(self, initial_state= ['A','A','A','A','A','A','A','A','A','A','A','A'],
+                 goal_state = ['D','D','D','D','D','D','D','D','D','D','D','D'], 
+                 make_heuristic_inadmissable=False, degradation=0, 
+                 heuristic="infinitepegrelaxation", cstar=None): 
+        if len(goal_state) == 1:  # allow shorthand for goal state eg ['D']
+            goal_state = [goal_state[0]] * len(initial_state)
+        if len(initial_state) != len(goal_state):
+            raise ValueError(f"Initial {initial_state} and goal {goal_state} states must have the same length.")
+        self.num_disks = len(initial_state)
+        if self.num_disks < 1: 
+            raise ValueError("Number of disks must be at least 1.")
+        self.initial_peg = 'A'  # for simplicity, always start from A
+        self.target_peg = goal_state[0]  # target peg is the peg where all disks should end up
+        initial_code_point = ord(self.initial_peg)
+        terminal_code_point = ord(self.target_peg)
+        if initial_code_point >= terminal_code_point:
+            raise ValueError(f"Initial peg {self.initial_peg} and target pegs {self.target_peg} must be different with ord(target) > ord(initial).")
+        pegs = []
+        for code_point in range(initial_code_point, terminal_code_point + 1):
+            pegs.append(chr(code_point))
+        self.pegs=pegs
+        if not (self.initial_peg in self.pegs and self.target_peg in self.pegs and self.initial_peg != self.target_peg):
+            raise ValueError(f"Invalid initial or target peg. Must be one of {self.pegs} and different.")
+        if any(peg not in self.pegs for peg in initial_state):
+            raise ValueError(f"Invalid pegs in initial state. Must be one of {self.pegs}.")
+
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = num_disks * (degradation+10)**2
+            self.h_multiplier = self.num_disks * (degradation+10)**2
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1
         heuristic = heuristic.lower()   
         if heuristic not in ["3pegstd", "infinitepegrelaxation"]:
             raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation'.")
-        self.h_str = heuristic 
-        if len(pegs) > 3 and heuristic == "3pegstd": # definitely not optimal for bidirectional or A* for > 3 pegs
+        if len(self.pegs) > 3 and heuristic == "3pegstd": # not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False
+        self.h_str = heuristic 
         self.degradation = degradation    
-        if num_disks < 1: 
-            raise ValueError("Number of disks must be at least 1.")
-        self.num_disks = num_disks
-        self.pegs=pegs
-        if not (initial_peg in self.pegs and target_peg in self.pegs and initial_peg != target_peg):
-            raise ValueError(f"Invalid initial or target peg. Must be one of {self.pegs} and different.")
-        self.initial_peg = initial_peg
-        self.target_peg = target_peg
-        #self.aux_peg=next(p for p in self.pegs if p!=initial_peg and p!=target_peg)
-        if initial_state is None:
-            initial_state = [initial_peg] * num_disks
-        else:
-            if len(initial_state) != num_disks:
-                raise ValueError(f"Initial state must have {num_disks} disks.")
-            if any(peg not in self.pegs for peg in initial_state):
-                raise ValueError(f"Invalid pegs in initial state. Must be one of {self.pegs}.")
-        self._initial_state = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
-        self._goal_state=tuple([target_peg]*num_disks)      # (C, C, C, ..., C)
+        self.initial_state_tuple = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
+        self.goal_state_tuple=tuple(goal_state)      # (C, C, C, ..., C)
         self.cstar = cstar
-        self._str_repr=f"TowersOfHanoi-{num_disks}-{util.make_prob_str(initial_state=self._initial_state, goal_state=self._goal_state)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
+        self._str_repr=f"TowersOfHanoi-{self.num_disks}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
-        return self._initial_state
+        return self.initial_state_tuple
         
     def goal_state(self): 
-        return self._goal_state
+        return self.goal_state_tuple
         
     def is_goal(self, state, backward=False): 
         if backward:
-            return state == self._initial_state
-        return state == self._goal_state
+            return state == self.initial_state_tuple
+        return state == self.goal_state_tuple
 
     def _get_peg_tops(self, state):
         """Helper to find the smallest (topmost) disk index on each peg.

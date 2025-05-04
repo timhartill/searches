@@ -8,8 +8,9 @@ A* Search                    (f = g + h)
 """
 import time
 import util
+import data_structures
 
-
+# --- Constants ---
 algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "Astar"}
 
 
@@ -46,7 +47,7 @@ class generic_search:
         elif self.priority_key == 'h': initial_priority = h_initial
         else: initial_priority = initial_g + h_initial # 'f'
 
-        frontier = util.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
+        frontier = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
         frontier.push(start_node, initial_priority, 0) # Push with priority and tiebreaker1
         came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
         g_score = {start_node: initial_g}
@@ -123,9 +124,8 @@ class generic_search:
                             h_score = problem.heuristic(neighbor_state)  
                         else:      
                             h_score = 0
-                    frontier.push(neighbor_state, priority, self.calc_tiebreak(g=tentative_g_score, 
-                                                                               h=h_score, 
-                                                                               count_tb1=frontier.count_tb1)) # Push with priority and tiebreaker1 calculated priority
+                    frontier.push(neighbor_state, priority, 
+                                  frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
                     
         end_time = time.time()
         image_file = 'no file'
@@ -145,24 +145,6 @@ class generic_search:
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                 "max_heap_size": frontier.max_heap_size }
-
-
-    def calc_tiebreak(self, g, h, count_tb1):
-        """Calculates the tiebreaker value based on the type and values of g and h and count_tb1"""
-        if self.tiebreaker1 == 'g':
-            return g
-        elif self.tiebreaker1 == '-g':  # higher g popped first
-            return -g
-        elif self.tiebreaker1 == 'h':
-            return h
-        elif self.tiebreaker1 == 'f':
-            return g + h
-        elif self.tiebreaker1 in ['FIFO', 'LIFO']:
-            return count_tb1
-        elif self.tiebreaker1 == 'NONE':
-            return 0
-        else:
-            raise ValueError(f"Invalid tiebreaker1: {self.tiebreaker1}")
 
 
     def __str__(self): # enable str(object) to return algo name

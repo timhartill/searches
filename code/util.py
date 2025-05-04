@@ -9,7 +9,6 @@ import time
 import random
 import traceback # For error reporting
 import numpy as np
-import heapq
 
 #NP Grid  value constants
 EMPTY = 0
@@ -44,7 +43,7 @@ GRID_MAP = {
 
 
 def make_prob_serial(prob, prefix="__", suffix=""):
-    """ Make csv-friendly key for a problem description eg initial state """
+    """ Make filename-friendly key for a problem description eg initial state """
     prob_str = str(prob)
     prob_str = prob_str.replace(" ", "_").replace("(", "").replace(")", "").replace("[", "").replace("]", "").replace(",", "").replace("'", "").replace("'", "").replace('"', "")
     return prefix + prob_str + suffix
@@ -120,11 +119,18 @@ def load_scen_file(file_path):
     for line in lines:
         line = line.strip()
         if line and not line.startswith('#'):
-            cols = line.split('\t')
+            cols = line.split('\t') 
+            num_cols = len(cols)
             scenario = {}
             for col, index in SCEN_COL_MAP.items():
+                if index >= num_cols:
+                    scenario[col] = None
+                    continue
+                if cols[index].lower().strip() in ["", "[]", "()", "none", "null"]:  #movingai probs have all cols filled out. For ours we just need the .npy filename from here since start, goal coords are already on the map
+                    scenario[col] = None
+                    continue
                 scenario[col] = SCEN_COL_TYPES[col](cols[index])
-            scenario['map_dir'] = os.path.join(dir_name_map, scenario['map'])
+            scenario['map_dir'] = os.path.join(dir_name_map, scenario['map']) # map col is mandatory and hence also bucket 
             scenarios.append(scenario)
     return scenarios
 
@@ -159,7 +165,6 @@ def load_map_file(file_path):
                 print(f"Warning: Invalid character {char} in map file {file_path} at row {row}, col {col}")
     return matrix_data, heuristic
 
-
 def load_csv_file(file_path, delimiter=';', apply_col_types=True):
     """ load a generic semicolon-delimited problem file with header 
         (well actually it can load any delimited text file with a header, just set apply_col_types=False)
@@ -175,7 +180,7 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
     with open(file_path, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=delimiter)  # csv.DictReader automatically uses the first row as headers
         for row in reader:
-            data.append(row)  # DictReader yields dictionaries of strings directly
+            data.append(row)  # DictReader yields dictionaries of strings directly and trailing blank lines are ignored
     if apply_col_types:
         for problem in data:
             for col_name, col_value in problem.items():
@@ -192,8 +197,6 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
     return data
     
 
-
-
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', seed=42):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
     and a json file (with path) in the specified output directory.
@@ -205,7 +208,11 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
     out_file_base = f"{out_dir}/{out_prefix}_{time.strftime('%Y-%m-%d_%H-%M-%S')}"
     all_results = []
     for problem in problems:  # For each problem
-        print(f"\n{'=' * 20}\nSolving: {problem}\nInitial State: {problem.initial_state()}\nGoal State:    {problem.goal_state()}\nInitial Heuristic: {problem.heuristic(problem.initial_state())}\n{'-' * 20}")
+        print(f"\n{'=' * 20}")
+        print(f"Solving: {problem}\nInitial State: {problem.initial_state()}")
+        print(f"Goal State:    {problem.goal_state()}")
+        print(f"Initial Heuristic: {problem.heuristic(problem.initial_state())}")
+        print(f"{'-' * 20}")
         problem_results = []
         
         for algo in algorithms:  # For each algorithm
@@ -272,77 +279,6 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
     csv_file_path = f"{out_file_base}.csv"
     write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
     return csv_file_path
-
-
-
-class PriorityQueue:
-    """ Priority Queue implementation optionally supporting 3 levels of priority: 
-            heuristic value, tiebreaker1, tiebreaker2
-            tb2 is currently purely internally calculated for fifo/lifo
-            the tb1 value is always passed in by the caller but setting up the PriorityQueue with 
-            A tiebreaker1 of 'FIFO' OR 'LIFO' mode will set self.count_tb1 to be incremented or decremented 
-            so that the caller can access it and pass it in as the tiebreaker1 value
-    ie list of tuples (priority, tiebreaker1, tiebreaker2, item)
-    """
-    def __init__(self, tiebreaker1='FIFO', tiebreaker2='NONE'):
-        self.heap = []
-
-        self.tiebreaker1 = tiebreaker1
-        if tiebreaker1 == 'FIFO':
-            self.increment_tb1 = 1
-        elif tiebreaker1 == 'LIFO':
-            self.increment_tb1 = -1
-        else:
-            self.increment_tb1 = 0
-        self.count_tb1 = 0
-
-        self.tiebreaker2 = tiebreaker2
-        if tiebreaker2 == 'FIFO':
-            self.increment_tb2 = 1
-        elif tiebreaker2 == 'LIFO':
-            self.increment_tb2 = -1
-        else:
-            self.increment_tb2 = 0
-        self.count_tb2 = 0
-
-        self.max_heap_size = 0
-
-    def push(self, item, priority, tiebreaker1=0):
-        if self.increment_tb2:
-            entry = (priority, tiebreaker1, self.count_tb2, item)
-            self.count_tb2 += self.increment_tb2
-        else:
-            entry = (priority, tiebreaker1, item)
-        self.count_tb1 += self.increment_tb1
-        heapq.heappush(self.heap, entry)
-        if self.max_heap_size < len(self.heap):
-            self.max_heap_size = len(self.heap)
-
-    def pop(self, item_only=True):
-        if not self.isEmpty():
-            if self.increment_tb2:
-                priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
-            else:
-                priority, tiebreaker1, item = heapq.heappop(self.heap)
-                tiebreaker2 = None
-            if item_only:
-                return item
-            return item, priority, tiebreaker1, tiebreaker2
-        return None
-
-    def isEmpty(self):
-        return len(self.heap) == 0
-
-    def peek(self, priority_only=True):
-        """View the lowest priority element without popping it
-        """
-        if not self.isEmpty():
-            if priority_only:
-                return self.heap[0][0]  
-            else:
-                # Return the whole entry (priority, tiebreaker1, tiebreaker2, item)
-                return self.heap[0]
-        return None
 
 
 
