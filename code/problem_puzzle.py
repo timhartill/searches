@@ -10,7 +10,7 @@ Supports
 - Admissible or inadmissible heuristics
 - Degradation of heuristic (ignore first k elements)
 
-
+Below the puzzle classes are loading routines called from the search runner.
 
 """
 import math
@@ -47,7 +47,7 @@ class SlidingTileProblem:
                 raise ValueError("Goal state must be the same length as initial state.")
             self.goal_state_tuple = tuple(goal_state)
         else:
-            sorted_list = list(range(1, self.max_rows * self.max_cols)) + [0]
+            sorted_list = list(range(0, self.max_rows * self.max_cols))# + [0]  Korf goal = [0,1,...,15]
             self.goal_state_tuple = tuple(sorted_list)
             
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
@@ -153,20 +153,24 @@ class SlidingTileProblem:
 class PancakeProblem:
     """
     Implements the Pancake Sorting problem interface.
-    Can use uniform cost (1) or variable cost (k = pancakes flipped).
+    Can use uniform cost (1) or variable cost (k = num of pancakes flipped).
+    Note: "4 Pancake" will have goal: (1,2,3,4,5) where 5 is the table BUT states passed in should be WITHOUT the table eg (1,2,3,4)
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
                  degradation=0, heuristic = "symgap", cstar=None):
-        self.initial_state_tuple=tuple(initial_state) 
-        self.n=len(initial_state)
-        if goal_state: self.goal_state_tuple=tuple(goal_state) 
-        else: self.goal_state_tuple=tuple(sorted(initial_state))
+        table = [len(initial_state) + 1]
+        self.initial_state_tuple=tuple(list(initial_state) + table) 
+        self.n=len(self.initial_state_tuple)
+        if goal_state: 
+            self.goal_state_tuple=tuple(list(goal_state) + table) 
+        else: 
+            self.goal_state_tuple=tuple(sorted(list(self.initial_state_tuple)))
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = (not use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
-            self.h_multiplier = len(initial_state) * (degradation+10)
+            self.h_multiplier = self.n * (degradation+10)
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1    
@@ -174,7 +178,7 @@ class PancakeProblem:
         self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = heuristic   #"SymGap" # Symmetric Gap heuristic is the only one implemented
-        self._str_repr = f"Pancake-{self.n}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
+        self._str_repr = f"Pancake-{self.n-1}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
         
     def initial_state(self): 
         return self.initial_state_tuple
@@ -188,13 +192,14 @@ class PancakeProblem:
         return state == self.goal_state_tuple
 
     def get_neighbors(self, state):
-        """Returns list of tuples: (neighbor_state, k_flipped)"""
+        """Returns list of tuples: (neighbor_state, k_flipped)
+        Table (highest value) is never moved
+        """
         neighbors = []
-        for k in range(2, self.n + 1):
-            if k > 1: 
-                flipped_part = state[:k][::-1]
-                rest_part = state[k:]
-                neighbors.append((flipped_part + rest_part, k))
+        for k in range(2, self.n):
+            flipped_part = state[:k][::-1]
+            rest_part = state[k:]
+            neighbors.append((flipped_part + rest_part, k))
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -209,7 +214,7 @@ class PancakeProblem:
             k_flipped = move_info
             return k_flipped 
         else: 
-            if not hasattr(state1, '__len__') or not hasattr(state2, '__len__') or len(state1) != len(state2): return 1 
+            #if not hasattr(state1, '__len__') or not hasattr(state2, '__len__') or len(state1) != len(state2): return 1 
             n=len(state1)
             if state1 == state2: return 0 
             
@@ -237,6 +242,7 @@ class PancakeProblem:
 
             return found_k
 
+
     def gap_heuristic(self, state_1, state_2):
         """
         Calculates a heuristic value based on the order of elements in two states,
@@ -249,16 +255,11 @@ class PancakeProblem:
 
         Returns:
             An integer representing the heuristic value.
-
-        Raises:
-            ValueError: If the input states have different lengths.
         """
-        if len(state_1) != len(state_2):
-            raise ValueError("Input states must have the same length.")
 
         heuristic_value = 0
         ignored_pancakes = set(range(1, self.degradation + 1))
-        multiplier = 1
+        h_inc = 1
 
         for i in range(len(state_1) - 1):
             pancake_i = state_1[i]
@@ -267,20 +268,18 @@ class PancakeProblem:
             if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
                 continue
 
-            try:
-                goal_position_i = state_2.index(pancake_i)  # find index
-            except ValueError:
-                continue  # Handle the case where pancake_i is not in state_2
-
+            goal_position_i = state_2.index(pancake_i)  # find index
+            
             if (goal_position_i != 0 and state_2[goal_position_i - 1] == pancake_j) or \
                 (goal_position_i != len(state_1) - 1 and state_2[goal_position_i + 1] == pancake_j):
-                heuristic_value += 0
+                continue
             else:
                 if self.make_heuristic_inadmissable:
-                    multiplier = i
-                heuristic_value += multiplier
+                    h_inc = i
+                heuristic_value += h_inc
 
         return heuristic_value
+
 
     def heuristic(self, state, backward=False):
         """
@@ -289,7 +288,6 @@ class PancakeProblem:
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
         at most 2 gaps.
         """
-        #return sum(1 for i in range(self.n-1) if abs(state[i]-state[i+1]) > 1) * self.h_multiplier
         if backward: target_tuple = self.initial_state_tuple
         else: target_tuple = self.goal_state_tuple
         return max(self.gap_heuristic(state, target_tuple), 
@@ -482,6 +480,70 @@ class TowersOfHanoiProblem:
 
     def __str__(self): 
         return self._str_repr
+
+
+##############################################################
+# Problem loading and instantiation routines
+##############################################################
+
+def create_tile_probs(args):
+    """ Load tile puzzles from a csv file and return list of problem instances
+    """
+    scenarios = util.load_csv_file(args.tiles_file_full)
+    problems = []
+    for i, scenario in enumerate(scenarios):
+        if i >= args.tiles_max:
+            break
+        for heuristic in args.tiles_heur:
+            for degradation in args.tiles_degs:
+                problem = SlidingTileProblem(initial_state=scenario['initial_state'], 
+                                            goal_state=scenario['goal_state'],
+                                            use_variable_costs=args.tiles_var_cost,
+                                            make_heuristic_inadmissable=args.tiles_inadmiss,
+                                            degradation=degradation,
+                                            heuristic=heuristic,
+                                            cstar=scenario['cstar'])
+    return problems
+
+def create_pancake_probs(args):
+    """ Load pancake puzzles from a csv file and return list of problem instances
+    """
+    scenarios = util.load_csv_file(args.pancakes_file_full)
+    problems = []
+    for i, scenario in enumerate(scenarios):
+        if i >= args.pancakes_max:
+            break
+        for heuristic in args.pancakes_heur:
+            for degradation in args.pancakes_degs:
+                problem = PancakeProblem(initial_state=scenario['initial_state'], 
+                                            goal_state=scenario['goal_state'],
+                                            use_variable_costs=args.pancakes_var_cost,
+                                            make_heuristic_inadmissable=args.pancakes_inadmiss,
+                                            degradation=degradation,
+                                            heuristic=heuristic,
+                                            cstar=scenario['cstar'])
+    return problems
+
+def create_toh_probs(args):
+    """ Load toh puzzles from a csv file and return list of problem instances
+    """
+    scenarios = util.load_csv_file(args.toh_file_full)
+    problems = []
+    for i, scenario in enumerate(scenarios):
+        if i >= args.toh_max:
+            break
+        for heuristic in args.toh_heur:
+            for degradation in args.toh_degs:
+                problem = PancakeProblem(initial_state=scenario['initial_state'], 
+                                            goal_state=scenario['goal_state'],
+                                            make_heuristic_inadmissable=args.toh_inadmiss,
+                                            degradation=degradation,
+                                            heuristic=heuristic,
+                                            cstar=scenario['cstar'])
+    return problems
+
+
+
 
 
 

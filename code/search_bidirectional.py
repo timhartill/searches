@@ -106,7 +106,7 @@ class bidirectional_a_star_search:
                         f_score = tentative_g_score + h_score
                         if f_score < U: 
                             frontier_fwd.push(neighbor_state, f_score, 
-                                              frontier_fwd.calc_tiebreak1(g=tentative_g_score,  h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
+                                              frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
             if frontier_bwd:

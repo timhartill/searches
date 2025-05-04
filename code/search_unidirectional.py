@@ -83,11 +83,8 @@ class generic_search:
             
             closed_set.add(current_state) # Add after popping and checking
 
-
             current_g_score = g_score.get(current_state)
-            #if current_g_score is None:
-            #    print(f"Error: g_score for current_state {current_state} not found in g_score map. Continuing...") 
-            #    continue # Should have g_score if reached here
+
             if cstar and current_g_score < cstar:
                 nodes_expanded_below_cstar += 1
 

@@ -1,6 +1,6 @@
 """
 Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, Bidirectional A*, MCTS for Sliding Tile, Pancake, Towers of Hanoi
-- This code implements various search algorithms for solving the Sliding Tile, Pancake Sorting, Pathfinder and Towers of Hanoi problems.
+- This code implements various search algorithms for solving the Sliding Tile, Pancake, Pathfinder and Towers of Hanoi problems.
 
 Some code generated from Gemini 2.5.
 """
@@ -13,6 +13,9 @@ import argparse
 import util
 
 # problems
+import problem_puzzle
+import problem_spatial
+
 from problem_puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
 from problem_spatial import GridProblem
 
@@ -32,7 +35,10 @@ if __name__ == "__main__":
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have np-scen and np-map and eg dao-map and dao-scen etc off it.")
     parser.add_argument('--seed', default=42, type=int,
                         help="random seed") 
+
     # Matrices / Grids params
+    parser.add_argument("--grid_dir", default='matrices', type=str,
+                        help="Grid subdir off in_dir.")
     parser.add_argument("--grid", default='', type=str,
                         help="Domain portion of the grid problems to run eg dao. '' means don't run. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
     parser.add_argument('--grid_max_per_scen', default=21, type=int,
@@ -41,7 +47,7 @@ if __name__ == "__main__":
                         help="grid heuristics. Eg --grid_heur octile euclidean chebyshev manhattan")
     parser.add_argument('--grid_degs', nargs="*", default=0, type=int, 
                         help="grid heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--grid_admiss', nargs="*", default="admissable", type=str, 
+    parser.add_argument('--grid_admiss', nargs="*", default="a", type=str, 
                         help="grid heuristic admissable (a), inadmissable (i) or both. Eg --matrices_admiss a i")
     parser.add_argument('--grid_cost_multipier', default=1.0, type=float,
                         help="Any number > 1.0 will multiply the unit cost, hence weakening the heuristic which isn't multiplied by this number.")
@@ -51,6 +57,8 @@ if __name__ == "__main__":
                         help="Cost of diagonal move before cost multiplication. HOG2 grid Cstar calculations in .scen files use 2.0. Some papers use 1.5. Heuristic (and correct) estimate remains sqrt(2)=1.4142135623730951.")
     
     # Sliding Tiles params
+    parser.add_argument("--tiles_dir", default='tile', type=str,
+                        help="Tiles subdir off in_dir.")
     parser.add_argument("--tiles", default='', type=str,
                         help="File name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv or '' to skip. Should be in the tiles subdir.")
     parser.add_argument('--tiles_max', default=100, type=int,
@@ -59,12 +67,14 @@ if __name__ == "__main__":
                         help="tiles heuristics. Only manhattan implemented. Eg --tiles_heur manhattan")
     parser.add_argument('--tiles_degs', nargs="*", default=0, type=int, 
                         help="tiles heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--tiles_admiss', nargs="*", default="admissable", type=str, 
+    parser.add_argument('--tiles_admiss', nargs="*", default="a", type=str, 
                         help="tiles heuristic admissable (a), inadmissable (i) or both. Eg --tiles_admiss a i")
     parser.add_argument("--tiles_var_cost", action='store_true',
                         help="When enabled this uses the tile value as the cost rather than 1. Default is false.")
-
+    
     # Pancake params
+    parser.add_argument("--pancakes_dir", default='pancake', type=str,
+                        help="Pancakes subdir off in_dir.")
     parser.add_argument("--pancakes", default='', type=str,
                         help="File name of the pancake problems to run or '' to skip. Should be in the pancake subdir.")
     parser.add_argument('--pancakes_max', default=50, type=int,
@@ -73,12 +83,14 @@ if __name__ == "__main__":
                         help="pancakes heuristics. Only symmetric gap implemented. Eg --pancakes_heur symgap")
     parser.add_argument('--pancakes_degs', nargs="*", default=0, type=int, 
                         help="pancakes heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--pancakes_admiss', nargs="*", default="admissable", type=str, 
-                        help="pancakes heuristic admissable (a), inadmissable (i) or both. Eg --pancakes_admiss a i")
+    parser.add_argument('--pancakes_inadmiss', action='store_true', 
+                        help="pancakes heuristic admissable or inadmissable Eg --pancakes_inadmiss means make inadmissable heuristic.")
     parser.add_argument("--pancakes_var_cost", action='store_true',
                         help="When enabled this uses the num pancakes flipped as the cost rather than 1. Default is false.")
 
     # Tower of Hanoi params
+    parser.add_argument("--toh_dir", default='toh', type=str,
+                        help="Toh subdir off in_dir.")
     parser.add_argument("--toh", default='', type=str,
                         help="File name of the towers of hanoi problems to run or '' to skip. Should be in the toh subdir.")
     parser.add_argument('--toh_max', default=50, type=int,
@@ -87,8 +99,8 @@ if __name__ == "__main__":
                         help="toh heuristics. Only symmetric gap implemented. Eg --toh_heur 3pegstd, infinitepegrelaxation")
     parser.add_argument('--toh_degs', nargs="*", default=0, type=int, 
                         help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--toh_admiss', nargs="*", default="admissable", type=str, 
-                        help="toh heuristic admissable (a), inadmissable (i) or both. Eg --toh_admiss a i")
+    parser.add_argument('--toh_inadmiss', action='store_true', 
+                        help="toh heuristic admissable or inadmissable Eg --toh_inadmiss means make inadmissable heuristic.")
     #TODO: foreach algo add visualise, priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
     args = parser.parse_args()
 
@@ -96,11 +108,38 @@ if __name__ == "__main__":
     os.makedirs(args.out_dir, exist_ok=True)
     args.visualise_dir = os.path.join(args.out_dir, 'visualise')
     os.makedirs(args.visualise_dir, exist_ok=True)
+    if args.tiles:
+        args.tiles_file_full = os.path.join(args.in_dir, args.tiles_dir, args.tiles)
+        assert os.path.exists(args.tiles_file_full)
+    if args.pancakes:
+        args.pancakes_file_full = os.path.join(args.in_dir, args.pancakes_dir, args.pancakes)
+        assert os.path.exists(args.pancakes_file_full)
+    if args.toh:
+        args.toh_file_full = os.path.join(args.in_dir, args.toh_dir, args.toh)
+        assert os.path.exists(args.toh_file_full)
+    if args.grid:
+        grid_scen_dir = args.grid + "-scen"
+        args.grid_dir_full = os.path.join(args.in_dir, args.grid_dir, grid_scen_dir)
+        assert os.path.exists(args.grid_dir_full)
+
 
     print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(args)
 
     random.seed(args.seed)
+
+    if args.tiles:
+        tile_list = problem_puzzle.create_tile_probs(args)
+    if args.pancakes:
+        pancake_list = problem_puzzle.create_pancake_probs(args)
+    if args.toh:
+        toh_list = problem_puzzle.create_toh_probs(args)
+    full_prob_list = tile_list + pancake_list + toh_list
+
+    print("The following problems will be run:")
+    for prob in full_prob_list:
+        print(str(prob))
+
 
     # Problem parameters - set here globally or individually in problem definition section
     make_heuristic_inadmissable = False # Set to True to make all heuristics for all problems inadmissible
@@ -121,19 +160,23 @@ if __name__ == "__main__":
 
 
     # --- Define Problems ---
-    #tile_initial = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=3
-    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder 3x3 unit C*=31
+    tile_initial_easy = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=21
+    sliding_tile_unit_cost_easy = SlidingTileProblem(initial_state=tile_initial_easy, 
+                                                use_variable_costs=False, 
+                                                make_heuristic_inadmissable=False,
+                                                degradation=tile_degradation, cstar=None)
+    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder 3x3 unit C*=27
     #tile_initial = [15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1] # harderer 4x4 unit C*= >>31 A* ran out of memory @ 48GB
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                                degradation=tile_degradation, cstar=31)
+                                                degradation=tile_degradation, cstar=27)
     sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                use_variable_costs=True,
                                                make_heuristic_inadmissable=make_heuristic_inadmissable,
                                                degradation=tile_degradation)
 
-    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1, 10, 11, 9] # harder 4x3 unit C*=32
+    tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1, 10, 11, 9] # harder 4x3 unit C*=37
     sliding_tile_unit_cost43 = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=False,
@@ -168,6 +211,18 @@ if __name__ == "__main__":
                                       use_variable_costs=True,
                                       make_heuristic_inadmissable=make_heuristic_inadmissable,
                                       degradation=pancake_degradation)
+
+    pancake_scenarios = util.load_csv_file('/media/tim/dl3storage/gitprojects/searches/problems/pancake/14_pancake_probs1_test.csv')
+
+    pancake_unit_cost_14 = PancakeProblem(initial_state=pancake_scenarios[0]['initial_state'], 
+                                       use_variable_costs=False,
+                                       make_heuristic_inadmissable=False,
+                                       degradation=0, cstar=pancake_scenarios[0]['cstar'])  # c* = 13
+
+    pancake_unit_cost_14_d6 = PancakeProblem(initial_state=pancake_scenarios[0]['initial_state'], 
+                                       use_variable_costs=False,
+                                       make_heuristic_inadmissable=False,
+                                       degradation=6, cstar=pancake_scenarios[0]['cstar'])  # c* = 13
 
 
     hanoi_problem_3peg = TowersOfHanoiProblem(initial_state= ['A','A','A','A','A','A','A'],
@@ -377,16 +432,19 @@ if __name__ == "__main__":
                             heuristic='octile')
 
 
-    problems = [
+    problems = [ 
+        sliding_tile_unit_cost_easy,
         sliding_tile_unit_cost,
 #        sliding_tile_var_cost,
-#        sliding_tile_unit_cost43,
+        sliding_tile_unit_cost43,
 #        sliding_tile_var_cost43,
 #        sliding_tile_unit_cost43_inadmiss,
 #        sliding_tile_unit_cost43_d5,
-        sliding_tile_korf8,
+#        sliding_tile_korf8,
         pancake_unit_cost,
-#        pancake_var_cost,
+        pancake_var_cost,
+        pancake_unit_cost_14,
+#        pancake_unit_cost_14_d6,  runs in ~20GB but takes ~ 4mins
         hanoi_problem_3peg,
 #        hanoi_problem_3_indmiss,
 #        hanoi_problem_3_d5,
