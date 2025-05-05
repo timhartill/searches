@@ -5,6 +5,7 @@ Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, Bidirectional A*, MCTS for 
 Some code generated from Gemini 2.5.
 """
 import os
+import sys
 import random
 import time
 import json
@@ -16,8 +17,8 @@ import util
 import problem_puzzle
 import problem_spatial
 
-from problem_puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
-from problem_spatial import GridProblem
+#from problem_puzzle import SlidingTileProblem, PancakeProblem, TowersOfHanoiProblem
+#from problem_spatial import GridProblem
 
 # searches
 from search_mcts import heuristic_mcts_search
@@ -26,6 +27,7 @@ from search_bidirectional import bidirectional_a_star_search
 
 # --- Main Execution Logic ---
 if __name__ == "__main__":
+    #sys.argv = ['']  # For VS Code interactive window run this before the below argparse code to work around invalid error that occurs
     parser = argparse.ArgumentParser(description="Search Algorithm Comparison Runner")
     parser.add_argument("--out_dir", default='/media/tim/dl3storage/gitprojects/searches/outputs', type=str,
                         help="Full path to output directory. CSV and JSON output files will be written here.")  
@@ -34,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have np-scen and np-map and eg dao-map and dao-scen etc off it.")
     parser.add_argument('--seed', default=42, type=int,
-                        help="random seed") 
+                        help="random seed. Reset before running each algorithm on each problem.") 
 
     # Matrices / Grids params
     parser.add_argument("--grid_dir", default='matrices', type=str,
@@ -43,12 +45,15 @@ if __name__ == "__main__":
                         help="Domain portion of the grid problems to run eg dao. '' means don't run. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
     parser.add_argument('--grid_max_per_scen', default=21, type=int,
                         help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
+    parser.add_argument('--grid_reverse_scen_order', action='store_true',
+                        help="If set, reverse the order of entries in each scen file before selection of --grid_max_per_scen entries (noting that higher cstar problems tend to occur later in file i.e. files are ordered by c* buckets of ~10 problems)")
+    
     parser.add_argument('--grid_heur', nargs="*", default="octile", type=str, 
                         help="grid heuristics. Eg --grid_heur octile euclidean chebyshev manhattan")
     parser.add_argument('--grid_degs', nargs="*", default=0, type=int, 
                         help="grid heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--grid_admiss', nargs="*", default="a", type=str, 
-                        help="grid heuristic admissable (a), inadmissable (i) or both. Eg --matrices_admiss a i")
+    parser.add_argument('--grid_inadmiss', action='store_true', 
+                        help="grid heuristic admissable or inadmissable Eg --grid_inadmiss means make inadmissable heuristic.")
     parser.add_argument('--grid_cost_multipier', default=1.0, type=float,
                         help="Any number > 1.0 will multiply the unit cost, hence weakening the heuristic which isn't multiplied by this number.")
     parser.add_argument("--grid_allow_diag", action='store_true',
@@ -67,8 +72,8 @@ if __name__ == "__main__":
                         help="tiles heuristics. Only manhattan implemented. Eg --tiles_heur manhattan")
     parser.add_argument('--tiles_degs', nargs="*", default=0, type=int, 
                         help="tiles heuristic degradation(s) to run. Eg 0 1 2 3")
-    parser.add_argument('--tiles_admiss', nargs="*", default="a", type=str, 
-                        help="tiles heuristic admissable (a), inadmissable (i) or both. Eg --tiles_admiss a i")
+    parser.add_argument('--tiles_inadmiss', action='store_true', 
+                        help="tiles heuristic admissable or inadmissable Eg --tiles_inadmiss means make inadmissable heuristic.")
     parser.add_argument("--tiles_var_cost", action='store_true',
                         help="When enabled this uses the tile value as the cost rather than 1. Default is false.")
     
@@ -101,8 +106,43 @@ if __name__ == "__main__":
                         help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
     parser.add_argument('--toh_inadmiss', action='store_true', 
                         help="toh heuristic admissable or inadmissable Eg --toh_inadmiss means make inadmissable heuristic.")
-    #TODO: foreach algo add visualise, priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
+    
+    # Algorithm params
+    parser.add_argument('--algo_timeout', default=10.0, type=float,
+                        help="Maximum time in minutes to allow any algorithm to run for. If exceeded, statistics to that point are returned along with status of 'timeout'. Normal return status = 'completed'. It is important to set this value such that no algorithm OOMs on the particular machine running the experiments.") 
+    parser.add_argument('--algo_visualise', action='store_true', 
+                        help="Output .png files showing nodes expanded, path, metting point etc for each algorithm and problem type that supports this.")
+
+    # Unidirectional search args
+    parser.add_argument('--algo_uni', nargs="*", default="astar", type=str, 
+                        help="which unidirectional searches to run. Pass NONE to not run any: eg --algo_uni astar uniformcost bestfirst. Will set priority key to g+h, g and/or h appropriately")
+    parser.add_argument('--algo_uni_astar_tiebreaker1', nargs="*", default="negg", type=str, 
+                        help="Which primary tiebreaker(s) for astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_uni_astar_tiebreaker1 negg g R")
+    parser.add_argument('--algo_uni_uniformcost_tiebreaker1', nargs="*", default="negg", type=str, 
+                        help="Which primary tiebreaker for uniform cost / dijkstra. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_uniformcost_tiebreaker1 negg g R")
+    parser.add_argument('--algo_uni_bestfirst_tiebreaker1', nargs="*", default="negg", type=str, 
+                        help="Which primary tiebreaker for Best First search. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_bestfirst_tiebreaker1 negg g R")
+    parser.add_argument('--algo_uni_astar_tiebreaker2', nargs="*", default="NONE", type=str, 
+                        help="Which secondary tiebreaker(s) for astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_uni_astar_tiebreaker2 negg g R")
+    parser.add_argument('--algo_uni_uniformcost_tiebreaker2', nargs="*", default="NONE", type=str, 
+                        help="Which secondary tiebreaker for uniform cost / dijkstra. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_uniformcost_tiebreaker2 negg g R")
+    parser.add_argument('--algo_uni_bestfirst_tiebreaker2', nargs="*", default="NONE", type=str, 
+                        help="Which secondary tiebreaker for Best First search. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_bestfirst_tiebreaker2 negg g R")
+
+    # Bidirectional search args
+    parser.add_argument('--algo_bdhs', nargs="*", default="bdastar", type=str, 
+                        help="which bidirectional searches to run. Pass NONE to not run any: eg --algo_bdhs bdastar. Currently only bdastar is implemented.")
+    parser.add_argument('--algo_bdhs_bdastar_tiebreaker1', nargs="*", default="negg", type=str, 
+                        help="Which primary tiebreaker(s) for bidirectional astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_bdhs_bdastar_tiebreaker1 negg g R")
+    parser.add_argument('--algo_bdhs_bd astar_tiebreaker2', nargs="*", default="NONE", type=str, 
+                        help="Which secondary tiebreaker(s) for bidirectional astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_bdhs_bdastar_tiebreaker2 negg g R")
+
+    # Monte Carlo Tree Search (MCTS) args
+
+
+    #TODO: foreach algo add priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
     args = parser.parse_args()
+    # parser.print_help()
 
     # Set up output directories if they don't exist
     os.makedirs(args.out_dir, exist_ok=True)
@@ -134,22 +174,15 @@ if __name__ == "__main__":
         pancake_list = problem_puzzle.create_pancake_probs(args)
     if args.toh:
         toh_list = problem_puzzle.create_toh_probs(args)
-    full_prob_list = tile_list + pancake_list + toh_list
+    if args.grid:
+        grid_list = problem_spatial.create_grid_probs(args)
+
+    problems = tile_list + pancake_list + toh_list + grid_list
 
     print("The following problems will be run:")
-    for prob in full_prob_list:
+    for prob in problems:
         print(str(prob))
 
-
-    # Problem parameters - set here globally or individually in problem definition section
-    make_heuristic_inadmissable = False # Set to True to make all heuristics for all problems inadmissible
-    tile_degradation = 0
-    pancake_degradation = 4
-    hanoi_degradation = 0
-
-    #matrix_10yX10x.npy   # w/o diagonal C*=22 allowing diag C* = 15.899
-    #matrix_20yX100x.npy w/o diag C*=176 with diag C*= 152.58
-    #matrix_1000yX1000x.npy w/o diag C*= 4330 with diag C* = 3881.87
 
     # Search Parameters - set here globally or individually in algorithm definition section
     # MCTS
@@ -158,227 +191,49 @@ if __name__ == "__main__":
     heuristic_weight = 100.0    # MCTS
 
 
-
-    # --- Define Problems ---
-    tile_initial_easy = [1, 2, 3, 0, 4, 6, 7, 5, 8] # Medium unit C*=21
-    sliding_tile_unit_cost_easy = SlidingTileProblem(initial_state=tile_initial_easy, 
-                                                use_variable_costs=False, 
-                                                make_heuristic_inadmissable=False,
-                                                degradation=tile_degradation, cstar=None)
+    """
+    # --- Example Problems ---
     tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1] # harder 3x3 unit C*=27
     #tile_initial = [15, 11, 12, 14, 9, 13, 10, 8, 6, 7, 2, 5, 4, 3, 0, 1] # harderer 4x4 unit C*= >>31 A* ran out of memory @ 48GB
     sliding_tile_unit_cost = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
-                                                make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                                degradation=tile_degradation, cstar=27)
-    sliding_tile_var_cost = SlidingTileProblem(initial_state=tile_initial, 
-                                               use_variable_costs=True,
-                                               make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                               degradation=tile_degradation)
-
+                                                make_heuristic_inadmissable=False,
+                                                degradation=0, cstar=27)
     tile_initial = [8, 6, 7, 2, 5, 4, 3, 0, 1, 10, 11, 9] # harder 4x3 unit C*=37
     sliding_tile_unit_cost43 = SlidingTileProblem(initial_state=tile_initial, 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=False,
-                                                degradation=tile_degradation)
-    sliding_tile_var_cost43 = SlidingTileProblem(initial_state=tile_initial, 
-                                               use_variable_costs=True,
-                                               make_heuristic_inadmissable=False,
-                                               degradation=tile_degradation)
-    sliding_tile_unit_cost43_inadmiss = SlidingTileProblem(initial_state=tile_initial, 
-                                               use_variable_costs=False,
-                                               make_heuristic_inadmissable=True,
-                                               degradation=tile_degradation)
-    sliding_tile_unit_cost43_d5 = SlidingTileProblem(initial_state=tile_initial, 
-                                                use_variable_costs=False, 
-                                                make_heuristic_inadmissable=False,
-                                                degradation=5)
-
+                                                degradation=0, cstar=37)
     tile_scenarios = util.load_csv_file('/media/tim/dl3storage/gitprojects/searches/problems/tile/15_puzzle_probs100_korf_std.csv')
     sliding_tile_korf8 = SlidingTileProblem(initial_state=tile_scenarios[8]['initial_state'], 
                                                 use_variable_costs=False, 
                                                 make_heuristic_inadmissable=False,
                                                 degradation=0, cstar=tile_scenarios[8]['cstar'])
-
-
     pancake_initial = (8, 3, 5, 1, 6, 4, 2, 7) # C*=8
     pancake_unit_cost = PancakeProblem(initial_state=pancake_initial, 
                                        use_variable_costs=False,
-                                       make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                       degradation=pancake_degradation, cstar=8)
-
-    pancake_var_cost = PancakeProblem(initial_state=pancake_initial, 
-                                      use_variable_costs=True,
-                                      make_heuristic_inadmissable=make_heuristic_inadmissable,
-                                      degradation=pancake_degradation)
-
+                                       make_heuristic_inadmissable=False,
+                                       degradation=0, cstar=8)
     pancake_scenarios = util.load_csv_file('/media/tim/dl3storage/gitprojects/searches/problems/pancake/14_pancake_probs1_test.csv')
-
     pancake_unit_cost_14 = PancakeProblem(initial_state=pancake_scenarios[0]['initial_state'], 
                                        use_variable_costs=False,
                                        make_heuristic_inadmissable=False,
                                        degradation=0, cstar=pancake_scenarios[0]['cstar'])  # c* = 13
-
-    pancake_unit_cost_14_d6 = PancakeProblem(initial_state=pancake_scenarios[0]['initial_state'], 
-                                       use_variable_costs=False,
-                                       make_heuristic_inadmissable=False,
-                                       degradation=6, cstar=pancake_scenarios[0]['cstar'])  # c* = 13
-
-
-    hanoi_problem_3peg = TowersOfHanoiProblem(initial_state= ['A','A','A','A','A','A','A'],
-                                                goal_state = ['C','C','C','C','C','C','C'],
-                                                make_heuristic_inadmissable=False,  heuristic='3PegStd',
-                                                degradation=hanoi_degradation, cstar=127)
-
     hanoi_problem_4Tower_InfPeg = TowersOfHanoiProblem(initial_state= ['A','A','A','A','A','A','A'],
                                                        goal_state = ['D','D','D','D','D','D','D'],
                                                        make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
-                                                       degradation=hanoi_degradation, cstar=25)
+                                                       degradation=0, cstar=25)
     hanoi_problem_4Tower_InfPeg_state2 = TowersOfHanoiProblem(initial_state= ['B', 'B', 'C', 'C', 'D', 'A', 'A'],
                                                        goal_state = ['D','D','D','D','D','D','D'],
                                                        make_heuristic_inadmissable=False,  heuristic='InfinitePegRelaxation',
                                                        degradation=hanoi_degradation, cstar=18)
-
-
-    hanoi_problem_4Tower_InfPeg_12disk_randstart = TowersOfHanoiProblem(initial_state= ['A','B','A','C','A','D','A','B','A','C','A','A'],
-                                                              goal_state = ['D','D','D','D','D','D','D','D','D','D','D','D'],
-                                                              make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
-                                                              degradation=0, cstar=65)
-
-
-    hanoi_problem_4Tower_InfPeg_12disk = TowersOfHanoiProblem(initial_state= ['A','A','A','A','A','A','A','A','A','A','A','A'],
-                                                              goal_state = ['D','D','D','D','D','D','D','D','D','D','D','D'],
-                                                              make_heuristic_inadmissable=False, heuristic='InfinitePegRelaxation',
-                                                              degradation=0, cstar=81)
-
-
-    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/np-scen/matrix_10yX10x.scen')
-
-
-    grid_easy_unit = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=False, heuristic='manhattan')
-
-    grid_easy_unit_diag_octile = GridProblem(grid_scenarios[0]['map_dir'],
-                    initial_state=None, goal_state=None, cost_multiplier=1,
-                    make_heuristic_inadmissable=False, degradation=0,
-                    allow_diagonal=True, heuristic='octile')
-
-    grid_easy_unit_diag_octile_d5 = GridProblem(grid_scenarios[0]['map_dir'],
-                    initial_state=None, goal_state=None, cost_multiplier=1,
-                    make_heuristic_inadmissable=False, degradation=5,
-                    allow_diagonal=True, heuristic='octile')
-
-
-    grid_easy_unit_diag_manhattan = GridProblem(grid_scenarios[0]['map_dir'],
-                    initial_state=None, goal_state=None, cost_multiplier=1,
-                    make_heuristic_inadmissable=False, degradation=0,
-                    allow_diagonal=True, heuristic='manhattan')
-
-    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/np-scen/matrix_20yX100x.scen')
-
-    grid_harder_unit = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=False, heuristic='manhattan')
-
-    grid_harder_unit_d500 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=500,
-                   allow_diagonal=False, heuristic='manhattan')
-
-
-    grid_harder_unit_diag_octile = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='octile')
-
-    grid_harder_unit_diag_octile_d5 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=True, heuristic='octile')
-
-
-    grid_harder_unit_diag_euc = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='euclidean')
-
-    grid_harder_unit_diag_euc_d5 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=True, heuristic='euclidean')
-
-    grid_harder_unit_diag_euc_d500 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=500,
-                   allow_diagonal=True, heuristic='euclidean')
-
-
-    grid_harder_unit_diag_che = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='chebyshev')
-
-    grid_harder_unit_diag_che_d5 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=True, heuristic='chebyshev')
-
-
-    grid_harder_unit_diag_octile_d0 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=True, degradation=0,
-                   allow_diagonal=True, heuristic='octile', cstar=176)
-
-    grid_harder_unit_diag_euc_d0_cm1000 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1000,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='euclidean')
-
-    grid_harder_unit_diag_euc_d500_cm1000 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1000,
-                   make_heuristic_inadmissable=False, degradation=500,
-                   allow_diagonal=True, heuristic='euclidean')
-
     grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/np-scen/matrix_1000yX1000x.scen')
-
     grid_harder1000x1000_unit_diag_mh_d0_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
                    initial_state=None, goal_state=None, cost_multiplier=1,
                    make_heuristic_inadmissable=False, degradation=0,
                    allow_diagonal=False, heuristic='manhattan')
-
-    grid_harder1000x1000_unit_diag_mh_d5_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=False, heuristic='manhattan')
-
-
-    grid_harder1000x1000_unit_diag_euc_d0_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='euclidean')
-
-    grid_harder1000x1000_unit_diag_euc_d5_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=True, heuristic='euclidean')
-
-    grid_harder1000x1000_unit_nodiag_euc_d0_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=False, heuristic='euclidean')
-
-    grid_harder1000x1000_unit_nodiag_euc_d5_cm1 = GridProblem(grid_scenarios[0]['map_dir'],
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=5,
-                   allow_diagonal=False, heuristic='euclidean')
-
-
     # Load grid problems from .map files
-    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/dao-scen/brc505d.map.scen')
-    
+    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/dao-scen/brc505d.map.scen')    
     grid_dao1 = GridProblem(grid_scenarios[2]['map_dir'], 
                             initial_state=[grid_scenarios[2]['start_y'], grid_scenarios[2]['start_x']], 
                             goal_state=[grid_scenarios[2]['goal_y'], grid_scenarios[2]['goal_x']], 
@@ -386,35 +241,7 @@ if __name__ == "__main__":
                             make_heuristic_inadmissable=False, degradation=0,
                             allow_diagonal=True, 
                             heuristic='octile')
-
-    grid_dao2 = GridProblem(grid_scenarios[1509]['map_dir'], 
-                            initial_state=[grid_scenarios[1509]['start_y'], grid_scenarios[1509]['start_x']], 
-                            goal_state=[grid_scenarios[1509]['goal_y'], grid_scenarios[1509]['goal_x']], 
-                            cost_multiplier=1,
-                            make_heuristic_inadmissable=False, degradation=0,
-                            allow_diagonal=True, 
-                            heuristic='octile')
-
-    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/maze-scen/maze512-32-9.map.scen')
-    
-    grid_dao3 = GridProblem(grid_scenarios[-2]['map_dir'], 
-                            initial_state=[grid_scenarios[-2]['start_y'], grid_scenarios[-2]['start_x']], 
-                            goal_state=[grid_scenarios[-2]['goal_y'], grid_scenarios[-2]['goal_x']], 
-                            cost_multiplier=1,
-                            make_heuristic_inadmissable=False, degradation=0,
-                            allow_diagonal=True, 
-                            heuristic='octile')
-
-    grid_dao4 = GridProblem(grid_scenarios[-1]['map_dir'], 
-                            initial_state=[grid_scenarios[-1]['start_y'], grid_scenarios[-1]['start_x']], 
-                            goal_state=[grid_scenarios[-1]['goal_y'], grid_scenarios[-1]['goal_x']], 
-                            cost_multiplier=1,
-                            make_heuristic_inadmissable=False, degradation=0,
-                            allow_diagonal=True, 
-                            heuristic='octile')
-
-    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/maze-scen/maze512-1-6.map.scen')
-    
+    grid_scenarios = util.load_scen_file('/media/tim/dl3storage/gitprojects/searches/problems/matrices/maze-scen/maze512-1-6.map.scen')    
     grid_dao5 = GridProblem(grid_scenarios[12346]['map_dir'], 
                             initial_state=[grid_scenarios[12346]['start_y'], grid_scenarios[12346]['start_x']], 
                             goal_state=[grid_scenarios[12346]['goal_y'], grid_scenarios[12346]['goal_x']], 
@@ -422,73 +249,7 @@ if __name__ == "__main__":
                             make_heuristic_inadmissable=False, degradation=0,
                             allow_diagonal=True, diag_cost=2.0,
                             heuristic='octile', cstar=grid_scenarios[12346]['cstar'])
-
-    grid_dao6 = GridProblem(grid_scenarios[12346]['map_dir'], 
-                            initial_state=[grid_scenarios[12346]['start_y'], grid_scenarios[12346]['start_x']], 
-                            goal_state=[grid_scenarios[12346]['goal_y'], grid_scenarios[12346]['goal_x']], 
-                            cost_multiplier=1,
-                            make_heuristic_inadmissable=True, degradation=0,
-                            allow_diagonal=True, diag_cost=2.0,
-                            heuristic='octile')
-
-
-    problems = [ 
-        sliding_tile_unit_cost_easy,
-        sliding_tile_unit_cost,
-#        sliding_tile_var_cost,
-        sliding_tile_unit_cost43,
-#        sliding_tile_var_cost43,
-#        sliding_tile_unit_cost43_inadmiss,
-#        sliding_tile_unit_cost43_d5,
-#        sliding_tile_korf8,
-        pancake_unit_cost,
-        pancake_var_cost,
-        pancake_unit_cost_14,
-#        pancake_unit_cost_14_d6,  runs in ~20GB but takes ~ 4mins
-        hanoi_problem_3peg,
-#        hanoi_problem_3_indmiss,
-#        hanoi_problem_3_d5,
-#        hanoi_problem_3_infpeg,
-#        hanoi_problem_3_infpeg_indmiss,
-#        hanoi_problem_3_infpeg_d5,
-#        hanoi_problem_4Tower_3peg,
-         hanoi_problem_4Tower_InfPeg,
-         hanoi_problem_4Tower_InfPeg_state2,
-#         hanoi_problem_4Tower_InfPeg_state3,
-#        hanoi_problem_4Tower_3peg_inadmiss,
-#        hanoi_problem_4Tower_InfPeg_inadmiss,
-#        hanoi_problem_4Tower_InfPeg_d5,
-#         hanoi_problem_4Tower_InfPeg_12disk_randstart,
-#        hanoi_problem_4Tower_InfPeg_12disk,  # uniform costs takes 4mins, generates 16M expansions, only ~11GB ram
-#        grid_easy_unit,
-#        grid_easy_unit_diag_octile,
-#        grid_easy_unit_diag_octile_d5,
-#        grid_easy_unit_diag_manhattan,
-#        grid_harder_unit,
-#        grid_harder_unit_d500,
-        grid_harder_unit_diag_octile,
-#        grid_harder_unit_diag_octile_d5,
-#        grid_harder_unit_diag_euc,
-#        grid_harder_unit_diag_euc_d5,
-#        grid_harder_unit_diag_euc_d500,
-#        grid_harder_unit_diag_che,
-#        grid_harder_unit_diag_che_d5,
-#        grid_harder_unit_diag_octile_d0,
-#        grid_harder_unit_diag_euc_d0_cm1000,
-#        grid_harder_unit_diag_euc_d500_cm1000,
-#        grid_harder1000x1000_unit_diag_mh_d0_cm1,
-#        grid_harder1000x1000_unit_diag_mh_d5_cm1,
-#        grid_harder1000x1000_unit_diag_euc_d0_cm1,
-#        grid_harder1000x1000_unit_diag_euc_d5_cm1,
-#        grid_harder1000x1000_unit_nodiag_euc_d0_cm1,
-#        grid_harder1000x1000_unit_nodiag_euc_d5_cm1,
-        grid_dao1,
-        grid_dao2,
-        grid_dao3,
-        grid_dao4,
-        grid_dao5,
-        grid_dao6,
-    ]
+    """
 
     # --- Define Algorithms ie give algorithm setups with differing params, unique fn names ---
     run_ucs = generic_search(priority_key='g', tiebreaker1='NONE', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)

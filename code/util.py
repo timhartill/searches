@@ -88,29 +88,39 @@ def write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'],
 
 
 def load_scen_file(file_path):
-    """ Load a scenario file downloaded from https://www.movingai.com/benchmarks/grids.html  
+    """ Load a scenario file possibly downloaded from HOG2 (https://www.movingai.com/benchmarks/grids.html)
     The first line is the version and is skipped
+
     Remaining lines are tab delimited columns: 
     Bucket	map	map width	map height	start x-coordinate	start y-coordinate	goal x-coordinate	goal y-coordinate	optimal length 
-    Code assumes all columns have valid values ie no missing values handling
-    
-    The .scen files are in a directory named after the domain + "-scen" eg dao-scen
-    The corresponding .map files are in a directory named after the domain + "-map" eg dao-map
 
-    Note: The optimal paths from our algorithms match the "optimal length" value supplied when diag cost is 2 
+    if using one of our numpy files as the grid, the corresponding scen file must contain at least Bucket and map
+        
+    The .scen files are in a directory named after the domain + "-scen" eg dao-scen
+    The corresponding .map files are in a directory named after the domain + "-map" eg dao-map.
+
+    /dao-scen and /dao-map are assumed to be in the same directory eg .../problems/matrices
+
+    Outputs a list of scenario dictionaries of format:
+    "Bucket": str, "map": str, "width": int, "height": int, "start_x": int, "start_y": int, 
+    "goal_x": int, "goal_y": int, "cstar": float, "map_dir": str, "initial_state": list, "goal_state": list
+
+    Note: Different HOG2 problems seem to use different diagonal costs hence it is hard to consistently replicate their cstar calculations. 
+         Some eg maze512-1-6.map.scen use diag cost is 2 (and our cost multiplier = 1.0) but others use differing costs...
+         Therefore we have created scen files for all the HOG2 problems that we have downloaded to output with diag cost 1.5 following Alacazar 2020
     """
     if not file_path.endswith('.scen'):
         raise ValueError(f"File {file_path} is not a .scen file")
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File {file_path} does not exist")
     
-    dir_basepath = os.path.dirname(file_path)       # '/home/user/dao-scen'
+    dir_basepath = os.path.dirname(file_path)       # '/problems/matrices/dao-scen'
     dir_name = os.path.basename(dir_basepath)       # 'dao-scen'
-    dir_basepath = os.path.dirname(dir_basepath)    # '/home/user'
+    dir_basepath = os.path.dirname(dir_basepath)    # '/problems/matrices'
     if not dir_name.endswith('-scen'):
         dir_name_map = ''
     else:
-        dir_name_map = os.path.join(dir_basepath, dir_name[:-len('-scen')] + '-map')  # '/home/user/dao-map'
+        dir_name_map = os.path.join(dir_basepath, dir_name[:-len('-scen')] + '-map')  # '/problems/matrices/dao-map'
        
     with open(file_path, 'r') as f:
         lines = f.readlines()
@@ -131,6 +141,12 @@ def load_scen_file(file_path):
                     continue
                 scenario[col] = SCEN_COL_TYPES[col](cols[index])
             scenario['map_dir'] = os.path.join(dir_name_map, scenario['map']) # map col is mandatory and hence also bucket 
+            scenario['initial_state'] = None
+            if scenario['start_x'] and scenario['start_y']:
+                scenario['initial_state'] = [scenario['start_y'], scenario['start_x']]
+            scenario['goal_state'] = None
+            if scenario['goal_x'] and scenario['goal_y']:
+                scenario['goal_state'] = [scenario['goal_y'], scenario['goal_x']]
             scenarios.append(scenario)
     return scenarios
 

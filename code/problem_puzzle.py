@@ -503,6 +503,7 @@ def create_tile_probs(args):
                                             degradation=degradation,
                                             heuristic=heuristic,
                                             cstar=scenario['cstar'])
+                problems.append(problem)
     return problems
 
 def create_pancake_probs(args):
@@ -522,6 +523,7 @@ def create_pancake_probs(args):
                                             degradation=degradation,
                                             heuristic=heuristic,
                                             cstar=scenario['cstar'])
+                problems.append(problem)
     return problems
 
 def create_toh_probs(args):
@@ -534,12 +536,13 @@ def create_toh_probs(args):
             break
         for heuristic in args.toh_heur:
             for degradation in args.toh_degs:
-                problem = PancakeProblem(initial_state=scenario['initial_state'], 
+                problem = TowersOfHanoiProblem(initial_state=scenario['initial_state'], 
                                             goal_state=scenario['goal_state'],
                                             make_heuristic_inadmissable=args.toh_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
                                             cstar=scenario['cstar'])
+                problems.append(problem)
     return problems
 
 

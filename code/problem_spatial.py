@@ -348,78 +348,40 @@ class GridProblem:
         return self._str_repr
 
 
+##############################################################
+# Problem loading and instantiation routines
+##############################################################
 
-"""
-# tests
-#'/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy'
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='manhattan')
-test._str_repr
-test.grid
-test.initial_state() # (1, 0)
-test.goal_state() # (6,9)
-test.is_goal((1,0))
-test.get_neighbors((1,0))
-test.get_cost((1,0), (2,1), 5)
-test.heuristic((1,0))
-test.heuristic((6,9))
+def create_grid_probs(args):
+    """ Load grid problems from a scen file and return list of problem instances
+    """
+    problems = []
 
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=5,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='manhattan')
-test._str_repr
-test.grid
-test.initial_state() # (0, 0)
-test.goal_state() # (9,9)
-test.get_neighbors((0,0))
-test.get_cost((0,0), (1,1), 5)
-test.heuristic((0,0))
+    scen_files = os.listdir(args.grid_dir_full)
+    for scen_file in scen_files:
+        if not scen_file.endswith('.scen'):
+            continue
+        scenarios = util.load_scen_file( os.path.join(args.grid_dir_full, scen_file) )
+        if args.grid_reverse_scen_order:
+            scenarios.reverse()    
 
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=5,
-                   make_heuristic_inadmissable=True, degradation=0,
-                   allow_diagonal=True, heuristic='manhattan')
-test.heuristic((0,0))  # 900
+        for i, scenario in enumerate(scenarios):
+            if i >= args.grid_max_per_scen:
+                break
+            for heuristic in args.grid_heur:
+                for degradation in args.grid_degs:
+                    problem = GridProblem(  grid_file=scenario['map_dir'],
+                                            initial_state=scenario['initial_state'], 
+                                            goal_state=scenario['goal_state'],
+                                            cost_multiplier=args.grid_cost_multipier,
+                                            make_heuristic_inadmissable=args.grid_inadmiss,
+                                            degradation=degradation,
+                                            allow_diagonal=args.grid_allow_diag,
+                                            diag_cost=args.grid_diag_cost,
+                                            heuristic=heuristic,
+                                            cstar=scenario['cstar'])
+                    problems.append(problem)
+    return problems
 
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=5,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='euclidean')
-test.heuristic((0,0))  # 12.72
 
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=5,
-                   make_heuristic_inadmissable=True, degradation=0,
-                   allow_diagonal=True, heuristic='euclidean')
-test.heuristic((0,0))  # 636.39
-
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=5,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='octile')
-test.heuristic((0,0))  # 636.39
-
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='manhattan')
-test.heuristic((0,0))  # 18
-
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_10yX10x.npy',
-                   initial_state=[0,0], goal_state=[9,9], cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=4,
-                   allow_diagonal=True, heuristic='manhattan')
-test.heuristic((0,0))  # 3.6
-
-test = GridProblem('/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy',
-                   initial_state=None, goal_state=None, cost_multiplier=1,
-                   make_heuristic_inadmissable=False, degradation=0,
-                   allow_diagonal=True, heuristic='manhattan')
-test.visualise(cell_size=10, output_filename='/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.png', display=True)
-
-grid_path = '/media/tim/dl3storage/gitprojects/searches/problems/matrices/matrix_20yX100x.npy'
-"""
 
