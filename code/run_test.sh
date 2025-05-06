@@ -125,14 +125,23 @@ options:
                         --toh_inadmiss means make inadmissable heuristic.
 comment
 
-#12_puzzle_probs1_easytest.csv"
+#daotest
+#"15_puzzle_probs1_testcstar66.csv"
+#"12_puzzle_probs1_easytest.csv"
+#"8_puzzle_probs2_easytest.csv"
+#"14_pancake_probs2_test.csv"
+#"7_toh_probs3_easytest13peg24peg.csv"
+
+#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
+#--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
+
 
 python search_runner.py \
         --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid daotest \
+        --grid "" \
         --grid_max_per_scen 2 \
         --grid_reverse_scen_order \
         --grid_heur octile \
@@ -140,7 +149,7 @@ python search_runner.py \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
-        --tiles "8_puzzle_probs2_easytest.csv" \
+        --tiles "15_puzzle_probs1_testcstar66.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
@@ -152,5 +161,10 @@ python search_runner.py \
         --toh_max 100 \
         --toh_heur infinitepegrelaxation \
         --toh_degs 0 2 \
-        --algo_timeout 30 \
+        --algo_visualise \
+        --algo_timeout 120 \
+        --algo_min_remaining_gb 2.0 \
+        --algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
+        --algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
+
 

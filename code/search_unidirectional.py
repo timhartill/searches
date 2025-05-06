@@ -11,7 +11,6 @@ import util
 import data_structures
 
 # --- Constants ---
-# enumerate all possibilities, even silly ones
 algo_name_map = {'g': "UniformCost", 'h': "GreedyBestFirst", 'f': "Astar"}
 
 
@@ -22,7 +21,8 @@ class generic_search:
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', visualise=True, visualise_dirname=''):
+    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
+                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0):
         """
         :param problem: The search problem to solve
         :param priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
@@ -30,6 +30,9 @@ class generic_search:
         :param tiebreaker2: 2nd level Tiebreaker for the priority queue. Can be 'FIFO', 'LIFO', or 'NONE' for no 2nd level.
         """
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
+        self.timeout = timeout
+        self.min_ram = min_ram
+        self.status = ""
         self.priority_key = priority_key
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
@@ -64,6 +67,8 @@ class generic_search:
         else:
             cstar = None
         nodes_expanded_below_cstar = 0
+        i = 0
+        checkmem = 100000
 
         while not frontier.isEmpty():
 
@@ -114,26 +119,28 @@ class generic_search:
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
-                    #priority = tentative_g_score # Default for 'g'
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost...
-                    #if self.priority_key in ['h', 'f']:
-                    #    h_score = problem.heuristic(neighbor_state)
-                    #    if self.priority_key == 'h': priority = h_score
-                    #    elif self.priority_key == 'f': priority = tentative_g_score + h_score
-                    #else: # 'g'
-                    #    if self.tiebreaker1 in ['h', 'f']:  # enable "heuristic uni cost"
-                    #        h_score = problem.heuristic(neighbor_state)  
-                    #    else:      
-                    #        h_score = 0
                     frontier.push(neighbor_state, 
                                   frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                   frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
-                    
+            if (time.time()-start_time)/60.0 > self.timeout:
+                self.status = f"Timeout after {(time.time()-start_time)/60:.4f} mins."
+                break
+            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
+                self.status = f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
+                break
+            i += 1
+
         end_time = time.time()
         image_file = 'no file'
-
+        if not self.status:
+            self.status = "Completed."
+        else:
+            print(self.status)
         if found_path:
             path = reconstruct_path(came_from, start_node, found_path)
+            if not path:
+                self.status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
                                                visited_fwd=closed_set, visualise_dirname=self.visualise_dirname)
@@ -142,11 +149,13 @@ class generic_search:
 
             return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
-                    "max_heap_size": frontier.max_heap_size}
+                    "max_heap_size": frontier.max_heap_size, "status": self.status}
+
+        self.status += " No path found."
 
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
-                "max_heap_size": frontier.max_heap_size }
+                "max_heap_size": frontier.max_heap_size, "status": self.status }
 
 
     def __str__(self): # enable str(object) to return algo name

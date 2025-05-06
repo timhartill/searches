@@ -25,6 +25,25 @@ from search_mcts import heuristic_mcts_search
 from search_unidirectional import generic_search
 from search_bidirectional import bd_generic_search
 
+# map search algorithm input string to a search class and it's parameters
+# Edit this dict to add new algorithms and if necessary add "from newsearch import supersearch" above
+SEARCH_MAP = {
+    "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "uc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
+    "huc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
+    "bfs": {"class":generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
+    "bd_astar": {"class":bd_generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "bd_uc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
+    "bd_huc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
+    "bd_bfs": {"class":bd_generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
+    # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
+    "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
+    "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
+    "mcts_rolloutheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": True},
+    "mcts_bothheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": True},
+}
+
+
 # --- Main Execution Logic ---
 if __name__ == "__main__":
     #sys.argv = ['']  # For VS Code interactive window run this before the below argparse code to work around invalid error that occurs
@@ -107,35 +126,29 @@ if __name__ == "__main__":
     parser.add_argument('--toh_inadmiss', action='store_true', 
                         help="toh heuristic admissable or inadmissable Eg --toh_inadmiss means make inadmissable heuristic.")
     
-    # Algorithm params
-    parser.add_argument('--algo_timeout', default=10.0, type=float,
+    # Algorithm params over all searches
+    parser.add_argument('--algo_timeout', default=30.0, type=float,
                         help="Maximum time in minutes to allow any algorithm to run for. If exceeded, statistics to that point are returned along with status of 'timeout'. Normal return status = 'completed'. It is important to set this value such that no algorithm OOMs on the particular machine running the experiments.") 
+    parser.add_argument('--algo_min_remaining_gb', default=2.0, type=float,
+                        help="Minimum GB RAM remaining before algorithm is killed.") 
     parser.add_argument('--algo_visualise', action='store_true', 
                         help="Output .png files showing nodes expanded, path, meeting point etc for each algorithm and problem type that supports this.")
 
-    # Unidirectional search args
-    parser.add_argument('--algo_heur', nargs="*", default="astar bdastar", type=str, 
+    # Heuristic search args
+    parser.add_argument('--algo_heur', nargs="*", default="astar bd_astar", type=str, 
                         help="which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar uniformcost bestfirst bdastar. Will set priority key to g+h, g and/or h appropriately")
-    parser.add_argument('--algo_uni_astar_tiebreaker1', nargs="*", default="negg", type=str, 
-                        help="Which primary tiebreaker(s) for astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_uni_astar_tiebreaker1 negg g R")
-    parser.add_argument('--algo_uni_uniformcost_tiebreaker1', nargs="*", default="negg", type=str, 
-                        help="Which primary tiebreaker for uniform cost / dijkstra. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_uniformcost_tiebreaker1 negg g R")
-    parser.add_argument('--algo_uni_bestfirst_tiebreaker1', nargs="*", default="negg", type=str, 
-                        help="Which primary tiebreaker for Best First search. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_bestfirst_tiebreaker1 negg g R")
-    parser.add_argument('--algo_uni_astar_tiebreaker2', nargs="*", default="NONE", type=str, 
-                        help="Which secondary tiebreaker(s) for astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_uni_astar_tiebreaker2 negg g R")
-    parser.add_argument('--algo_uni_uniformcost_tiebreaker2', nargs="*", default="NONE", type=str, 
-                        help="Which secondary tiebreaker for uniform cost / dijkstra. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_uniformcost_tiebreaker2 negg g R")
-    parser.add_argument('--algo_uni_bestfirst_tiebreaker2', nargs="*", default="NONE", type=str, 
-                        help="Which secondary tiebreaker for Best First search. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_bestfirst_tiebreaker2 negg g R")
-
-    # Bidirectional search args
-    parser.add_argument('--algo_bdhs_bdastar_tiebreaker1', nargs="*", default="negg", type=str, 
-                        help="Which primary tiebreaker(s) for bidirectional astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_bdhs_bdastar_tiebreaker1 negg g R")
-    parser.add_argument('--algo_bdhs_bd astar_tiebreaker2', nargs="*", default="NONE", type=str, 
-                        help="Which secondary tiebreaker(s) for bidirectional astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_bdhs_bdastar_tiebreaker2 negg g R")
 
     # Monte Carlo Tree Search (MCTS) args
+    parser.add_argument('--algo_mcts', nargs="*", default="mcts_noheur mcts_bothheur", type=str, 
+                        help="which MCTS searches to run. Pass NONE to not run any: eg --algo_mcts NONE")
+    parser.add_argument('--algo_mcts_iterations', default=100, type=int,
+                        help="Number of MCTS iterations to be run for each MCTS algorithm.") 
+    parser.add_argument('--algo_mcts_max_depth', default=150, type=int, 
+                        help="Maximum depth of MCTS Tree.")
+    parser.add_argument('--algo_mcts_exploration_weight', default=1.41, type=float, 
+                        help="MCTS Exploration Weight")
+    parser.add_argument('--algo_mcts_heur_weight', default=100.0, type=float, 
+                        help="MCTS Heuristic Weight (if applicable)")
 
 
     #TODO: foreach algo add priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
@@ -166,6 +179,8 @@ if __name__ == "__main__":
 
     random.seed(args.seed)
 
+    # Set up the problems to be run ###################################
+    tile_list, pancake_list, toh_list, grid_list = [], [], [], []
     if args.tiles:
         tile_list = problem_puzzle.create_tile_probs(args)
     if args.pancakes:
@@ -180,6 +195,50 @@ if __name__ == "__main__":
     print("The following problems will be run:")
     for prob in problems:
         print(str(prob))
+
+    algorithms = []
+    # Set up the heuristic algorithms to be run ########################
+    # Heuristic algorithms must accept the parameters as shown here.. 
+    if args.algo_heur[0] != "NONE":
+        for algo in args.algo_heur:
+            assert algo in SEARCH_MAP
+            algo_class = SEARCH_MAP[algo]['class']
+            algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
+                                       tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
+                                       tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
+                                       visualise = args.algo_visualise,
+                                       visualise_dirname = args.visualise_dir,
+                                       min_ram = args.algo_min_remaining_gb,
+                                       timeout = args.algo_timeout)
+            algorithms.append(algo_instance)
+    else:
+        print("Not running any heuristic algorithms.")
+
+    # Set up the MCTS algorithms to be run ########################
+    # MCTS algorithms must accept the parameters as shown here.. 
+    if args.algo_mcts[0] != "NONE":
+        for algo in args.algo_mcts:
+            assert algo in SEARCH_MAP
+            algo_class = SEARCH_MAP[algo]['class']
+            hw = 0.0
+            if SEARCH_MAP[algo]['heuristic_weight'] != 0.0:
+                hw = args.algo_mcts_heur_weight
+            algo_instance = algo_class(iterations = args.algo_mcts_iterations,
+                                       max_depth = args.algo_mcts_max_depth,
+                                       exploration_weight = args.algo_mcts_exploration_weight,
+                                       heuristic_weight = hw,
+                                       heuristic_rollout = SEARCH_MAP[algo]['heuristic_rollout'],
+                                       epsilon=1e-6)
+            algorithms.append(algo_instance)
+    else:
+        print("Not running any MCTS algorithms.")
+
+    print()
+    print("Running the following algorithms:")
+    for a in algorithms:
+        print(str(a))
+
+
 
 
     # Search Parameters - set here globally or individually in algorithm definition section
@@ -247,7 +306,7 @@ if __name__ == "__main__":
                             make_heuristic_inadmissable=False, degradation=0,
                             allow_diagonal=True, diag_cost=2.0,
                             heuristic='octile', cstar=grid_scenarios[12346]['cstar'])
-    """
+
 
     # --- Define Algorithms ie give algorithm setups with differing params, unique fn names ---
     run_ucs = generic_search(priority_key='g', tiebreaker1='NONE', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
@@ -274,9 +333,9 @@ if __name__ == "__main__":
 
 
     algorithms = [
+        run_astar1,
         run_ucs,
         run_greedy_bfs,
-        run_astar1,
         #run_astar2,
         run_bidir_astar,
         run_bidir_ucs,
@@ -286,6 +345,7 @@ if __name__ == "__main__":
 #        "MCTS (H-Rollout)": run_mcts_h_rollout,
 #        "MCTS (H-Both)": run_mcts_h_both,
     ]
+"""
 
     # --- Run Experiments ---
     util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, seed=args.seed)

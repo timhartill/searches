@@ -8,6 +8,8 @@ import json
 import time
 import random
 import traceback # For error reporting
+import psutil
+
 import numpy as np
 
 #NP Grid  value constants
@@ -40,6 +42,24 @@ GRID_MAP = {
     'S': EMPTY,    # swamp (passable from regular terrain)
     'W': OBSTACLE # water (traversable, but not passable from terrain) NOT SUPPORTED HERE
 }
+
+
+def bytes_to_gb(bytes_value):
+    """
+    Converts bytes to gigabytes.
+    """
+    return bytes_value / (1024**3)
+
+
+def get_available_ram():
+  """
+  Gets the amount of available RAM in bytes.
+  """
+  # Get system memory usage statistics
+  mem = psutil.virtual_memory()
+  # mem.available is the actual available memory that can be given instantly to processes
+  return bytes_to_gb(mem.available)
+
 
 
 def make_prob_serial(prob, prefix="__", suffix=""):
@@ -245,7 +265,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
                 print(f"!!! ERROR during {str(algo)} on {problem}: {e}")
                 traceback.print_exc() 
                 result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
-                           "algorithm": str(algo), "error": str(e)}
+                           "algorithm": str(algo), "status": str(e)}
 
             if result: 
                  result['problem'] = str(problem)
@@ -281,7 +301,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
 
          optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
          algo_name = res.get('algorithm','N/A') 
-         print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note}")
+         print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note} {res['status']}")
 
     # --- Save Results to JSON ---
     json_file_path = f"{out_file_base}.json"

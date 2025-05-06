@@ -127,7 +127,8 @@ class heuristic_mcts_search:
 
         if root.is_terminal(): 
             return {"path": [root.state], "cost": 0, "nodes_expanded": 1, "time": time.time()-start_time, "optimal": False, "visual": "no file",
-                    "iterations": 0, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout}
+                    "iterations": 0, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout,
+                    "status": "Already at goal."}
 
         for i in range(self.iterations):
             node = root
@@ -261,14 +262,16 @@ class heuristic_mcts_search:
         if best_path_found_list:
             return {"path": best_path_found_list, "cost": min_cost_in_tree, "nodes_expanded": nodes_explored_in_tree, 
                     "time": end_time - start_time, "optimal": False, "visual": "no file", "iterations": self.iterations, 
-                    "tree_root_visits": root.visits, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout }
+                    "tree_root_visits": root.visits, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout,
+                     "status": "Path found." }
         else:
             # If goal not found, return best guess for next move from root (greedy exploitation)
             best_first_move_node = root.best_child(exploration_weight=0, heuristic_weight=0) # Pure exploitation
             return {"path": None, "cost": -1, "nodes_expanded": nodes_explored_in_tree, 
                     "time": end_time - start_time, "optimal": False, "visual": "no file", "iterations": self.iterations, 
                     "best_next_state_estimate": util.make_prob_str(initial_state=best_first_move_node.state) if best_first_move_node else None, 
-                    "tree_root_visits": root.visits, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout}
+                    "tree_root_visits": root.visits, "h_weight": self.heuristic_weight, "h_rollout": self.heuristic_rollout,
+                    "status": "Path not found."}
 
     def __str__(self): # enable str(object) to return algo name
         return self._str_repr

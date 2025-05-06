@@ -1,15 +1,13 @@
 """
 BiDirectional Searches
 
-Bidirectional A*
+Bidirectional A*, Uniform Cost and Best-First
 
 """
 import time
-
 import util
 import data_structures
 
-# enumerate all possibilities, even silly ones
 algo_name_map = {'g': "BiDirUniformCost", 'h': "BiDirGreedyBestFirst", 'f': "BiDirAstar"} 
 
 
@@ -20,8 +18,12 @@ class bd_generic_search:
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname = ''):
+    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', 
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0):
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
+        self.timeout = timeout
+        self.min_ram = min_ram
+        self.status = ""
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
         self.priority_key = priority_key
@@ -65,7 +67,8 @@ class bd_generic_search:
         else:
             cstar = None
         nodes_expanded_below_cstar = 0
-
+        i = 0
+        checkmem = 100000
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
             C = min(frontier_fwd.peek(priority_only=True), 
@@ -166,11 +169,24 @@ class bd_generic_search:
 
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
                 max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
+            if (time.time()-start_time)/60.0 > self.timeout:
+                self.status = f"Timeout after {(time.time()-start_time)/60:.4f} mins."
+                break
+            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
+                self.status = f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
+                break
+            i += 1
             
         end_time = time.time()
+        if not self.status:
+            self.status = "Completed."
+        else:
+            print(self.status)    
         image_file = 'no file'   
         if meeting_node:
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
+            if not path:
+                self.status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
                                             meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd, 
@@ -195,11 +211,12 @@ class bd_generic_search:
             return {"path": path, "cost": final_reported_cost if path else -1, 
                     "nodes_expanded": nodes_expanded,  "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
-                    "max_heap_size": max_heap_size_combined}
-        else:
-            return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
-                    "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
-                    "max_heap_size": max_heap_size_combined} # No path found
+                    "max_heap_size": max_heap_size_combined, "status": self.status}
+
+        self.status += " No path found."
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+                "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
+                "max_heap_size": max_heap_size_combined, "status": self.status} # No path found
 
 
     def __str__(self): # enable str(object) to return algo name
