@@ -1,7 +1,7 @@
 """
-BiDirectional Searches
+Bidirectional Searches
 
-Bidirectional A*, Uniform Cost and Best-First
+Bidirectional A*, Bi dir Uniform Cost and Bi dir Best-First
 
 """
 import time
@@ -43,14 +43,16 @@ class bd_generic_search:
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
         h_initial = problem.heuristic(start_node)
-        frontier_fwd = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_fwd = data_structures.PriorityQueue(priority_key=self.priority_key, 
+                                                     tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
         frontier_fwd.push(start_node, frontier_fwd.calc_priority(0, h_initial), 0) # Push with priority and tiebreaker
         came_from_fwd = {start_node: None}
         g_score_fwd = {start_node: 0}
         closed_fwd = set() 
 
         h_goal = problem.heuristic(goal_node, backward=True)
-        frontier_bwd = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_bwd = data_structures.PriorityQueue(priority_key=self.priority_key, 
+                                                     tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
         frontier_bwd.push(goal_node, frontier_bwd.calc_priority(0, h_goal), 0) # Push with priority and tiebreaker
         came_from_bwd = {goal_node: None}
         g_score_bwd = {goal_node: 0}
@@ -79,12 +81,12 @@ class bd_generic_search:
                 break
 
             # --- Forward Step ---
-            if frontier_fwd:
+            if not frontier_fwd.isEmpty():
                 current_state_fwd = frontier_fwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
                 if current_state_fwd in closed_fwd: 
                     continue
                 current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-                if current_g_fwd  + problem.heuristic(current_state_fwd, backward=False) >= U: 
+                if current_g_fwd  + problem.heuristic(current_state_fwd, backward=False) >= U: #TODO remove
                     continue  
                 closed_fwd.add(current_state_fwd)
                 nodes_expanded += 1
@@ -117,18 +119,18 @@ class bd_generic_search:
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
                         #f_score = tentative_g_score + h_score
-                        #if f_score < U: 
-                        frontier_fwd.push(neighbor_state, 
+                        #if f_score < U: # Enabling this caused ~ 30% fewer node expansions but would be cheating for uc and might cause inadmissable heuristics to make the search fail
+                        frontier_fwd.push(  neighbor_state, 
                                             frontier_fwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
-            if frontier_bwd:
+            if not frontier_bwd.isEmpty():
                 current_state_bwd = frontier_bwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
                 if current_state_bwd in closed_bwd: 
                     continue
                 current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
-                if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= U: 
+                if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= U: #TODO remove
                     continue 
                 closed_bwd.add(current_state_bwd)
                 nodes_expanded += 1
@@ -162,8 +164,8 @@ class bd_generic_search:
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
                         #f_score = tentative_g_score + h_score
-                        #if f_score < U: 
-                        frontier_bwd.push(neighbor_state, 
+                        #if f_score < U: # Enabling this caused ~ 30% fewer node expansions but would be cheating for uc and might also cause inadmissable heuristics to fail
+                        frontier_bwd.push(  neighbor_state, 
                                             frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
 

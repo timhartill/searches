@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument('--toh_max', default=50, type=int,
                         help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
     parser.add_argument('--toh_heur', nargs="*", default="infinitepegrelaxation", type=str, 
-                        help="toh heuristics. Only symmetric gap implemented. Eg --toh_heur 3pegstd, infinitepegrelaxation")
+                        help="toh heuristics. infinitepegrelaxation and 3pegstd implemented. Eg --toh_heur 3pegstd infinitepegrelaxation")
     parser.add_argument('--toh_degs', nargs="*", default=0, type=int, 
                         help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
     parser.add_argument('--toh_inadmiss', action='store_true', 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S',
                     level=logging.INFO,
-                    handlers=[logging.FileHandler(os.path.join(args.output_dir, log_filename)),
+                    handlers=[logging.FileHandler(os.path.join(args.out_dir, log_filename)),
                               logging.StreamHandler()])
     logger = logging.getLogger(__name__)
 
@@ -220,6 +220,7 @@ if __name__ == "__main__":
 
     problems = tile_list + pancake_list + toh_list + grid_list
 
+    logger.info("######")
     logger.info("The following problems will be run:")
     for prob in problems:
         logger.info(str(prob))
@@ -261,7 +262,7 @@ if __name__ == "__main__":
     else:
         logger.info("Not running any MCTS algorithms.")
 
-    logger.info()
+    logger.info("######")
     logger.info("Running the following algorithms:")
     for a in algorithms:
         logger.info(str(a))

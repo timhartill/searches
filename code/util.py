@@ -300,7 +300,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
             else:
                  log("Path Cost: N/A")
                  if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: log(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
-                 if 'error' in res: log(f"ERROR during run: {res['error']}")
+                 if 'status' in res: log(f"Status of run: {res['status']}")
         log("=" * (34 + len(str(problem)))) # Adjusted length
 
     # Overall Summary
