@@ -1,5 +1,5 @@
 """
-Misc Utility fns
+Misc Utility fns + the Experiment runner
 """
 
 import os
@@ -233,7 +233,8 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
     return data
     
 
-def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', seed=42):
+def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
+                    seed=42, timestamp=None, logger=None):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
     and a json file (with path) in the specified output directory.
     Args:
@@ -241,33 +242,42 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
         algorithms (list): List of algorithms to use
         output_dir (str): Directory to save the results
     """
-    out_file_base = f"{out_dir}/{out_prefix}_{time.strftime('%Y-%m-%d_%H-%M-%S')}"
+    if not logger:
+        log = print
+    else:
+        log = logger.info    
+    if not timestamp:
+        timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
+    out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
     all_results = []
     for problem in problems:  # For each problem
-        print(f"\n{'=' * 20}")
-        print(f"Solving: {problem}\nInitial State: {problem.initial_state()}")
-        print(f"Goal State:    {problem.goal_state()}")
-        print(f"Initial Heuristic: {problem.heuristic(problem.initial_state())}")
-        print(f"{'-' * 20}")
+        log(f"\n{'=' * 20}")
+        log(f"Solving: {problem}")
+        log(f"Initial State: {problem.initial_state()}")
+        log(f"Goal State:    {problem.goal_state()}")
+        log(f"Initial Heuristic: {problem.heuristic(problem.initial_state())}")
+        log(f"{'-' * 20}")
         problem_results = []
         
         for algo in algorithms:  # For each algorithm
-            print(f"Running {str(algo)}...")
+            log(f"Running {str(algo)}...")
             result = None
             random.seed(seed)  # Reset random seed for reproducibility before each algorithm run on each problem
             try:
                 result = algo.search(problem) # Call the runner                
                 # Set algorithm name in result consistently
                 result['algorithm'] = str(algo)                
-                print(f"{str(algo)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
+                log(f"{str(algo)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
 
             except Exception as e:
-                print(f"!!! ERROR during {str(algo)} on {problem}: {e}")
+                log(f"!!! ERROR during {str(algo)} on {str(problem)}: {e}")
                 traceback.print_exc() 
                 result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
                            "algorithm": str(algo), "status": str(e)}
 
             if result: 
+                 if 'status' not in result:
+                    result['status'] = 'No status supplied from algorithm.'    
                  result['problem'] = str(problem)
                  if 'path' in result and result['path']:
                      result['unit_cost'] = len(result['path']) - 1
@@ -277,37 +287,37 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', see
                  all_results.append(result)
 
         # --- Print Results for this Problem ---
-        print(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
+        log(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
         for res in problem_results:
-            print(f"\nAlgorithm: {res.get('algorithm','N/A')}")
-            if 'optimal' in res: print(f"Optimality Guaranteed: {res['optimal']}")
-            if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : print(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
-            if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : print(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
-            print(f"Time Taken: {res.get('time', -1):.4f} seconds")
-            print(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
-            print(f"Path Found: {'Yes' if res.get('path') else 'No'}")
-            if res.get('path'): print(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
+            log(f"\nAlgorithm: {res.get('algorithm','N/A')}")
+            if 'optimal' in res: log(f"Optimality Guaranteed: {res['optimal']}")
+            if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : log(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
+            if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : log(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
+            log(f"Time Taken: {res.get('time', -1):.4f} seconds")
+            log(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
+            log(f"Path Found: {'Yes' if res.get('path') else 'No'}")
+            if res.get('path'): log(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
             else:
-                 print("Path Cost: N/A")
-                 if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: print(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
-                 if 'error' in res: print(f"ERROR during run: {res['error']}")
-        print("=" * (34 + len(str(problem)))) # Adjusted length
+                 log("Path Cost: N/A")
+                 if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: log(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
+                 if 'error' in res: log(f"ERROR during run: {res['error']}")
+        log("=" * (34 + len(str(problem)))) # Adjusted length
 
     # Overall Summary
-    print(f"\n{'*'*15} Overall Summary {'*'*15}")
+    log(f"\n{'*'*15} Overall Summary {'*'*15}")
     for res in all_results:
          status = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}" if res.get('path') else ("No Path Found" if 'error' not in res else f"ERROR: {res['error']}")
-         #print("Path:", res['path']) # Uncomment to see the full path states
+         #log("Path:", res['path']) # Uncomment to see the full path states
 
          optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
          algo_name = res.get('algorithm','N/A') 
-         print(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note} {res['status']}")
+         log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note} {res['status']}")
 
     # --- Save Results to JSON ---
     json_file_path = f"{out_file_base}.json"
     with open(json_file_path, 'w') as json_file:
         json.dump(all_results, json_file, indent=4)
-    print(f"Results saved to {json_file_path}") 
+    log(f"Results saved to {json_file_path}") 
 
     # --- Save Results to CSV ---
     # Ensure all results have the same keys for CSV

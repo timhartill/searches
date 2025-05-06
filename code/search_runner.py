@@ -1,15 +1,34 @@
 """
-Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, Bidirectional A*, MCTS for Sliding Tile, Pancake, Towers of Hanoi
-- This code implements various search algorithms for solving the Sliding Tile, Pancake, Pathfinder and Towers of Hanoi problems.
+This code implements various search algorithms for solving 
+  - Sliding Tile, Pancake, Pathfinder and Towers of Hanoi problems.
+Using:  
+Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, 
+Bidirectional A*/UC/BFS, 
+MCTS, Heuristic MCTS
 
+Author: Tim Hartill
 Some code generated from Gemini 2.5.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
+
 import os
 import sys
 import random
 import time
 import json
 import argparse
+import logging
 
 import util
 
@@ -51,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--out_dir", default='/media/tim/dl3storage/gitprojects/searches/outputs', type=str,
                         help="Full path to output directory. CSV and JSON output files will be written here.")  
     parser.add_argument("--out_prefix", default='search-eval', type=str,
-                        help="CSV and JSON output file prefix. Date and time will be added to make unique.")  
+                        help="Log, CSV and JSON output file prefix. Date and time will be added to make unique.")  
     parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have np-scen and np-map and eg dao-map and dao-scen etc off it.")
     parser.add_argument('--seed', default=42, type=int,
@@ -150,8 +169,6 @@ if __name__ == "__main__":
     parser.add_argument('--algo_mcts_heur_weight', default=100.0, type=float, 
                         help="MCTS Heuristic Weight (if applicable)")
 
-
-    #TODO: foreach algo add priority_key, tiebreaker1, tiebreaker2, iterations, max_depth, heuristic_weight, heuristic_rollout
     args = parser.parse_args()
     # parser.print_help()
 
@@ -174,8 +191,19 @@ if __name__ == "__main__":
         assert os.path.exists(args.grid_dir_full)
 
 
-    print(f"Running search comparison at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(args)
+    args.timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
+
+    log_filename = f"{args.out_prefix}_{args.timestamp}.log"
+
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+                    datefmt='%d/%m/%Y %H:%M:%S',
+                    level=logging.INFO,
+                    handlers=[logging.FileHandler(os.path.join(args.output_dir, log_filename)),
+                              logging.StreamHandler()])
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"Running search comparison at {args.timestamp}")
+    logger.info(args)
 
     random.seed(args.seed)
 
@@ -192,9 +220,9 @@ if __name__ == "__main__":
 
     problems = tile_list + pancake_list + toh_list + grid_list
 
-    print("The following problems will be run:")
+    logger.info("The following problems will be run:")
     for prob in problems:
-        print(str(prob))
+        logger.info(str(prob))
 
     algorithms = []
     # Set up the heuristic algorithms to be run ########################
@@ -212,7 +240,7 @@ if __name__ == "__main__":
                                        timeout = args.algo_timeout)
             algorithms.append(algo_instance)
     else:
-        print("Not running any heuristic algorithms.")
+        logger.info("Not running any heuristic algorithms.")
 
     # Set up the MCTS algorithms to be run ########################
     # MCTS algorithms must accept the parameters as shown here.. 
@@ -231,21 +259,18 @@ if __name__ == "__main__":
                                        epsilon=1e-6)
             algorithms.append(algo_instance)
     else:
-        print("Not running any MCTS algorithms.")
+        logger.info("Not running any MCTS algorithms.")
 
-    print()
-    print("Running the following algorithms:")
+    logger.info()
+    logger.info("Running the following algorithms:")
     for a in algorithms:
-        print(str(a))
+        logger.info(str(a))
 
+    # --- Run Experiments ---
+    util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
+                         seed=args.seed, timestamp=args.timestamp, logger=logger)
 
-
-
-    # Search Parameters - set here globally or individually in algorithm definition section
-    # MCTS
-    iterations = 100            # MCTS  1000000 finds near-optimal paths in 8-puzzle and occasionally pancake
-    max_depth = 150             # MCTS
-    heuristic_weight = 100.0    # MCTS
+    logger.info(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
 
 
     """
@@ -312,9 +337,7 @@ if __name__ == "__main__":
     run_ucs = generic_search(priority_key='g', tiebreaker1='NONE', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_hucs = generic_search(priority_key='g', tiebreaker1='f', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_greedy_bfs = generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
-    run_astar = generic_search(priority_key='f', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
-    run_astar1 = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
-    run_astar2 = generic_search(priority_key='f', tiebreaker1='R', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_astar = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_bidir_astar = bd_generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_bidir_ucs = bd_generic_search(priority_key='g', tiebreaker1='NONE', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_bidir_greedy = bd_generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
@@ -333,21 +356,13 @@ if __name__ == "__main__":
 
 
     algorithms = [
-        run_astar1,
+        run_astar,
         run_ucs,
         run_greedy_bfs,
-        #run_astar2,
         run_bidir_astar,
         run_bidir_ucs,
         run_bidir_greedy,
         run_mcts_standard,
-#        "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
-#        "MCTS (H-Rollout)": run_mcts_h_rollout,
-#        "MCTS (H-Both)": run_mcts_h_both,
     ]
 """
 
-    # --- Run Experiments ---
-    util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, seed=args.seed)
-
-    print(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
