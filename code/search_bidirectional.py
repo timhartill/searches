@@ -9,20 +9,30 @@ import time
 import util
 import data_structures
 
+# enumerate all possibilities, even silly ones
+algo_name_map = {'g': "BiDirUniformCost", 'h': "BiDirGreedyBestFirst", 'f': "BiDirAstar"} 
 
-# --- Bidirectional A* (Updated for variable cost) ---
-class bidirectional_a_star_search:
-    """Performs Bidirectional A* search. Handles variable costs."""
-    def __init__(self, tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname = ''):
+
+
+# --- Bidirectional generic search eg bd A* (Updated for variable cost) ---
+class bd_generic_search:
+    """ Performs Bidirectional generic search ie bd a*, bd uniform cost or bd best first.
+    Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
+    if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
+    """
+    def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname = ''):
+        if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
+        self.priority_key = priority_key
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
-        self._str_repr = f"Bidirectional AStar-pf-tb1{tiebreaker1}-tb2{tiebreaker2}"
+        self._str_repr = f"{algo_name_map[self.priority_key]}-p{self.priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}"
 
 
     def search(self, problem):
-        optimality_guaranteed = problem.optimality_guaranteed
+        #optimality_guaranteed = problem.optimality_guaranteed
+        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
 
         start_time = time.time()
         start_node = problem.initial_state()
@@ -30,16 +40,16 @@ class bidirectional_a_star_search:
         if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, "nodes_expanded_below_cstar": 0,
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
-        h_start = problem.heuristic(start_node)
-        frontier_fwd = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
-        frontier_fwd.push(start_node, h_start, 0) # Push with priority and tiebreaker
+        h_initial = problem.heuristic(start_node)
+        frontier_fwd = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_fwd.push(start_node, frontier_fwd.calc_priority(0, h_initial), 0) # Push with priority and tiebreaker
         came_from_fwd = {start_node: None}
         g_score_fwd = {start_node: 0}
         closed_fwd = set() 
 
         h_goal = problem.heuristic(goal_node, backward=True)
-        frontier_bwd = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
-        frontier_bwd.push(goal_node, h_goal, 0) # Push with priority and tiebreaker
+        frontier_bwd = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
+        frontier_bwd.push(goal_node, frontier_bwd.calc_priority(0, h_goal), 0) # Push with priority and tiebreaker
         came_from_bwd = {goal_node: None}
         g_score_bwd = {goal_node: 0}
         closed_bwd = set() 
@@ -103,10 +113,11 @@ class bidirectional_a_star_search:
                         came_from_fwd[neighbor_state] = current_state_fwd 
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
-                        f_score = tentative_g_score + h_score
-                        if f_score < U: 
-                            frontier_fwd.push(neighbor_state, f_score, 
-                                              frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
+                        #f_score = tentative_g_score + h_score
+                        #if f_score < U: 
+                        frontier_fwd.push(neighbor_state, 
+                                            frontier_fwd.calc_priority(g=tentative_g_score, h=h_score), 
+                                            frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
             if frontier_bwd:
@@ -147,10 +158,11 @@ class bidirectional_a_star_search:
                         came_from_bwd[neighbor_state] = current_state_bwd 
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
-                        f_score = tentative_g_score + h_score
-                        if f_score < U: 
-                            frontier_bwd.push(neighbor_state, f_score, 
-                                              frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
+                        #f_score = tentative_g_score + h_score
+                        #if f_score < U: 
+                        frontier_bwd.push(neighbor_state, 
+                                            frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
+                                            frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
 
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
                 max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size

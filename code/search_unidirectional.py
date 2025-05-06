@@ -11,7 +11,8 @@ import util
 import data_structures
 
 # --- Constants ---
-algo_name_map = {'g': "Uniform Cost", 'h': "Greedy Best-First", 'f': "Astar"}
+# enumerate all possibilities, even silly ones
+algo_name_map = {'g': "UniformCost", 'h': "GreedyBestFirst", 'f': "Astar"}
 
 
 # --- Generic Unidirectional Search Function ---
@@ -28,7 +29,7 @@ class generic_search:
         :param visualise: If True, will output a visualisation of the search to a subdir off the problem input dir.
         :param tiebreaker2: 2nd level Tiebreaker for the priority queue. Can be 'FIFO', 'LIFO', or 'NONE' for no 2nd level.
         """
-        if priority_key not in ['g', 'h', 'f']: raise ValueError("priority_key must be 'g', 'h', or 'f'")
+        if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         self.priority_key = priority_key
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
@@ -38,19 +39,21 @@ class generic_search:
 
 
     def search(self, problem):
-        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
+        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed) or (self.priority_key=='FIFO' and problem.optimality_guaranteed and not problem.use_variable_costs)
+        
         start_time = time.time() 
         start_node = problem.initial_state()
         h_initial = problem.heuristic(start_node) if self.priority_key in ['h', 'f'] else 0
-        initial_g = 0
-        if self.priority_key == 'g': initial_priority = initial_g
-        elif self.priority_key == 'h': initial_priority = h_initial
-        else: initial_priority = initial_g + h_initial # 'f'
+        g_initial = 0
+        #if self.priority_key == 'g': initial_priority = initial_g
+        #elif self.priority_key == 'h': initial_priority = h_initial
+        #else: initial_priority = initial_g + h_initial # 'f'
 
-        frontier = data_structures.PriorityQueue(tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
-        frontier.push(start_node, initial_priority, 0) # Push with priority and tiebreaker1
+        frontier = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
+        frontier.push(start_node, 
+                      frontier.calc_priority(g=g_initial, h=h_initial), 0) # Push with priority and tiebreaker1
         came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
-        g_score = {start_node: initial_g}
+        g_score = {start_node: g_initial}
         closed_set = set()
         nodes_expanded = 0
         C = -1.0         # Current lowest cost on frontier
@@ -111,17 +114,19 @@ class generic_search:
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
-                    priority = tentative_g_score # Default for 'g'
-                    if self.priority_key in ['h', 'f']:
-                        h_score = problem.heuristic(neighbor_state)
-                        if self.priority_key == 'h': priority = h_score
-                        elif self.priority_key == 'f': priority = tentative_g_score + h_score
-                    else: # 'g'
-                        if self.tiebreaker1 in ['h', 'f']:  # enable "heuristic uni cost"
-                            h_score = problem.heuristic(neighbor_state)  
-                        else:      
-                            h_score = 0
-                    frontier.push(neighbor_state, priority, 
+                    #priority = tentative_g_score # Default for 'g'
+                    h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost...
+                    #if self.priority_key in ['h', 'f']:
+                    #    h_score = problem.heuristic(neighbor_state)
+                    #    if self.priority_key == 'h': priority = h_score
+                    #    elif self.priority_key == 'f': priority = tentative_g_score + h_score
+                    #else: # 'g'
+                    #    if self.tiebreaker1 in ['h', 'f']:  # enable "heuristic uni cost"
+                    #        h_score = problem.heuristic(neighbor_state)  
+                    #    else:      
+                    #        h_score = 0
+                    frontier.push(neighbor_state, 
+                                  frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                   frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
                     
         end_time = time.time()

@@ -23,7 +23,7 @@ import problem_spatial
 # searches
 from search_mcts import heuristic_mcts_search
 from search_unidirectional import generic_search
-from search_bidirectional import bidirectional_a_star_search
+from search_bidirectional import bd_generic_search
 
 # --- Main Execution Logic ---
 if __name__ == "__main__":
@@ -111,11 +111,11 @@ if __name__ == "__main__":
     parser.add_argument('--algo_timeout', default=10.0, type=float,
                         help="Maximum time in minutes to allow any algorithm to run for. If exceeded, statistics to that point are returned along with status of 'timeout'. Normal return status = 'completed'. It is important to set this value such that no algorithm OOMs on the particular machine running the experiments.") 
     parser.add_argument('--algo_visualise', action='store_true', 
-                        help="Output .png files showing nodes expanded, path, metting point etc for each algorithm and problem type that supports this.")
+                        help="Output .png files showing nodes expanded, path, meeting point etc for each algorithm and problem type that supports this.")
 
     # Unidirectional search args
-    parser.add_argument('--algo_uni', nargs="*", default="astar", type=str, 
-                        help="which unidirectional searches to run. Pass NONE to not run any: eg --algo_uni astar uniformcost bestfirst. Will set priority key to g+h, g and/or h appropriately")
+    parser.add_argument('--algo_heur', nargs="*", default="astar bdastar", type=str, 
+                        help="which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar uniformcost bestfirst bdastar. Will set priority key to g+h, g and/or h appropriately")
     parser.add_argument('--algo_uni_astar_tiebreaker1', nargs="*", default="negg", type=str, 
                         help="Which primary tiebreaker(s) for astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_uni_astar_tiebreaker1 negg g R")
     parser.add_argument('--algo_uni_uniformcost_tiebreaker1', nargs="*", default="negg", type=str, 
@@ -130,8 +130,6 @@ if __name__ == "__main__":
                         help="Which secondary tiebreaker for Best First search. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values.  Can be a list eg --algo_uni_bestfirst_tiebreaker2 negg g R")
 
     # Bidirectional search args
-    parser.add_argument('--algo_bdhs', nargs="*", default="bdastar", type=str, 
-                        help="which bidirectional searches to run. Pass NONE to not run any: eg --algo_bdhs bdastar. Currently only bdastar is implemented.")
     parser.add_argument('--algo_bdhs_bdastar_tiebreaker1', nargs="*", default="negg", type=str, 
                         help="Which primary tiebreaker(s) for bidirectional astar. Cannot include - signs so 'negg' will be translated into '-g'. See data_structures.py calc_tiebreak1 for valid values. Can be a list eg --algo_bdhs_bdastar_tiebreaker1 negg g R")
     parser.add_argument('--algo_bdhs_bd astar_tiebreaker2', nargs="*", default="NONE", type=str, 
@@ -258,7 +256,9 @@ if __name__ == "__main__":
     run_astar = generic_search(priority_key='f', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_astar1 = generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     run_astar2 = generic_search(priority_key='f', tiebreaker1='R', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
-    run_bidir_astar = bidirectional_a_star_search(tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_bidir_astar = bd_generic_search(priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_bidir_ucs = bd_generic_search(priority_key='g', tiebreaker1='NONE', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
+    run_bidir_greedy = bd_generic_search(priority_key='h', tiebreaker1='g', tiebreaker2='NONE', visualise=True, visualise_dirname=args.visualise_dir)
     # Wrapper for standard MCTS (no heuristic guidance)
     run_mcts_standard = heuristic_mcts_search(iterations=iterations, max_depth=max_depth, 
                                               heuristic_weight=0.0, heuristic_rollout=False)
@@ -274,11 +274,13 @@ if __name__ == "__main__":
 
 
     algorithms = [
-#        run_ucs,
-#        run_greedy_bfs,
+        run_ucs,
+        run_greedy_bfs,
         run_astar1,
         #run_astar2,
         run_bidir_astar,
+        run_bidir_ucs,
+        run_bidir_greedy,
         run_mcts_standard,
 #        "MCTS (H-Select)": run_mcts_h_select, # Add heuristic versions
 #        "MCTS (H-Rollout)": run_mcts_h_rollout,

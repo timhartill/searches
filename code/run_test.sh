@@ -125,13 +125,13 @@ options:
                         --toh_inadmiss means make inadmissable heuristic.
 comment
 
+#12_puzzle_probs1_easytest.csv"
 
 python search_runner.py \
         --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --timeout 30 \
         --grid daotest \
         --grid_max_per_scen 2 \
         --grid_reverse_scen_order \
@@ -140,7 +140,7 @@ python search_runner.py \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
-        --tiles "12_puzzle_probs1_easytest.csv" \
+        --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
@@ -152,4 +152,5 @@ python search_runner.py \
         --toh_max 100 \
         --toh_heur infinitepegrelaxation \
         --toh_degs 0 2 \
+        --algo_timeout 30 \
 
