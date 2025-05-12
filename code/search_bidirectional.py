@@ -23,7 +23,6 @@ class bd_generic_search:
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         self.timeout = timeout
         self.min_ram = min_ram
-        self.status = ""
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
         self.priority_key = priority_key
@@ -71,13 +70,14 @@ class bd_generic_search:
         nodes_expanded_below_cstar = 0
         i = 0
         checkmem = 100000
+        status = ""
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
             C = min(frontier_fwd.peek(priority_only=True), 
                     frontier_bwd.peek(priority_only=True))
             
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                print(f"1. Termination condition U ({U}) >= C ({C}) met.")  
+                status += f"Completed. Termination condition U ({U}) >= C ({C}) met."
                 break
 
             # --- Forward Step ---
@@ -172,23 +172,22 @@ class bd_generic_search:
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
                 max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
             if (time.time()-start_time)/60.0 > self.timeout:
-                self.status = f"Timeout after {(time.time()-start_time)/60:.4f} mins."
+                status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
-                self.status = f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
+                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
                 break
             i += 1
             
         end_time = time.time()
-        if not self.status:
-            self.status = "Completed."
-        else:
-            print(self.status)    
+        if not status:
+            status = "Completed."
+        print(status)    
         image_file = 'no file'   
         if meeting_node:
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
             if not path:
-                self.status += " Path too long to reconstruct."
+                status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
                                             meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd, 
@@ -213,12 +212,20 @@ class bd_generic_search:
             return {"path": path, "cost": final_reported_cost if path else -1, 
                     "nodes_expanded": nodes_expanded,  "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
-                    "max_heap_size": max_heap_size_combined, "status": self.status}
+                    "max_heap_len": max_heap_size_combined, 
+                    "closed_set_len": len(closed_fwd)+len(closed_bwd), "closed_set_gb": util.get_size(closed_fwd)+util.get_size(closed_fwd), 
+                    "g_score_len": len(g_score_fwd)+len(g_score_bwd), "g_score_gb": util.get_size(g_score_fwd)+util.get_size(g_score_bwd),
+                    "came_from_len": len(came_from_fwd)+len(came_from_bwd), "came_from_gb": util.get_size(came_from_fwd)+util.get_size(came_from_bwd),
+                    "status": status}
 
-        self.status += " No path found."
+        status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
-                "max_heap_size": max_heap_size_combined, "status": self.status} # No path found
+                "max_heap_len": max_heap_size_combined, 
+                "closed_set_len": len(closed_fwd)+len(closed_bwd), "closed_set_gb": util.get_size(closed_fwd)+util.get_size(closed_fwd), 
+                "g_score_len": len(g_score_fwd)+len(g_score_bwd), "g_score_gb": util.get_size(g_score_fwd)+util.get_size(g_score_bwd),
+                "came_from_len": len(came_from_fwd)+len(came_from_bwd), "came_from_gb": util.get_size(came_from_fwd)+util.get_size(came_from_bwd),
+                "status": status} # No path found
 
 
     def __str__(self): # enable str(object) to return algo name
@@ -231,12 +238,10 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
     curr = meeting_node
     
     limit = 100000 
-    if isinstance(start_state, tuple) and hasattr(start_state, '__len__'):
-         limit = max(limit, 2**(len(start_state) + 6))
 
     count = 0
     while curr is not None: 
-        path1.append(curr)
+        path1.append(tuple(curr))
         curr = came_from_fwd.get(curr)
         count += 1
         if count > limit: print("Error: Path fwd reconstruction exceeded limit."); return None
@@ -246,7 +251,7 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
     curr = came_from_bwd.get(meeting_node) 
     count = 0
     while curr is not None: 
-         path2.append(curr)
+         path2.append(tuple(curr))
          curr = came_from_bwd.get(curr)
          count += 1
          if count > limit: print("Error: Path bwd reconstruction exceeded limit."); return None

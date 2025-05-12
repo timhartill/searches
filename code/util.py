@@ -3,6 +3,7 @@ Misc Utility fns + the Experiment runner
 """
 
 import os
+import sys
 import csv
 import json
 import time
@@ -45,21 +46,30 @@ GRID_MAP = {
 
 
 def bytes_to_gb(bytes_value):
-    """
-    Converts bytes to gigabytes.
-    """
+    """    Converts bytes to gigabytes.    """
     return bytes_value / (1024**3)
 
 
 def get_available_ram():
-  """
-  Gets the amount of available RAM in bytes.
-  """
+  """  Gets the amount of available RAM in GB.  """
   # Get system memory usage statistics
   mem = psutil.virtual_memory()
   # mem.available is the actual available memory that can be given instantly to processes
-  return bytes_to_gb(mem.available)
+  return round(bytes_to_gb(mem.available), 2)
 
+
+def get_size(obj):
+    """ Get the amount of RAM occupied by a python object in GB """
+    return round(bytes_to_gb(sys.getsizeof(obj)), 4)
+
+def encode_list(state):
+    """ Encode a list or tuple of 1 char strings as a byte string """
+    return "".join(tuple(state)).encode('utf-8')
+
+def decode_list(bstr, tup=True):
+    """ Decode a byte string into a list of 1 char strings """
+    if tup: return tuple(bstr.decode('utf-8'))
+    return list(bstr.decode('utf-8'))
 
 
 def make_prob_serial(prob, prefix="__", suffix=""):
@@ -201,6 +211,7 @@ def load_map_file(file_path):
                 print(f"Warning: Invalid character {char} in map file {file_path} at row {row}, col {col}")
     return matrix_data, heuristic
 
+
 def load_csv_file(file_path, delimiter=';', apply_col_types=True):
     """ load a generic semicolon-delimited problem file with header 
         (well actually it can load any delimited text file with a header, just set apply_col_types=False)
@@ -236,7 +247,7 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
                     seed=42, timestamp=None, logger=None):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
-    and a json file (with path) in the specified output directory.
+        and a json file (with path) in the specified output directory.
     Args:
         problems (list): List of problems to solve
         algorithms (list): List of algorithms to use
@@ -249,81 +260,100 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
     if not timestamp:
         timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
     out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
+    json_file_path = f"{out_file_base}.json"
+    csv_file_path = f"{out_file_base}.csv"
     all_results = []
     for problem in problems:  # For each problem
         log(f"\n{'=' * 20}")
         log(f"Solving: {problem}")
-        log(f"Initial State: {problem.initial_state()}")
-        log(f"Goal State:    {problem.goal_state()}")
+        if hasattr(problem, "initial_state_tuple"):
+            log(f"Initial State: {problem.initial_state_tuple}")
+        else:
+            log(f"No tuple representation in problem: initial_state_tuple. This should be remedied")
+        if hasattr(problem, "goal_state_tuple"):
+            log(f"Goal State:    {problem.goal_state_tuple}")
+        else:
+            log(f"No tuple representation in problem: goal_state_tuple. This should be remedied")
         log(f"Initial Heuristic: {problem.heuristic(problem.initial_state())}")
         log(f"{'-' * 20}")
         problem_results = []
         
         for algo in algorithms:  # For each algorithm
             log(f"Running {str(algo)}...")
+            log(f"Available RAM (GB) before experiment: {get_available_ram()}")
             result = None
             random.seed(seed)  # Reset random seed for reproducibility before each algorithm run on each problem
             try:
-                result = algo.search(problem) # Call the runner                
+                result = algo.search(problem) # Call the runner
                 # Set algorithm name in result consistently
-                result['algorithm'] = str(algo)                
+                result['algorithm'] = str(algo)
                 log(f"{str(algo)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
 
             except Exception as e:
                 log(f"!!! ERROR during {str(algo)} on {str(problem)}: {e}")
-                traceback.print_exc() 
+                log(traceback.format_exc())
+                #traceback.print_exc() 
                 result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
                            "algorithm": str(algo), "status": str(e)}
 
             if result: 
-                 if 'status' not in result:
-                    result['status'] = 'No status supplied from algorithm.'    
-                 result['problem'] = str(problem)
-                 if 'path' in result and result['path']:
-                     result['unit_cost'] = len(result['path']) - 1
-                 else:
-                     result['unit_cost'] = -1
-                 problem_results.append(result)
-                 all_results.append(result)
+                if 'status' not in result:
+                    result['status'] = 'No status supplied from algorithm.'
+                result['problem'] = str(problem)
+                if 'path' in result and result['path']:
+                    result['unit_cost'] = len(result['path']) - 1
+                else:
+                    result['unit_cost'] = -1
+
+                log(f"{ {key: value for key, value in result.items() if key !='path'} }") # log result without path to avoid cluttering the log too much
+                problem_results.append(result)
+                all_results.append(result)
+                with open(json_file_path, 'w') as json_file:                                        # output results as we go
+                    json.dump(all_results, json_file, indent=4)                                     # path in json 
+                log(f"In progress results saved to {json_file_path}") 
+                write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # path not in csv
+                log(f"In progress results saved to {csv_file_path}") 
+            log(f"Available RAM (GB) after experiment: {get_available_ram()}")
 
         # --- Print Results for this Problem ---
-        log(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
-        for res in problem_results:
-            log(f"\nAlgorithm: {res.get('algorithm','N/A')}")
-            if 'optimal' in res: log(f"Optimality Guaranteed: {res['optimal']}")
-            if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : log(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
-            if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : log(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
-            log(f"Time Taken: {res.get('time', -1):.4f} seconds")
-            log(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
-            log(f"Path Found: {'Yes' if res.get('path') else 'No'}")
-            if res.get('path'): log(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
-            else:
-                 log("Path Cost: N/A")
-                 if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: log(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
-                 if 'status' in res: log(f"Status of run: {res['status']}")
-        log("=" * (34 + len(str(problem)))) # Adjusted length
+        #log(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
+        #for res in problem_results:
+        #    log(f"\nAlgorithm: {res.get('algorithm','N/A')}")
+        #    if 'optimal' in res: log(f"Optimality Guaranteed: {res['optimal']}")
+        #    if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : log(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
+        #    if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : log(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
+        #    log(f"Time Taken: {res.get('time', -1):.4f} seconds")
+        #    log(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
+        #    log(f"Path Found: {'Yes' if res.get('path') else 'No'}")
+        #    if res.get('path'): log(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
+        #    else:
+        #         log("Path Cost: N/A")
+        #         if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: log(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
+        #    if 'status' in res: log(f"Status of run: {res['status']}")
+        #log("=" * (34 + len(str(problem)))) # Adjusted length
 
     # Overall Summary
     log(f"\n{'*'*15} Overall Summary {'*'*15}")
     for res in all_results:
-         status = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}" if res.get('path') else ("No Path Found" if 'error' not in res else f"ERROR: {res['error']}")
-         #log("Path:", res['path']) # Uncomment to see the full path states
-
-         optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
-         algo_name = res.get('algorithm','N/A') 
-         log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, Status: {status} {optimal_note} {res['status']}")
+        if res.get('path'):
+            summary = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}"
+        else: 
+            summary = "No Path Found"
+        #log("Path:", res['path']) # Uncomment to see the full path states
+        optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
+        algo_name = res.get('algorithm','N/A') 
+        log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")
 
     # --- Save Results to JSON ---
-    json_file_path = f"{out_file_base}.json"
     with open(json_file_path, 'w') as json_file:
         json.dump(all_results, json_file, indent=4)
-    log(f"Results saved to {json_file_path}") 
+    log(f"Final Results saved to {json_file_path}") 
 
     # --- Save Results to CSV ---
     # Ensure all results have the same keys for CSV
     # If some results are missing keys, fill them with None
-    csv_file_path = f"{out_file_base}.csv"
     write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
+    log("Finished!")
     return csv_file_path
 
 

@@ -3,6 +3,7 @@ Data Structures
 """
 import heapq
 import random
+import util
 
 
 class PriorityQueue:
@@ -161,6 +162,4 @@ class PriorityQueue:
             return 0
         else:
             raise ValueError(f"Invalid tiebreaker1: {self.tiebreaker2}")
-
-
 

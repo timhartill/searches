@@ -19,12 +19,15 @@ import random
 import util
 
 
-
 # --- SlidingTileProblem (Corrected Formatting & use_variable_costs flag) ---
 class SlidingTileProblem:
     """
     Implements the Sliding Tile puzzle problem interface.
     Can use uniform cost (1) or variable cost (value of tile moved).
+    Methods output state as bytes (and assume input states other than in __init__ are bytes) as this
+    uses far less memory than lists or tuples
+    To obtain readable state representations, access prob.initial_state_tuple and prob.initial_state_tuple 
+    which must appear in every problem class
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
@@ -49,7 +52,8 @@ class SlidingTileProblem:
         else:
             sorted_list = list(range(0, self.max_rows * self.max_cols))# + [0]  Korf goal = [0,1,...,15]
             self.goal_state_tuple = tuple(sorted_list)
-            
+        self.initial_state_bytes = bytes(self.initial_state_tuple)
+        self.goal_state_bytes = bytes(self.goal_state_tuple)            
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
         self._start_positions = {tile: i for i, tile in enumerate(self.initial_state_tuple)}  # for bdhs
         self.use_variable_costs = use_variable_costs
@@ -67,15 +71,15 @@ class SlidingTileProblem:
         self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
-        return self.initial_state_tuple
+        return self.initial_state_bytes
         
     def goal_state(self): 
-        return self.goal_state_tuple
+        return self.goal_state_bytes
         
     def is_goal(self, state, backward=False): 
         if backward:
-            return state == self.initial_state_tuple
-        return state == self.goal_state_tuple
+            return state == self.initial_state_bytes
+        return state == self.goal_state_bytes
 
     def get_neighbors(self, state):
         """Returns list of tuples: (neighbor_state, moved_tile_value) from state
@@ -92,7 +96,7 @@ class SlidingTileProblem:
                 moved_tile_value = new_state_list[new_blank_index] 
                 # swap blank with the tile in the new position:
                 new_state_list[blank_index], new_state_list[new_blank_index] = new_state_list[new_blank_index], new_state_list[blank_index]
-                neighbors.append( (tuple(new_state_list), moved_tile_value) ) 
+                neighbors.append( (bytes(new_state_list), moved_tile_value) ) 
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -154,7 +158,9 @@ class PancakeProblem:
     """
     Implements the Pancake Sorting problem interface.
     Can use uniform cost (1) or variable cost (k = num of pancakes flipped).
-    Note: "4 Pancake" will have goal: (1,2,3,4,5) where 5 is the table BUT states passed in should be WITHOUT the table eg (1,2,3,4)
+    Note: "4 Pancake" will have goal: (1,2,3,4,5) where 5 is the table BUT states passed into __init__ should be WITHOUT the table eg (1,2,3,4)
+    Methods output state as bytes (and assume input states other than in __init__ are bytes) as this
+    uses far less memory than lists or tuples
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
@@ -166,6 +172,8 @@ class PancakeProblem:
             self.goal_state_tuple=tuple(list(goal_state) + table) 
         else: 
             self.goal_state_tuple=tuple(sorted(list(self.initial_state_tuple)))
+        self.initial_state_bytes = bytes(self.initial_state_tuple)
+        self.goal_state_bytes = bytes(self.goal_state_tuple)            
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = (not use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -181,15 +189,15 @@ class PancakeProblem:
         self._str_repr = f"Pancake-{self.n-1}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
         
     def initial_state(self): 
-        return self.initial_state_tuple
+        return self.initial_state_bytes
         
     def goal_state(self): 
-        return self.goal_state_tuple
+        return self.goal_state_bytes
         
     def is_goal(self, state, backward=False): 
         if backward:
-            return state == self.initial_state_tuple
-        return state == self.goal_state_tuple
+            return state == self.initial_state_bytes
+        return state == self.goal_state_bytes
 
     def get_neighbors(self, state):
         """Returns list of tuples: (neighbor_state, k_flipped)
@@ -283,7 +291,7 @@ class PancakeProblem:
 
     def heuristic(self, state, backward=False):
         """
-        Calculates the Symetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
+        Calculates the Symmetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
         NOTE: This counts number of "breaks". If variable costs (cost=k) are used,
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
         at most 2 gaps.
@@ -306,6 +314,8 @@ class TowersOfHanoiProblem:
     Allows for inadmissible heuristic. 
     State is a Tuple of current peg for each disk eg ('A', 'A', 'B', 'C', 'A', 'A', 'A') for 7 disks with idx 0 = smallest disk.
     For simplicity, initial peg is always 'A', goal state is list(target peg*num_disks) and number of pegs is ord(target peg)-ord(initial peg).
+    Methods output state as bytes (and assume input states other than in __init__ are bytes) as this
+    uses far less memory than lists or tuples
     """
     def __init__(self, initial_state= ['A','A','A','A','A','A','A','A','A','A','A','A'],
                  goal_state = ['D','D','D','D','D','D','D','D','D','D','D','D'], 
@@ -346,23 +356,25 @@ class TowersOfHanoiProblem:
             raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation'.")
         if len(self.pegs) > 3 and heuristic == "3pegstd": # not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False
-        self.h_str = heuristic 
-        self.degradation = degradation    
+        self.h_str = heuristic
+        self.degradation = degradation
         self.initial_state_tuple = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self.goal_state_tuple=tuple(goal_state)      # (C, C, C, ..., C)
+        self.initial_state_bytes = util.encode_list(initial_state)
+        self.goal_state_bytes = util.encode_list(goal_state)
         self.cstar = cstar
         self._str_repr=f"TowersOfHanoi-{self.num_disks}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
-        return self.initial_state_tuple
+        return self.initial_state_bytes
         
     def goal_state(self): 
-        return self.goal_state_tuple
+        return self.goal_state_bytes
         
-    def is_goal(self, state, backward=False): 
+    def is_goal(self, state_bytes, backward=False): 
         if backward:
-            return state == self.initial_state_tuple
-        return state == self.goal_state_tuple
+            return state_bytes == self.initial_state_bytes
+        return state_bytes == self.goal_state_bytes
 
     def _get_peg_tops(self, state):
         """Helper to find the smallest (topmost) disk index on each peg.
@@ -383,7 +395,7 @@ class TowersOfHanoiProblem:
                   
         return peg_tops
 
-    def get_neighbors(self, state): 
+    def get_neighbors(self, state_bytes): 
         """Returns list of tuples: (neighbor_state, cost=1)
         eg get_neighbours(('A', 'A', 'B', 'C', 'A', 'A', 'A')) =
                 [(('B', 'A', 'B', 'C', 'A', 'A', 'A'), 1),
@@ -391,27 +403,28 @@ class TowersOfHanoiProblem:
                  (('A', 'A', 'C', 'C', 'A', 'A', 'A'), 1)]
         """
         nbs=[] 
+        state = util.decode_list(state_bytes)
         pts=self._get_peg_tops(state);
-        pegs = self.pegs.copy() 
-        for sp in pegs:
+        for sp in self.pegs:
             dtm = pts[sp] # Disk To Move index (top disk on source)
             if dtm is not None: # If source peg is not empty
-                for dp in pegs: # Destination Peg
+                for dp in self.pegs: # Destination Peg
                     if sp != dp: # Cannot move to same peg
                         tdod = pts[dp] # Top Disk On Destination index
                         # Check move validity: dest empty OR moving disk < disk on dest
                         if tdod is None or dtm < tdod:
                             nsl = list(state)
                             nsl[dtm] = dp # Move disk dtm to peg dp
-                            nbs.append((tuple(nsl), 1)) # Append (new_state, cost)
+                            nbs.append((util.encode_list(nsl), 1)) # Append (new_state, cost)
         return nbs
 
-    def heuristic(self, state, backward=False): 
+    def heuristic(self, state_bytes, backward=False): 
         """Calculates the standard admissible heuristic for 3 peg Towers of Hanoi and "Infinite Peg Relaxation" heuristic
         which is admissable but relatively weak.
         Allows for degrading heuristic by ignoring disks
         Allows for inadmissable heuristic but A* still always finds optimal path.. 
         """
+        state = util.decode_list(state_bytes)
         h=0 
         if backward: ctp=self.initial_peg # bdhs current target peg for disk k
         else: ctp=self.target_peg 

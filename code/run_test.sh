@@ -141,7 +141,7 @@ python search_runner.py \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid "" \
+        --grid "daotest" \
         --grid_max_per_scen 2 \
         --grid_reverse_scen_order \
         --grid_heur octile \
@@ -163,7 +163,7 @@ python search_runner.py \
         --toh_degs 0 2 \
         --algo_visualise \
         --algo_timeout 120 \
-        --algo_min_remaining_gb 3.0 \
+        --algo_min_remaining_gb 2.0 \
         --algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
         --algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 

@@ -4,13 +4,11 @@ Unidirectional Searches
 Dijkstra / Uniform Cost Search  (g only)
 Greedy Best First Search        (h only)
 A* Search                    (f = g + h)    
-
 """
 import time
 import util
 import data_structures
 
-# --- Constants ---
 algo_name_map = {'g': "UniformCost", 'h': "GreedyBestFirst", 'f': "Astar"}
 
 
@@ -32,7 +30,6 @@ class generic_search:
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         self.timeout = timeout
         self.min_ram = min_ram
-        self.status = ""
         self.priority_key = priority_key
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
@@ -52,7 +49,8 @@ class generic_search:
         #elif self.priority_key == 'h': initial_priority = h_initial
         #else: initial_priority = initial_g + h_initial # 'f'
 
-        frontier = data_structures.PriorityQueue(priority_key=self.priority_key, tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
+        frontier = data_structures.PriorityQueue(priority_key=self.priority_key, 
+                                                 tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
         frontier.push(start_node, 
                       frontier.calc_priority(g=g_initial, h=h_initial), 0) # Push with priority and tiebreaker1
         came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
@@ -68,6 +66,7 @@ class generic_search:
             cstar = None
         nodes_expanded_below_cstar = 0
         i = 0
+        status = ""
         checkmem = 100000
 
         while not frontier.isEmpty():
@@ -75,7 +74,7 @@ class generic_search:
             C = frontier.peek(priority_only=True) # Peek at the lowest priority element
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                print(f"Termination condition U ({U}) >= C ({C}) met.")
+                status += f"Completed. Termination condition U ({U}) >= C ({C}) met."
                 # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
                 break
 
@@ -100,6 +99,7 @@ class generic_search:
                 end_time = time.time()
                 U = g_score.get(current_state)   
                 found_path = current_state
+                status += f"Completed. Goal found U: ({U})  C: ({C})."
                 break 
 
             for neighbor_info in problem.get_neighbors(current_state):
@@ -124,23 +124,22 @@ class generic_search:
                                   frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                   frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
             if (time.time()-start_time)/60.0 > self.timeout:
-                self.status = f"Timeout after {(time.time()-start_time)/60:.4f} mins."
+                status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
-                self.status = f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
+                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
                 break
             i += 1
 
         end_time = time.time()
         image_file = 'no file'
-        if not self.status:
-            self.status = "Completed."
-        else:
-            print(self.status)
+        if not status:
+            status = "Completed."
+        print(status)
         if found_path:
             path = reconstruct_path(came_from, start_node, found_path)
             if not path:
-                self.status += " Path too long to reconstruct."
+                status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
                                                visited_fwd=closed_set, visualise_dirname=self.visualise_dirname)
@@ -149,13 +148,21 @@ class generic_search:
 
             return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
-                    "max_heap_size": frontier.max_heap_size, "status": self.status}
+                    "max_heap_len": frontier.max_heap_size, 
+                    "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set),
+                    "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
+                    "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
+                    "status": status}
 
-        self.status += " No path found."
+        status += " No path found."
 
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
-                "max_heap_size": frontier.max_heap_size, "status": self.status }
+                "max_heap_len": frontier.max_heap_size, 
+                "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set), 
+                "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
+                "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
+                "status": status }
 
 
     def __str__(self): # enable str(object) to return algo name
@@ -170,12 +177,10 @@ def reconstruct_path(came_from, start_state, goal_state):
     if current == start_node: return [start_node]
     
     limit = 100000 # Generic large limit
-    if isinstance(start_state, tuple) and hasattr(start_state, '__len__'): 
-        limit = max(limit, 2**(len(start_state) + 6)) 
 
     count = 0
     while current != start_node:
-        path.append(current)
+        path.append(tuple(current))
         parent = came_from.get(current)
         if parent is None:
              current_str = str(current)[:100] + ('...' if len(str(current)) > 100 else '')
@@ -187,7 +192,7 @@ def reconstruct_path(came_from, start_state, goal_state):
             print(f"Error: Path reconstruction exceeded limit ({limit}).")
             return None
             
-    path.append(start_node)
+    path.append(tuple(start_node))
     return path[::-1] 
 
 
