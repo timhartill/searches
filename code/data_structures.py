@@ -166,7 +166,8 @@ class PriorityQueue:
 
 class StateInfo():
     """ Dict with state key to store g values and parent info for path reconstruction
-    This saves a few GB of RAM on big problems over having two dicts with key=state as the state isn't duplicated 
+    This was supposed to save a few GB of RAM on big problems over having two dicts with key=state as the state isn't duplicated
+    but in reality took more RAM. So not used now! 
     """
     def __init__(self):
         self.state_dict = {}

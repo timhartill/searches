@@ -73,6 +73,16 @@ class bd_generic_search:
         status = ""
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
+            if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
+                max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
+            if (time.time()-start_time)/60.0 > self.timeout:
+                status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
+                break
+            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
+                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
+                break
+            i += 1
+
             C = min(frontier_fwd.peek(priority_only=True), 
                     frontier_bwd.peek(priority_only=True))
             
@@ -169,15 +179,6 @@ class bd_generic_search:
                                             frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
 
-            if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
-                max_heap_size_combined = frontier_fwd.max_heap_size + frontier_bwd.max_heap_size
-            if (time.time()-start_time)/60.0 > self.timeout:
-                status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
-                break
-            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
-                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
-                break
-            i += 1
             
         end_time = time.time()
         if not status:
