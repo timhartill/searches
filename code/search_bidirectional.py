@@ -69,7 +69,7 @@ class bd_generic_search:
             cstar = None
         nodes_expanded_below_cstar = 0
         i = 0
-        checkmem = 100000
+        checkmem = 75000
         status = ""
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():

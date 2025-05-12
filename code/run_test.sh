@@ -163,7 +163,7 @@ python search_runner.py \
         --toh_degs 0 2 \
         --algo_visualise \
         --algo_timeout 120 \
-        --algo_min_remaining_gb 2.0 \
+        --algo_min_remaining_gb 3.0 \
         --algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
         --algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 

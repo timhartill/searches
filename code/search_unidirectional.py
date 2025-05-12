@@ -53,8 +53,10 @@ class generic_search:
                                                  tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
         frontier.push(start_node, 
                       frontier.calc_priority(g=g_initial, h=h_initial), 0) # Push with priority and tiebreaker1
-        came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
-        g_score = {start_node: g_initial}
+        state_info = data_structures.StateInfo()
+        #came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
+        #g_score = {start_node: g_initial}
+        state_info.add(start_node, parent=None, g=g_initial)
         closed_set = set()
         nodes_expanded = 0
         C = -1.0         # Current lowest cost on frontier
@@ -66,8 +68,9 @@ class generic_search:
             cstar = None
         nodes_expanded_below_cstar = 0
         i = 0
+        checkmem = 75000
         status = ""
-        checkmem = 100000
+        currg_continuation_condition = 0
 
         while not frontier.isEmpty():
 
@@ -82,7 +85,10 @@ class generic_search:
             
             # Optimization: If current_state's g_score is worse than recorded, skip
             # This can allegedly happen with duplicate states in the queue with different priorities
-            if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
+            current_g_score = state_info.get_g(current_state)
+            if (current_g_score + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
+            #if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
+                currg_continuation_condition += 1
                 continue 
 
             if current_state in closed_set: continue
@@ -90,14 +96,15 @@ class generic_search:
             
             closed_set.add(current_state) # Add after popping and checking
 
-            current_g_score = g_score.get(current_state)
+            #current_g_score = g_score.get(current_state)
+            
 
             if cstar and current_g_score < cstar:
                 nodes_expanded_below_cstar += 1
 
             if problem.is_goal(current_state):
                 end_time = time.time()
-                U = g_score.get(current_state)   
+                U = current_g_score     #g_score.get(current_state)
                 found_path = current_state
                 status += f"Completed. Goal found U: ({U})  C: ({C})."
                 break 
@@ -116,9 +123,11 @@ class generic_search:
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
 
-                if tentative_g_score < g_score.get(neighbor_state, float('inf')):
-                    came_from[neighbor_state] = current_state 
-                    g_score[neighbor_state] = tentative_g_score
+                neighbor_g_score = state_info.get_g(neighbor_state)
+                if tentative_g_score < neighbor_g_score:     #g_score.get(neighbor_state, float('inf')):
+                    state_info.add(neighbor_state, parent=current_state, g=tentative_g_score)
+                    #came_from[neighbor_state] = current_state 
+                    #g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost...
                     frontier.push(neighbor_state, 
                                   frontier.calc_priority(g=tentative_g_score, h=h_score), 
@@ -135,9 +144,12 @@ class generic_search:
         image_file = 'no file'
         if not status:
             status = "Completed."
+        if currg_continuation_condition > 0:
+            status += f" {currg_continuation_condition} dup nodes with lower g skipped."
         print(status)
         if found_path:
-            path = reconstruct_path(came_from, start_node, found_path)
+            path = reconstruct_path(state_info, start_node, found_path)
+            #path = reconstruct_path(came_from, start_node, found_path)
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
@@ -150,8 +162,9 @@ class generic_search:
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                     "max_heap_len": frontier.max_heap_size, 
                     "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set),
-                    "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
-                    "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
+                    "state_dict_len": len(state_info), "state_dict_gb": util.get_size(state_info.state_dict),
+#                    "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
+#                    "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
                     "status": status}
 
         status += " No path found."
@@ -160,8 +173,9 @@ class generic_search:
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                 "max_heap_len": frontier.max_heap_size, 
                 "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set), 
-                "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
-                "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
+                "state_dict_len": len(state_info), "state_dict_gb": util.get_size(state_info.state_dict),
+#                "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
+#                "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
                 "status": status }
 
 
@@ -169,19 +183,21 @@ class generic_search:
         return self._str_repr
 
 
-def reconstruct_path(came_from, start_state, goal_state):
+def reconstruct_path(state_info, start_state, goal_state):
+#def reconstruct_path(came_from, start_state, goal_state):
     """Reconstructs the path from start to goal. Path is list of states"""
     path = []
     current = goal_state
     start_node = start_state 
-    if current == start_node: return [start_node]
+    if current == start_node: return [tuple(start_node)]
     
     limit = 100000 # Generic large limit
 
     count = 0
     while current != start_node:
         path.append(tuple(current))
-        parent = came_from.get(current)
+        parent = state_info.get_parent(current)
+#        parent = came_from.get(current)
         if parent is None:
              current_str = str(current)[:100] + ('...' if len(str(current)) > 100 else '')
              print(f"Error: State {current_str} not found in came_from map during reconstruction.")
