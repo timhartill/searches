@@ -67,10 +67,11 @@ class bd_generic_search:
             cstar = problem.cstar
         else:
             cstar = None
-        nodes_expanded_below_cstar = 0
+        #nodes_expanded_below_cstar = 0
         i = 0
-        checkmem = 75000
+        checkmem = 1000
         status = ""
+        cond_count = 0
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
@@ -87,32 +88,37 @@ class bd_generic_search:
                     frontier_bwd.peek(priority_only=True))
             
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                status += f"Completed. Termination condition U ({U}) >= C ({C}) met."
+                status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
 
             # --- Forward Step ---
-            if not frontier_fwd.isEmpty():
+            if not frontier_fwd.isEmpty() and C == frontier_fwd.peek(priority_only=True):
                 current_state_fwd = frontier_fwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
                 if current_state_fwd in closed_fwd: 
                     continue
-                current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-                if current_g_fwd  + problem.heuristic(current_state_fwd, backward=False) >= U: #TODO remove
-                    continue  
                 closed_fwd.add(current_state_fwd)
+                current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
                 nodes_expanded += 1
-                if cstar and current_g_fwd < cstar:
-                    nodes_expanded_below_cstar += 1
+                #if cstar and current_g_fwd < cstar:
+                #    nodes_expanded_below_cstar += 1
+                #if current_g_fwd >= U:  # + problem.heuristic(current_state_fwd, backward=False) >= U: #TODO remove?
+                #    cond_count += 1
+                #    continue
 
                 if current_state_fwd in g_score_bwd: 
                     current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
-                    if current_path_cost < U:   
+                    if current_path_cost < U:
                         U = current_path_cost
                         meeting_node = current_state_fwd
+                        if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                            status += f"Terminating BFS as path found. U:{U}."
+                            break
+                        continue # TODO No sense expanding?
                         #break   #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
                     #else:  # finds nonoptimal paths
                     #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
                     #    break    
-                
+
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
                     if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
@@ -135,23 +141,28 @@ class bd_generic_search:
                                             frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
-            if not frontier_bwd.isEmpty():
+            if not frontier_bwd.isEmpty() and C == frontier_bwd.peek(priority_only=True):
                 current_state_bwd = frontier_bwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
                 if current_state_bwd in closed_bwd: 
                     continue
                 current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
-                if current_g_bwd + problem.heuristic(current_state_bwd, backward=True) >= U: #TODO remove
-                    continue 
                 closed_bwd.add(current_state_bwd)
                 nodes_expanded += 1
-                if cstar and current_g_bwd < cstar:
-                    nodes_expanded_below_cstar += 1
+                #if cstar and current_g_bwd < cstar:
+                #    nodes_expanded_below_cstar += 1
+                #if current_g_bwd >= U: #+ problem.heuristic(current_state_bwd, backward=True) >= U: #TODO remove
+                #    cond_count += 1
+                #    continue 
 
                 if current_state_bwd in g_score_fwd: 
                     current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
                     if current_path_cost < U: 
                         U = current_path_cost
                         meeting_node = current_state_bwd
+                        if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                            status += f"Terminating BFS as path found. U:{U}."
+                            break
+                        continue    #TODO "continue" here as pointless expanding the node after it found a path?
                         #break  #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
                     #else: #finds non-optimal paths
                     #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
@@ -183,8 +194,19 @@ class bd_generic_search:
         end_time = time.time()
         if not status:
             status = "Completed."
+        if cond_count > 0:
+            status += f" {cond_count} dup nodes skipped."    
         print(status)    
         image_file = 'no file'   
+        nodes_expanded_below_cstar = 0
+        print(f"Calculating count of nodes below {U} from forward closed set |{len(closed_fwd)}|..")
+        for state in closed_fwd:
+            if g_score_fwd.get(state, 0) < U:
+                nodes_expanded_below_cstar += 1
+        print(f"Calculating count of nodes below {U} from backward closed set |{len(closed_bwd)}|..")
+        for state in closed_bwd:
+            if g_score_bwd.get(state, 0) < U:
+                nodes_expanded_below_cstar += 1
         if meeting_node:
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
             if not path:

@@ -66,11 +66,10 @@ class generic_search:
             cstar = problem.cstar
         else:
             cstar = None
-        nodes_expanded_below_cstar = 0
+        #nodes_expanded_below_cstar = 0
         i = 0
-        checkmem = 75000
+        checkmem = 1000
         status = ""
-        currg_continuation_condition = 0
 
         while not frontier.isEmpty():
             if (time.time()-start_time)/60.0 > self.timeout:
@@ -84,37 +83,27 @@ class generic_search:
             C = frontier.peek(priority_only=True) # Peek at the lowest priority element
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                status += f"Completed. Termination condition U ({U}) >= C ({C}) met."
+                status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
                 break
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
-            
-            # Optimization: If current_state's formerly recorded tentative g_score is lower than the g score just popped for this state, skip it
-            # This can allegedly happen with duplicate states in the queue with different priorities
-            #current_g_score = state_info.get_g(current_state)
-            #if (current_g_score + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
-            if current_state in g_score and (g_score[current_state] + 1e-6) < (C - (problem.heuristic(current_state) if self.priority_key != 'g' else 0)):
-                currg_continuation_condition += 1
-                continue 
 
             if current_state in closed_set: continue
-            nodes_expanded += 1
-            
-            closed_set.add(current_state) # Add after popping and checking
-
+            closed_set.add(current_state) 
             current_g_score = g_score.get(current_state)
-            
+            nodes_expanded += 1
+            #if cstar and current_g_score < cstar:
+            #    nodes_expanded_below_cstar += 1
 
-            if cstar and current_g_score < cstar:
-                nodes_expanded_below_cstar += 1
 
             if problem.is_goal(current_state):
                 end_time = time.time()
-                U = current_g_score     #g_score.get(current_state)
+                U = current_g_score
                 found_path = current_state
                 status += f"Completed. Goal found U: ({U})."
                 break 
+
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -131,7 +120,7 @@ class generic_search:
                 tentative_g_score = current_g_score + cost
 
                 #neighbor_g_score = state_info.get_g(neighbor_state)
-                if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #neighbor_g_score:     #g_score.get(neighbor_state, float('inf')):
+                if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #neighbor_g_score:
                     #state_info.add(neighbor_state, parent=current_state, g=tentative_g_score)
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
@@ -144,9 +133,12 @@ class generic_search:
         image_file = 'no file'
         if not status:
             status = "Completed."
-        if currg_continuation_condition > 0:
-            status += f" {currg_continuation_condition} dup nodes with lower g skipped."
         print(status)
+        nodes_expanded_below_cstar = 0
+        print(f"Calculating count of nodes below {U} from closed set |{len(closed_set)}|..")
+        for state in closed_set:
+            if g_score.get(state, 0) < U:
+                nodes_expanded_below_cstar += 1
         if found_path:
             #path = reconstruct_path(state_info, start_node, found_path)
             path = reconstruct_path(came_from, start_node, found_path)

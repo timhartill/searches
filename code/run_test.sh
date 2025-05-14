@@ -149,7 +149,7 @@ python search_runner.py \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
-        --tiles "15_puzzle_probs1_testcstar66.csv" \
+        --tiles "12_puzzle_probs1_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
@@ -163,8 +163,8 @@ python search_runner.py \
         --toh_degs 0 2 \
         --algo_visualise \
         --algo_timeout 120 \
-        --algo_min_remaining_gb 3.0 \
-        --algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
+        --algo_min_remaining_gb 5.0 \
+        --algo_heur astar bfs bd_astar bd_bfs bd_uc\
         --algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 
 

@@ -10,6 +10,7 @@ import time
 import random
 import traceback # For error reporting
 import psutil
+import copy
 
 import numpy as np
 
@@ -52,14 +53,15 @@ def bytes_to_gb(bytes_value):
 
 def get_available_ram():
   """  Gets the amount of available RAM in GB.  """
-  # Get system memory usage statistics
   mem = psutil.virtual_memory()
-  # mem.available is the actual available memory that can be given instantly to processes
-  return round(bytes_to_gb(mem.available), 2)
+  return round(bytes_to_gb(mem.available), 2)    # mem.available is the actual available memory that can be given instantly to processes
+
 
 
 def get_size(obj):
-    """ Get the amount of RAM occupied by a python object in GB """
+    """ Get the amount of RAM occupied by a python object in GB 
+        Note: for complex objects like a dictionary this is only the size of the base object not the memory taken by the items within it
+    """
     return round(bytes_to_gb(sys.getsizeof(obj)), 4)
 
 def encode_list(state):
@@ -90,11 +92,12 @@ def make_prob_str(file_name='', initial_state=None, goal_state=None, prefix="__"
     return prob_str + suffix
 
 
-def write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], 
+def write_jsonl_to_csv(results, csv_file_path, del_keys=['path'], 
                        delimiter=',', lineterminator='\n', verbose=True):
     """ Write a list of dictionaries to a CSV file optionally deleting some keys and making the columns
         consistent across all rows by adding header as superset of all keys and adding blanks to rows where necessary.
     """
+    all_results = copy.deepcopy(results)
     all_keys = set()
     for result in all_results:
         if del_keys:
