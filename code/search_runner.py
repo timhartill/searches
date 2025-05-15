@@ -228,7 +228,7 @@ if __name__ == "__main__":
     algorithms = []
     # Set up the heuristic algorithms to be run ########################
     # Heuristic algorithms must accept the parameters as shown here.. 
-    if args.algo_heur[0] != "NONE":
+    if args.algo_heur[0].upper() != "NONE":
         for algo in args.algo_heur:
             assert algo in SEARCH_MAP
             algo_class = SEARCH_MAP[algo]['class']
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 
     # Set up the MCTS algorithms to be run ########################
     # MCTS algorithms must accept the parameters as shown here.. 
-    if args.algo_mcts[0] != "NONE":
+    if args.algo_mcts[0].upper() != "NONE":
         for algo in args.algo_mcts:
             assert algo in SEARCH_MAP
             algo_class = SEARCH_MAP[algo]['class']

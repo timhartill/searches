@@ -164,7 +164,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar bfs bd_astar bd_bfs bd_uc\
-        --algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
+        --algo_heur astar bfs \
+        --algo_mcts NONE \
 
 

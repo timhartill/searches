@@ -236,18 +236,18 @@ class bd_generic_search:
                     "nodes_expanded": nodes_expanded,  "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
-                    "closed_set_len": len(closed_fwd)+len(closed_bwd), "closed_set_gb": util.get_size(closed_fwd)+util.get_size(closed_fwd), 
-                    "g_score_len": len(g_score_fwd)+len(g_score_bwd), "g_score_gb": util.get_size(g_score_fwd)+util.get_size(g_score_bwd),
-                    "came_from_len": len(came_from_fwd)+len(came_from_bwd), "came_from_gb": util.get_size(came_from_fwd)+util.get_size(came_from_bwd),
+                    "closed_set_len": len(closed_fwd)+len(closed_bwd), 
+                    "g_score_len": len(g_score_fwd)+len(g_score_bwd),
+                    "came_from_len": len(came_from_fwd)+len(came_from_bwd),
                     "status": status}
 
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
-                "closed_set_len": len(closed_fwd)+len(closed_bwd), "closed_set_gb": util.get_size(closed_fwd)+util.get_size(closed_fwd), 
-                "g_score_len": len(g_score_fwd)+len(g_score_bwd), "g_score_gb": util.get_size(g_score_fwd)+util.get_size(g_score_bwd),
-                "came_from_len": len(came_from_fwd)+len(came_from_bwd), "came_from_gb": util.get_size(came_from_fwd)+util.get_size(came_from_bwd),
+                "closed_set_len": len(closed_fwd)+len(closed_bwd), 
+                "g_score_len": len(g_score_fwd)+len(g_score_bwd),
+                "came_from_len": len(came_from_fwd)+len(came_from_bwd),
                 "status": status} # No path found
 
 

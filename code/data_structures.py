@@ -68,16 +68,14 @@ class PriorityQueue:
 
 
     def pop(self, item_only=True):
-        if not self.isEmpty():
-            if self.increment_tb2:
-                priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
-            else:
-                priority, tiebreaker1, item = heapq.heappop(self.heap)
-                tiebreaker2 = None
-            if item_only:
-                return item
-            return item, priority, tiebreaker1, tiebreaker2
-        return None
+        if self.use_tb2:
+            priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
+        else:
+            priority, tiebreaker1, item = heapq.heappop(self.heap)
+            tiebreaker2 = None
+        if item_only:
+            return item
+        return item, priority, tiebreaker1, tiebreaker2
 
     def isEmpty(self):
         return len(self.heap) == 0

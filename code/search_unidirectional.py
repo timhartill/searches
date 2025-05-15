@@ -45,9 +45,6 @@ class generic_search:
         start_node = problem.initial_state()
         h_initial = problem.heuristic(start_node) if self.priority_key in ['h', 'f'] else 0
         g_initial = 0
-        #if self.priority_key == 'g': initial_priority = initial_g
-        #elif self.priority_key == 'h': initial_priority = h_initial
-        #else: initial_priority = initial_g + h_initial # 'f'
 
         frontier = data_structures.PriorityQueue(priority_key=self.priority_key, 
                                                  tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
@@ -66,10 +63,16 @@ class generic_search:
             cstar = problem.cstar
         else:
             cstar = None
-        #nodes_expanded_below_cstar = 0
+        nodes_expanded_below_cstar = 0
+        nodes_expanded_current_c = 0
+        c_count_dict = {}
+
         i = 0
         checkmem = 1000
         status = ""
+        stale_count = 0
+        U_update_count = 0
+        found_path = False
 
         while not frontier.isEmpty():
             if (time.time()-start_time)/60.0 > self.timeout:
@@ -80,30 +83,53 @@ class generic_search:
                 break
             i += 1
 
-            C = frontier.peek(priority_only=True) # Peek at the lowest priority element
+            prior_c = C
+            current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
+            C = max(C, current_priority)  # Per Mike, could take C = max(C, peek) - lower bound should never go down but could without this with var cost
+            #C = current_priority
+
+            if self.priority_key != 'h' and prior_c != C:
+                c_count_dict[C] = nodes_expanded_current_c
+                nodes_expanded_current_c = 0
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                c_count_dict[C+1] = nodes_expanded_current_c
+                found_path = True
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
-                # this check is for consistency with our BDHS algorithms - won't be triggered since breaking below when find goal 
                 break
 
+
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
+            current_g_score = g_score[current_state]
+            if self.priority_key == 'g': h_remove = 0
+            else: h_remove = problem.heuristic(current_state)
+            # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
+            # that were added before a better path was found). If the extracted
+            # node's priority (- h if any) is higher than its current best known g_score,
+            # it means we found a better path already, so we discard this stale entry.
+            # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap
+            if current_g_score + 1e-6 < current_priority - h_remove:
+                stale_count += 1
+                continue  # skip stale dup state - rather than deleting from heapq before push in expansion
 
-            if current_state in closed_set: continue
-            closed_set.add(current_state) 
-            current_g_score = g_score.get(current_state)
+            #if current_state in closed_set: continue
+            #closed_set.add(current_state) 
+
+            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
+                if current_g_score < U:
+                    U = current_g_score
+                    found_path = True
+                    U_update_count += 1
+                    if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                        status += f"Terminating BFS as path found. U:{U}."
+                        break
+                    #continue
+                    #break # if don't break here but continue then C >= U condition will fire above.
+
             nodes_expanded += 1
-            #if cstar and current_g_score < cstar:
-            #    nodes_expanded_below_cstar += 1
-
-
-            if problem.is_goal(current_state):
-                end_time = time.time()
-                U = current_g_score
-                found_path = current_state
-                status += f"Completed. Goal found U: ({U})."
-                break 
-
+            if cstar and current_g_score < cstar:
+                nodes_expanded_below_cstar += 1
+            nodes_expanded_current_c += 1
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -114,13 +140,13 @@ class generic_search:
                     neighbor_state = neighbor_info
                     move_info = None
 
-                if neighbor_state in closed_set: continue
+                #if neighbor_state in closed_set: continue
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
 
                 #neighbor_g_score = state_info.get_g(neighbor_state)
-                if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #neighbor_g_score:
+                if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
                     #state_info.add(neighbor_state, parent=current_state, g=tentative_g_score)
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
@@ -133,15 +159,17 @@ class generic_search:
         image_file = 'no file'
         if not status:
             status = "Completed."
+        if stale_count > 0:
+            status += f" Stale count:{stale_count}."
+        if U_update_count > 0:
+            status += f" Updated U {U_update_count} times."
+
         print(status)
-        nodes_expanded_below_cstar = 0
-        print(f"Calculating count of nodes below {U} from closed set |{len(closed_set)}|..")
-        for state in closed_set:
-            if g_score.get(state, 0) < U:
-                nodes_expanded_below_cstar += 1
         if found_path:
+            print("#### C count Dict ####")
+            print(c_count_dict)
             #path = reconstruct_path(state_info, start_node, found_path)
-            path = reconstruct_path(came_from, start_node, found_path)
+            path = reconstruct_path(came_from, start_node, problem.goal_state())
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
@@ -153,10 +181,10 @@ class generic_search:
             return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                     "max_heap_len": frontier.max_heap_size, 
-                    "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set),
-#                    "state_dict_len": len(state_info.state_dict), "state_dict_gb": util.get_size(state_info.state_dict),
-                    "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
-                    "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
+                    "closed_set_len": len(closed_set),
+#                    "state_dict_len": len(state_info.state_dict),
+                    "g_score_len": len(g_score),
+                    "came_from_len": len(came_from),
                     "status": status}
 
         status += " No path found."
@@ -164,11 +192,11 @@ class generic_search:
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                 "max_heap_len": frontier.max_heap_size, 
-                "closed_set_len": len(closed_set), "closed_set_gb": util.get_size(closed_set), 
-#                "state_dict_len": len(state_info.state_dict), "state_dict_gb": util.get_size(state_info.state_dict),
-                "g_score_len": len(g_score), "g_score_gb": util.get_size(g_score),
-                "came_from_len": len(came_from), "came_from_gb": util.get_size(came_from),
-                "status": status }
+                "closed_set_len": len(closed_set), 
+#                "state_dict_len": len(state_info.state_dict),
+                "g_score_len": len(g_score),
+                "came_from_len": len(came_from),
+                "status": status}
 
 
     def __str__(self): # enable str(object) to return algo name

@@ -259,7 +259,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
     if not logger:
         log = print
     else:
-        log = logger.info    
+        log = logger.info
     if not timestamp:
         timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
     out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
