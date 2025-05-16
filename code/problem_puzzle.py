@@ -129,6 +129,7 @@ class SlidingTileProblem:
     def heuristic(self, state, backward=False):
         """
         Calculates the Manhattan distance heuristic (number of steps).
+        Note: Admissable and consistent with unit costs
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
@@ -292,9 +293,11 @@ class PancakeProblem:
     def heuristic(self, state, backward=False):
         """
         Calculates the Symmetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
+        Note: Admissable and consistent with unit costs
         NOTE: This counts number of "breaks". If variable costs (cost=k) are used,
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
         at most 2 gaps.
+
         """
         if backward: target_tuple = self.initial_state_tuple
         else: target_tuple = self.goal_state_tuple
@@ -448,6 +451,7 @@ class TowersOfHanoiProblem:
         elif self.h_str == "infinitepegrelaxation":
             # See Additive Pattern databases, Felner et al 2004
             # much weaker than pattern database heuristics but admissable for > 3 pegs and works in bidirectional
+            # NOTE: This is admissable but inconsistent even at d0!
             for peg in self.pegs:
                 if peg != ctp:
                     # 1 Sum for non-goal pegs = 2 * # disks on peg - 1

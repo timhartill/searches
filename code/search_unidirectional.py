@@ -71,8 +71,12 @@ class generic_search:
         checkmem = 1000
         status = ""
         stale_count = 0
+        found_goal_count = 0
         U_update_count = 0
         found_path = False
+        h_consistent = True  # optionally check the consistency of the heuristic if running A* (not exhaustive)
+        h_admissable = True  # optionally check the admissability of the heuristic if running A* (not exhaustive)
+        priority_diminished = 0
 
         while not frontier.isEmpty():
             if (time.time()-start_time)/60.0 > self.timeout:
@@ -85,15 +89,14 @@ class generic_search:
 
             prior_c = C
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
-            C = max(C, current_priority)  # Per Mike, could take C = max(C, peek) - lower bound should never go down but could without this with var cost
-            #C = current_priority
 
-            if self.priority_key != 'h' and prior_c != C:
-                c_count_dict[C] = nodes_expanded_current_c
-                nodes_expanded_current_c = 0
+            C = max(C, current_priority)  
+            if current_priority < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a lower priority!
+                #print(f" Current priority {current_priority} is less than C {C}.")
+                priority_diminished += 1
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                c_count_dict[C+1] = nodes_expanded_current_c
+ #               c_count_dict[C+1] = nodes_expanded_current_c
                 found_path = True
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
@@ -101,14 +104,20 @@ class generic_search:
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
-            if self.priority_key == 'g': h_remove = 0
-            else: h_remove = problem.heuristic(current_state)
+            if self.priority_key == 'g': 
+                current_h = 0
+            else: 
+                current_h = problem.heuristic(current_state)
+                if self.priority_key == 'f' and h_admissable:
+                    if cstar and current_g_score + current_h > cstar + 1e-6:
+                        status += f" Inadmissable heuristic detected."
+                        h_admissable = False
             # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
             # that were added before a better path was found). If the extracted
             # node's priority (- h if any) is higher than its current best known g_score,
             # it means we found a better path already, so we discard this stale entry.
             # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap
-            if current_g_score + 1e-6 < current_priority - h_remove:
+            if current_g_score + 1e-6 < current_priority - current_h:
                 stale_count += 1
                 continue  # skip stale dup state - rather than deleting from heapq before push in expansion
 
@@ -116,6 +125,7 @@ class generic_search:
             #closed_set.add(current_state) 
 
             if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
+                found_goal_count += 1
                 if current_g_score < U:
                     U = current_g_score
                     found_path = True
@@ -126,10 +136,16 @@ class generic_search:
                     #continue
                     #break # if don't break here but continue then C >= U condition will fire above.
 
+
             nodes_expanded += 1
             if cstar and current_g_score < cstar:
                 nodes_expanded_below_cstar += 1
-            nodes_expanded_current_c += 1
+            if self.priority_key != 'h':
+                if c_count_dict.get(C) is None:
+                    c_count_dict[C] = 0
+                c_count_dict[C] +=1
+#                nodes_expanded_current_c = 0
+#            nodes_expanded_current_c += 1
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -144,6 +160,13 @@ class generic_search:
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
+                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                if self.priority_key == 'f' and h_consistent:
+                    h_score = problem.heuristic(neighbor_state)
+                    if current_h > cost + h_score + 1e-6:
+                        status += f" Inconsistent heuristic detected."
+                        h_consistent = False
+
 
                 #neighbor_g_score = state_info.get_g(neighbor_state)
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
@@ -159,15 +182,21 @@ class generic_search:
         image_file = 'no file'
         if not status:
             status = "Completed."
+        if priority_diminished > 0:
+            status += f" Priority diminished count:{priority_diminished}."
         if stale_count > 0:
             status += f" Stale count:{stale_count}."
+        if found_goal_count > 0:
+            status += f" Found goal {found_goal_count} times."
         if U_update_count > 0:
             status += f" Updated U {U_update_count} times."
+
 
         print(status)
         if found_path:
             print("#### C count Dict ####")
-            print(c_count_dict)
+            if len(c_count_dict) < 100:
+                print(c_count_dict)
             #path = reconstruct_path(state_info, start_node, found_path)
             path = reconstruct_path(came_from, start_node, problem.goal_state())
             if not path:
