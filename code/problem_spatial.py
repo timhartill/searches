@@ -370,6 +370,10 @@ def create_grid_probs(args):
                 break
             for heuristic in args.grid_heur:
                 for degradation in args.grid_degs:
+                    if args.grid_ignore_cstar: 
+                        cstar = None
+                    else: 
+                        cstar = scenario['cstar']
                     problem = GridProblem(  grid_file=scenario['map_dir'],
                                             initial_state=scenario['initial_state'], 
                                             goal_state=scenario['goal_state'],
@@ -379,7 +383,7 @@ def create_grid_probs(args):
                                             allow_diagonal=args.grid_allow_diag,
                                             diag_cost=args.grid_diag_cost,
                                             heuristic=heuristic,
-                                            cstar=scenario['cstar'])
+                                            cstar=cstar)
                     problems.append(problem)
     return problems
 

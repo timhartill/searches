@@ -179,7 +179,6 @@ comment
 #"8_puzzle_probs2_easytest.csv"
 #"14_pancake_probs2_test.csv"
 #"7_toh_probs3_easytest13peg24peg.csv"
-#"12_toh_probs1_test4peg.csv"
 
 #--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
@@ -188,7 +187,6 @@ comment
 #        --tiles_var_cost \
 #        --pancakes_ignore_cstar \
 #        --pancakes_var_cost \
-#        --toh_inadmiss \
 
 
 python search_runner.py \
@@ -205,22 +203,26 @@ python search_runner.py \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --tiles "8_puzzle_probs2_easytest.csv" \
+        --grid_inadmiss \
+        --tiles "12_puzzle_probs1_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
-        --pancakes "8_pancake_probs1_easytest.csv" \
+        --tiles_inadmiss \
+        --pancakes "14_pancake_probs2_test.csv" \
         --pancakes_max 100 \
         --pancakes_heur symgap \
         --pancakes_degs 0 2 \
+        --pancakes_inadmiss \
         --toh "7_toh_probs3_easytest13peg24peg.csv" \
         --toh_max 100 \
         --toh_heur infinitepegrelaxation \
         --toh_degs 0 2 \
+        --toh_inadmiss \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar bfs \
+        --algo_heur astar \
         --algo_mcts NONE \
 
 

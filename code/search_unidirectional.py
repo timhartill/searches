@@ -57,14 +57,14 @@ class generic_search:
         closed_set = set()
         nodes_expanded = 0
         C = -1.0         # Current lowest cost on frontier
-        U = float('inf') # Current lowest cost found
+        U = float('inf') # Current lowest cost found to goal
         found_path = None
         if hasattr(problem, "cstar"):
             cstar = problem.cstar
         else:
             cstar = None
         nodes_expanded_below_cstar = 0
-        nodes_expanded_current_c = 0
+        nodes_expanded_below_cstar_auto = 0
         c_count_dict = {}
 
         i = 0
@@ -87,7 +87,6 @@ class generic_search:
                 break
             i += 1
 
-            prior_c = C
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
 
             C = max(C, current_priority)  
@@ -96,7 +95,6 @@ class generic_search:
                 priority_diminished += 1
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
- #               c_count_dict[C+1] = nodes_expanded_current_c
                 found_path = True
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
@@ -141,11 +139,10 @@ class generic_search:
             if cstar and current_g_score < cstar:
                 nodes_expanded_below_cstar += 1
             if self.priority_key != 'h':
-                if c_count_dict.get(C) is None:
-                    c_count_dict[C] = 0
-                c_count_dict[C] +=1
-#                nodes_expanded_current_c = 0
-#            nodes_expanded_current_c += 1
+                if c_count_dict.get(current_g_score) is None:
+                    c_count_dict[current_g_score] = 0
+                c_count_dict[current_g_score] +=1
+
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -160,6 +157,7 @@ class generic_search:
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
+
                 # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                 if self.priority_key == 'f' and h_consistent:
                     h_score = problem.heuristic(neighbor_state)
@@ -190,13 +188,18 @@ class generic_search:
             status += f" Found goal {found_goal_count} times."
         if U_update_count > 0:
             status += f" Updated U {U_update_count} times."
+        nodes_expanded_below_cstar_auto = 0
+        if len(c_count_dict) > 0:
+            #status += f" c_count_dict len:{len(c_count_dict)}"
+            nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
+        
 
 
         print(status)
         if found_path:
-            print("#### C count Dict ####")
-            if len(c_count_dict) < 100:
-                print(c_count_dict)
+            #print("#### C count Dict ####")
+            #if len(c_count_dict) < 100:
+            #    print(c_count_dict)
             #path = reconstruct_path(state_info, start_node, found_path)
             path = reconstruct_path(came_from, start_node, problem.goal_state())
             if not path:
@@ -207,7 +210,8 @@ class generic_search:
                 if not image_file: 
                     image_file = 'no file'
 
-            return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+            return {"path": path, "cost": U, "nodes_expanded": nodes_expanded, 
+                    "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                     "max_heap_len": frontier.max_heap_size, 
                     "closed_set_len": len(closed_set),
@@ -218,7 +222,8 @@ class generic_search:
 
         status += " No path found."
 
-        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
+                "nodes_expanded_below_cstar": nodes_expanded_below_cstar,  "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                 "max_heap_len": frontier.max_heap_size, 
                 "closed_set_len": len(closed_set), 

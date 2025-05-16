@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have np-scen and np-map and eg dao-map and dao-scen etc off it.")
     parser.add_argument('--seed', default=42, type=int,
-                        help="random seed. Reset before running each algorithm on each problem.") 
+                        help="random seed. Reset before running each algorithm on each problem.")
 
     # Matrices / Grids params
     parser.add_argument("--grid_dir", default='matrices', type=str,
@@ -85,7 +85,6 @@ if __name__ == "__main__":
                         help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
     parser.add_argument('--grid_reverse_scen_order', action='store_true',
                         help="If set, reverse the order of entries in each scen file before selection of --grid_max_per_scen entries (noting that higher cstar problems tend to occur later in file i.e. files are ordered by c* buckets of ~10 problems)")
-    
     parser.add_argument('--grid_heur', nargs="*", default="octile", type=str, 
                         help="grid heuristics. Eg --grid_heur octile euclidean chebyshev manhattan")
     parser.add_argument('--grid_degs', nargs="*", default=0, type=int, 
@@ -96,8 +95,10 @@ if __name__ == "__main__":
                         help="Any number > 1.0 will multiply the unit cost, hence weakening the heuristic which isn't multiplied by this number.")
     parser.add_argument("--grid_allow_diag", action='store_true',
                         help="Allow diagonal movement in the grid problems. Default is False. Note when enabled this sets the variable cost flag.")
-    parser.add_argument('--grid_diag_cost', default=2.0, type=float,
-                        help="Cost of diagonal move before cost multiplication. HOG2 grid Cstar calculations in .scen files use 2.0. Some papers use 1.5. Heuristic (and correct) estimate remains sqrt(2)=1.4142135623730951.")
+    parser.add_argument('--grid_diag_cost', default=1.5, type=float,
+                        help="Cost of diagonal move before cost multiplication. Some HOG2 grid Cstar calculations in .scen files use 2.0, other .scen diag costs vary. Some papers use 1.5. Heuristic (and correct) estimate remains sqrt(2)=1.4142135623730951.")
+    parser.add_argument("--grid_ignore_cstar", action='store_true',
+                        help="If set the cstar in .scen files is not used. This is typically set when using a different diagonal cost than what the cstar in the .scen file was based on, or you are using a cost multiplier other than 1.")
     
     # Sliding Tiles params
     parser.add_argument("--tiles_dir", default='tile', type=str,
@@ -114,6 +115,8 @@ if __name__ == "__main__":
                         help="tiles heuristic admissable or inadmissable Eg --tiles_inadmiss means make inadmissable heuristic.")
     parser.add_argument("--tiles_var_cost", action='store_true',
                         help="When enabled this uses the tile value as the cost rather than 1. Default is false.")
+    parser.add_argument("--tiles_ignore_cstar", action='store_true',
+                        help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
     
     # Pancake params
     parser.add_argument("--pancakes_dir", default='pancake', type=str,
@@ -130,6 +133,8 @@ if __name__ == "__main__":
                         help="pancakes heuristic admissable or inadmissable Eg --pancakes_inadmiss means make inadmissable heuristic.")
     parser.add_argument("--pancakes_var_cost", action='store_true',
                         help="When enabled this uses the num pancakes flipped as the cost rather than 1. Default is false.")
+    parser.add_argument("--pancakes_ignore_cstar", action='store_true',
+                        help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
 
     # Tower of Hanoi params
     parser.add_argument("--toh_dir", default='toh', type=str,
@@ -144,6 +149,8 @@ if __name__ == "__main__":
                         help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
     parser.add_argument('--toh_inadmiss', action='store_true', 
                         help="toh heuristic admissable or inadmissable Eg --toh_inadmiss means make inadmissable heuristic.")
+    parser.add_argument("--toh_ignore_cstar", action='store_true',
+                        help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
     
     # Algorithm params over all searches
     parser.add_argument('--algo_timeout', default=30.0, type=float,

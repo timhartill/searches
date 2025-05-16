@@ -119,7 +119,7 @@ class SlidingTileProblem:
             for i in range(len(state1)):
                 if state1[i] == 0: blank1_idx = i
                 if state2[i] == 0: blank2_idx = i
-            if blank1_idx != -1 and blank2_idx != -1 :
+            if blank1_idx != -1 and blank2_idx != -1:
                  moved_tile = state2[blank1_idx] 
                  return max(1, moved_tile)
             else:
@@ -513,13 +513,17 @@ def create_tile_probs(args):
             break
         for heuristic in args.tiles_heur:
             for degradation in args.tiles_degs:
+                if args.tiles_ignore_cstar: 
+                    cstar = None
+                else: 
+                    cstar = scenario['cstar']
                 problem = SlidingTileProblem(initial_state=scenario['initial_state'], 
                                             goal_state=scenario['goal_state'],
                                             use_variable_costs=args.tiles_var_cost,
                                             make_heuristic_inadmissable=args.tiles_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
-                                            cstar=scenario['cstar'])
+                                            cstar=cstar)
                 problems.append(problem)
     return problems
 
@@ -533,13 +537,17 @@ def create_pancake_probs(args):
             break
         for heuristic in args.pancakes_heur:
             for degradation in args.pancakes_degs:
+                if args.pancakes_ignore_cstar: 
+                    cstar = None
+                else: 
+                    cstar = scenario['cstar']
                 problem = PancakeProblem(initial_state=scenario['initial_state'], 
                                             goal_state=scenario['goal_state'],
                                             use_variable_costs=args.pancakes_var_cost,
                                             make_heuristic_inadmissable=args.pancakes_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
-                                            cstar=scenario['cstar'])
+                                            cstar=cstar)
                 problems.append(problem)
     return problems
 
@@ -553,12 +561,16 @@ def create_toh_probs(args):
             break
         for heuristic in args.toh_heur:
             for degradation in args.toh_degs:
+                if args.toh_ignore_cstar: 
+                    cstar = None
+                else: 
+                    cstar = scenario['cstar']
                 problem = TowersOfHanoiProblem(initial_state=scenario['initial_state'], 
                                             goal_state=scenario['goal_state'],
                                             make_heuristic_inadmissable=args.toh_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
-                                            cstar=scenario['cstar'])
+                                            cstar=cstar)
                 problems.append(problem)
     return problems
 
