@@ -79,8 +79,8 @@ if __name__ == "__main__":
     # Matrices / Grids params
     parser.add_argument("--grid_dir", default='matrices', type=str,
                         help="Grid subdir off in_dir.")
-    parser.add_argument("--grid", default='', type=str,
-                        help="Domain portion of the grid problems to run eg dao. '' means don't run. This will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
+    parser.add_argument("--grid", nargs="*", default='NONE', type=str,
+                        help="Space-separated list of the domain portion of the grid problems to run eg --grid dao mazes. 'NONE' means don't run. for each domain, this will be expanded to the ...matrices/dao-scen subdir and all .scen files in there will be attempted. Will look for corresponding grids in dao-maps subdir")
     parser.add_argument('--grid_max_per_scen', default=21, type=int,
                         help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
     parser.add_argument('--grid_reverse_scen_order', action='store_true',
@@ -103,8 +103,8 @@ if __name__ == "__main__":
     # Sliding Tiles params
     parser.add_argument("--tiles_dir", default='tile', type=str,
                         help="Tiles subdir off in_dir.")
-    parser.add_argument("--tiles", default='', type=str,
-                        help="File name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv or '' to skip. Should be in the tiles subdir.")
+    parser.add_argument("--tiles", default='NONE', type=str,
+                        help="File name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv or 'NONE' to skip. Should be in the tiles subdir.")
     parser.add_argument('--tiles_max', default=100, type=int,
                         help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems in the file we will run 100 tile problems in total")
     parser.add_argument('--tiles_heur', nargs="*", default="manhattan", type=str, 
@@ -121,8 +121,8 @@ if __name__ == "__main__":
     # Pancake params
     parser.add_argument("--pancakes_dir", default='pancake', type=str,
                         help="Pancakes subdir off in_dir.")
-    parser.add_argument("--pancakes", default='', type=str,
-                        help="File name of the pancake problems to run or '' to skip. Should be in the pancake subdir.")
+    parser.add_argument("--pancakes", default='NONE', type=str,
+                        help="File name of the pancake problems to run or 'NONE' to skip. Should be in the pancake subdir.")
     parser.add_argument('--pancakes_max', default=50, type=int,
                         help="Max number of pancake problems to run from the chosen pancake file. Eg if 100 and 1000 problems in the file we will run 100 pancake problems in total")
     parser.add_argument('--pancakes_heur', nargs="*", default="symgap", type=str, 
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     # Tower of Hanoi params
     parser.add_argument("--toh_dir", default='toh', type=str,
                         help="Toh subdir off in_dir.")
-    parser.add_argument("--toh", default='', type=str,
-                        help="File name of the towers of hanoi problems to run or '' to skip. Should be in the toh subdir.")
+    parser.add_argument("--toh", default='NONE', type=str,
+                        help="File name of the towers of hanoi problems to run or 'NONE' to skip. Should be in the toh subdir.")
     parser.add_argument('--toh_max', default=50, type=int,
                         help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
     parser.add_argument('--toh_heur', nargs="*", default="infinitepegrelaxation", type=str, 
@@ -179,23 +179,30 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # parser.print_help()
 
+    # Set blank args to NONE for consistency
+    if args.tiles.strip() == "": args.tiles = 'NONE'
+    if args.pancakes.strip() == "": args.pancakes = 'NONE'
+    if args.toh.strip() == "": args.toh = 'NONE'
+    
     # Set up output directories if they don't exist
     os.makedirs(args.out_dir, exist_ok=True)
     args.visualise_dir = os.path.join(args.out_dir, 'visualise')
     os.makedirs(args.visualise_dir, exist_ok=True)
-    if args.tiles:
+    if args.tiles.upper() != "NONE":
         args.tiles_file_full = os.path.join(args.in_dir, args.tiles_dir, args.tiles)
         assert os.path.exists(args.tiles_file_full)
-    if args.pancakes:
+    if args.pancakes.upper() != "NONE":
         args.pancakes_file_full = os.path.join(args.in_dir, args.pancakes_dir, args.pancakes)
         assert os.path.exists(args.pancakes_file_full)
-    if args.toh:
+    if args.toh.upper() != "NONE":
         args.toh_file_full = os.path.join(args.in_dir, args.toh_dir, args.toh)
         assert os.path.exists(args.toh_file_full)
-    if args.grid:
-        grid_scen_dir = args.grid + "-scen"
-        args.grid_dir_full = os.path.join(args.in_dir, args.grid_dir, grid_scen_dir)
-        assert os.path.exists(args.grid_dir_full)
+    if args.grid[0].upper() != 'NONE':
+        args.grid_dir_full = []
+        for domain in args.grid:
+            grid_scen_dir = domain + "-scen"
+            args.grid_dir_full.append( os.path.join(args.in_dir, args.grid_dir, grid_scen_dir) )
+            assert os.path.exists(args.grid_dir_full[-1])
 
 
     args.timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
@@ -216,13 +223,13 @@ if __name__ == "__main__":
 
     # Set up the problems to be run ###################################
     tile_list, pancake_list, toh_list, grid_list = [], [], [], []
-    if args.tiles:
+    if args.tiles.upper() != "NONE":
         tile_list = problem_puzzle.create_tile_probs(args)
-    if args.pancakes:
+    if args.pancakes.upper() != "NONE":
         pancake_list = problem_puzzle.create_pancake_probs(args)
-    if args.toh:
+    if args.toh.upper() != "NONE":
         toh_list = problem_puzzle.create_toh_probs(args)
-    if args.grid:
+    if args.grid[0].upper() != 'NONE':
         grid_list = problem_spatial.create_grid_probs(args)
 
     problems = tile_list + pancake_list + toh_list + grid_list

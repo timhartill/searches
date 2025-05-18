@@ -40,7 +40,6 @@ COLOR_MAP: Dict[int, Tuple[int, int, int]] = {
 DEFAULT_COLOR: Tuple[int, int, int] = (0, 0, 0) # Black for values outside the map
 
 
-
 def manhattan(dx, dy) -> float:
     """manhattan heuristics - inadmissable of diagonal movement allowed"""
     return dx + dy
@@ -58,7 +57,7 @@ def chebyshev(dx, dy) -> float:
 
 def octile(dx, dy) -> float:
     """ Octile distance modifies manhattan distance to account for diagonal movement 
-        ie remains admissable. """
+        ie remains admissable with variable cost. """
     f = SQRT2 - 1
     if dx < dy:
         return f * dx + dy
@@ -76,16 +75,17 @@ h_map = {
 class GridProblem:
     """
     Implements the standard problem interface for a grid.
-    grid_file = the full path to a numpy file containing the grid that must be a 2d int matrix with elements: 
-        0=empty/walkable, 1=obstacle, 2=start, 3=goal
+    file = the full path to a numpy file containing the grid that must be a 2d int matrix with elements: 
+        0=empty/walkable, 1=obstacle, 2=start, 3=goal or a .map file that we convert into this format
     if initial_state = None, the start state is calculated from the grid, otherwise the grid value of 2 is ignored by setting to 0
     if goal_state = None, the goal state is calculated from the grid, otherwise the grid value of 3 is ignored by setting to 0
     Can use uniform horiz/vertical cost (1 and SQRT2) or fixed horiz/cost (cost_multiplier > 1). 
     If diagonal movement is allowed this will introduce variable edge cost and manhattan becomes inadmissable (can switch to octile for admissability)
     Can allow diagonal movement or not - if so, will prevent movement if an obstacle is present on either "manhattan" path 
-    Sturtevant grids c* annotations assume diagonal cost=2
+    Some hog2 grids c* annotations assume diagonal cost=2 but others are different hence one would generally pass cstar=None for hog2
+    and rely on the search calculations for cstar and nodes expanded below cstar
     """
-    def __init__(self, grid_file, initial_state=None, goal_state=None, 
+    def __init__(self, file, initial_state=None, goal_state=None, 
                  cost_multiplier=1.0, 
                  make_heuristic_inadmissable=False,
                  degradation=0,
@@ -93,21 +93,22 @@ class GridProblem:
                  diag_cost = 2.0,
                  heuristic='octile',
                  cstar=None):
-        if grid_file is None or not os.path.exists(grid_file):
-            raise ValueError(f"Grid file {grid_file} does not exist.")
-        if grid_file.endswith('.npy'):
-            self.grid = np.load(grid_file)
-        elif grid_file.endswith('.map'):
-            self.grid, heuristic_default = util.load_map_file(grid_file)
+        if file is None or not os.path.exists(file):
+            raise ValueError(f"Grid file {file} does not exist.")
+        if file.endswith('.npy'):
+            self.grid = np.load(file)
+        elif file.endswith('.map'):
+            self.grid, heuristic_default = util.load_map_file(file)
             if heuristic is None and heuristic_default in h_map:
                 heuristic = heuristic_default
         else:
-            raise ValueError(f"Grid file {grid_file} must be a .npy or .map file.")
+            raise ValueError(f"Grid file {file} must be a .npy or .map file.")
         if len(self.grid.shape) != 2:
             raise ValueError("Grid must be a 2D numpy array of type int.")
-        self.grid_file = grid_file
-        self.basename = os.path.basename(grid_file)
-        self.dirname = os.path.dirname(grid_file)
+        self.file = file
+        self.basename = os.path.basename(file)
+        self.dirname = os.path.dirname(file)
+        self.griddomain = os.path.basename(self.dirname)
         self.basename_no_ext = os.path.splitext(self.basename)[0]
         self.max_rows, self.max_cols = self.grid.shape
         if initial_state is not None:
@@ -153,7 +154,7 @@ class GridProblem:
         self.diag_cost = diag_cost
         self.cstar = cstar
         cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"Grid-{self.max_rows}x{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}-cs{cstar}"
+        self._str_repr = f"{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}-cs{cstar}"
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -218,7 +219,7 @@ class GridProblem:
                          abs(state1[1] - state2[1]))
         if cost == SQRT2:
             cost = self.diag_cost
-        return cost * self.cost_multiplier
+        return math.ceil(cost * self.cost_multiplier * 100) / 100
 
 
     def heuristic(self, state, backward=False):
@@ -241,8 +242,7 @@ class GridProblem:
             degrade = self.degradation+1 #random.choice(range(1,self.degradation+1))
             distance = distance / degrade  # (self.degradation+1)  # random.choice(range(1,self.degradation+1))
 
-
-        return distance * self.h_multiplier
+        return math.floor(distance * self.h_multiplier * 100) / 100
     
 
     def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, 
@@ -356,35 +356,35 @@ def create_grid_probs(args):
     """ Load grid problems from a scen file and return list of problem instances
     """
     problems = []
+    for domain in args.grid_dir_full:
+        scen_files = os.listdir(domain)
+        for scen_file in scen_files:
+            if not scen_file.endswith('.scen'):
+                continue
+            scenarios = util.load_scen_file( os.path.join(domain, scen_file) )  # NOTE: adds path to map_dir
+            if args.grid_reverse_scen_order:
+                scenarios.reverse()
 
-    scen_files = os.listdir(args.grid_dir_full)
-    for scen_file in scen_files:
-        if not scen_file.endswith('.scen'):
-            continue
-        scenarios = util.load_scen_file( os.path.join(args.grid_dir_full, scen_file) )
-        if args.grid_reverse_scen_order:
-            scenarios.reverse()    
-
-        for i, scenario in enumerate(scenarios):
-            if i >= args.grid_max_per_scen:
-                break
-            for heuristic in args.grid_heur:
-                for degradation in args.grid_degs:
-                    if args.grid_ignore_cstar: 
-                        cstar = None
-                    else: 
-                        cstar = scenario['cstar']
-                    problem = GridProblem(  grid_file=scenario['map_dir'],
-                                            initial_state=scenario['initial_state'], 
-                                            goal_state=scenario['goal_state'],
-                                            cost_multiplier=args.grid_cost_multipier,
-                                            make_heuristic_inadmissable=args.grid_inadmiss,
-                                            degradation=degradation,
-                                            allow_diagonal=args.grid_allow_diag,
-                                            diag_cost=args.grid_diag_cost,
-                                            heuristic=heuristic,
-                                            cstar=cstar)
-                    problems.append(problem)
+            for i, scenario in enumerate(scenarios):
+                if i >= args.grid_max_per_scen:
+                    break
+                for heuristic in args.grid_heur:
+                    for degradation in args.grid_degs:
+                        if args.grid_ignore_cstar: 
+                            cstar = None
+                        else: 
+                            cstar = scenario['cstar']
+                        problem = GridProblem(  file=scenario['map_dir'],
+                                                initial_state=scenario['initial_state'], 
+                                                goal_state=scenario['goal_state'],
+                                                cost_multiplier=args.grid_cost_multipier,
+                                                make_heuristic_inadmissable=args.grid_inadmiss,
+                                                degradation=degradation,
+                                                allow_diagonal=args.grid_allow_diag,
+                                                diag_cost=args.grid_diag_cost,
+                                                heuristic=heuristic,
+                                                cstar=cstar )
+                        problems.append(problem)
     return problems
 
 

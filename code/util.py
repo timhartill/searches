@@ -245,7 +245,53 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
                             except Exception as e:
                                 print(f"Error converting column {col_name} with value {col_value} to {convert_func}: {e}")
     return data
-    
+
+
+def save_to_json(data, filename, verbose=False):
+    """ Saves a Python object to a JSON file.  """
+    try:
+        # Ensure the directory exists if the filename includes a path
+        dirname = os.path.dirname(filename)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            # Use json.dump to write the data to the file
+            # indent=4 makes the output pretty-printed
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        if verbose:    
+            print(f"Data successfully saved to {filename}")
+        return True
+    except TypeError as e:
+        raise TypeError(f"ERROR saving data to {filename}: Object of type {e} is not JSON serializable.")
+    except IOError as e:
+        raise IOError(f"ERROR saving data to {filename}: {e}")
+    except Exception as e:
+        raise ValueError(f"ERROR: An unexpected error occurred while saving to {filename}: {e}")
+
+
+def load_from_json(filename, verbose=False):
+    """  Loads a Python object from a JSON file.  
+    Returns:
+        The loaded Python object, or None if an error occurred.
+    """
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Error loading data: File not found at {filename}")
+
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            # Use json.load to read the data from the file
+            data = json.load(f)
+        if verbose:
+            print(f"Data successfully loaded from {filename}")
+        return data
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Error loading data from {filename}: Invalid JSON format - {e}")
+    except IOError as e:
+        raise IOError(f"Error loading data from {filename}: {e}")
+    except Exception as e:
+        raise ValueError(f"An unexpected error occurred while loading from {filename}: {e}")
+
 
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
                     seed=42, timestamp=None, logger=None):
@@ -317,23 +363,6 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
                 write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # path not in csv
                 log(f"In progress results saved to {csv_file_path}") 
             log(f"Available RAM (GB) after experiment: {get_available_ram()}")
-
-        # --- Print Results for this Problem ---
-        #log(f"\n{'=' * 10} Results for {problem} {'=' * 10}")
-        #for res in problem_results:
-        #    log(f"\nAlgorithm: {res.get('algorithm','N/A')}")
-        #    if 'optimal' in res: log(f"Optimality Guaranteed: {res['optimal']}")
-        #    if res.get('algorithm','').startswith("MCTS") and 'iterations' in res : log(f"MCTS Iterations: {res.get('iterations', 'N/A')}")
-        #    if res.get('algorithm','').startswith("MCTS") and 'tree_root_visits' in res : log(f"MCTS Root Visits: {res.get('tree_root_visits', 'N/A')}")
-        #    log(f"Time Taken: {res.get('time', -1):.4f} seconds")
-        #    log(f"Nodes Expanded/Explored: {res.get('nodes_expanded', -1)}")
-        #    log(f"Path Found: {'Yes' if res.get('path') else 'No'}")
-        #    if res.get('path'): log(f"Path Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}")
-        #    else:
-        #         log("Path Cost: N/A")
-        #         if res.get('algorithm','').startswith("MCTS") and 'best_next_state_estimate' in res and res['best_next_state_estimate']: log(f"MCTS Best Next State Estimate: {res['best_next_state_estimate']}")
-        #    if 'status' in res: log(f"Status of run: {res['status']}")
-        #log("=" * (34 + len(str(problem)))) # Adjusted length
 
     # Overall Summary
     log(f"\n{'*'*15} Overall Summary {'*'*15}")

@@ -13,8 +13,10 @@ Supports
 Below the puzzle classes are loading routines called from the search runner.
 
 """
+import os
 import math
 import random
+import collections
 
 import util
 
@@ -31,7 +33,8 @@ class SlidingTileProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, heuristic="manhattan", cstar=None):
+                 degradation=0, heuristic="manhattan", cstar=None, file=None):
+        self.file = file  # Input csv: Not used here, but provided for compatibility with eg ToH and Spatial which do use this for differing purposes 
         self.initial_state_tuple = tuple(initial_state)
         self.n = int(math.sqrt(len(initial_state)))
         if self.n * self.n != len(initial_state):
@@ -165,7 +168,8 @@ class PancakeProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, heuristic = "symgap", cstar=None):
+                 degradation=0, heuristic = "symgap", cstar=None, file=None):
+        self.file = file  # Input csv: Not used here, but provided for compatibility with eg ToH and Spatial which do use this for differing purposes 
         table = [len(initial_state) + 1]
         self.initial_state_tuple=tuple(list(initial_state) + table) 
         self.n=len(self.initial_state_tuple)
@@ -323,7 +327,8 @@ class TowersOfHanoiProblem:
     def __init__(self, initial_state= ['A','A','A','A','A','A','A','A','A','A','A','A'],
                  goal_state = ['D','D','D','D','D','D','D','D','D','D','D','D'], 
                  make_heuristic_inadmissable=False, degradation=0, 
-                 heuristic="infinitepegrelaxation", cstar=None): 
+                 heuristic="infinitepegrelaxation", cstar=None, file=None): 
+        self.file = file  # Input csv: Used here to derive a subdirectory off this directory to cache pdbs in if using pdb heuristic 
         if len(goal_state) == 1:  # allow shorthand for goal state eg ['D']
             goal_state = [goal_state[0]] * len(initial_state)
         if len(initial_state) != len(goal_state):
@@ -333,19 +338,19 @@ class TowersOfHanoiProblem:
             raise ValueError("Number of disks must be at least 1.")
         self.initial_peg = 'A'  # for simplicity, always start from A
         self.target_peg = goal_state[0]  # target peg is the peg where all disks should end up
-        initial_code_point = ord(self.initial_peg)
-        terminal_code_point = ord(self.target_peg)
-        if initial_code_point >= terminal_code_point:
+        initial_peg_ord = ord(self.initial_peg)
+        terminal_peg_ord = ord(self.target_peg)
+        if initial_peg_ord >= terminal_peg_ord:
             raise ValueError(f"Initial peg {self.initial_peg} and target pegs {self.target_peg} must be different with ord(target) > ord(initial).")
         pegs = []
-        for code_point in range(initial_code_point, terminal_code_point + 1):
-            pegs.append(chr(code_point))
+        for peg_ord in range(initial_peg_ord, terminal_peg_ord + 1):
+            pegs.append(chr(peg_ord))
         self.pegs=pegs
         if not (self.initial_peg in self.pegs and self.target_peg in self.pegs and self.initial_peg != self.target_peg):
             raise ValueError(f"Invalid initial or target peg. Must be one of {self.pegs} and different.")
         if any(peg not in self.pegs for peg in initial_state):
             raise ValueError(f"Invalid pegs in initial state. Must be one of {self.pegs}.")
-
+        self.peg_count = len(pegs)
         self.use_variable_costs = False # Cost is always 1
         self.optimality_guaranteed = (not self.use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -354,11 +359,57 @@ class TowersOfHanoiProblem:
             self.optimality_guaranteed = False
         else:
             self.h_multiplier = 1
-        heuristic = heuristic.lower()   
-        if heuristic not in ["3pegstd", "infinitepegrelaxation"]:
-            raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation'.")
+        heuristic = heuristic.lower()
+        if heuristic not in ["3pegstd", "infinitepegrelaxation"] and not heuristic.startswith('pdb'):
+            raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation' or 'pdb_p_X+Y'.")
         if len(self.pegs) > 3 and heuristic == "3pegstd": # not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False
+        if heuristic.startswith('pdb'):
+            h = heuristic[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
+            if len(h) != 2:
+                raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y")
+            if int(h[0]) != self.peg_count:
+                raise ValueError(f"Invalid pdb heuristic {heuristic} for peg count {self.peg_count}. Must be of the form pdb_p_X+Y where p matches the peg count of the problem.")
+
+            pdb_list = h[1].split('+')  # pdb_4_10+2 -> ['10', '2']
+            if len(pdb_list) != 2:
+                raise ValueError(f"Invalid pdb element count {heuristic}. Must be of the form pdb_p_X+Y")
+            for i in range(len(pdb_list)):
+                try:
+                    pdb_list[i] = int(pdb_list[i])
+                except:
+                    raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y")
+            if sum(pdb_list) != self.num_disks:
+                    raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y. Sum of X + Y must equal disk count {self.num_disks}")
+
+            self.pdb_dir = os.path.join(os.path.dirname(self.file), heuristic)
+            if os.path.exists(self.pdb_dir):
+                print(f"Loading cached pdbs from: {self.pdb_dir}")
+                self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_fwd.json"), verbose=True)
+                self.pdb2 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_fwd.json"), verbose=True)
+                self.pdb3 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_bwd.json"), verbose=True)
+                self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_bwd.json"), verbose=True)
+            else:
+                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
+                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))
+                print(f"PDB 1 fwd built with {len(self.pdb1)} states.")
+                self.pdb2 = self.build_pdb( tuple([self.target_peg] * pdb_list[1] ))
+                print(f"PDB 2 fwd built with {len(self.pdb2)} states.")
+                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
+                self.pdb3 = self.build_pdb( tuple([self.initial_peg] * pdb_list[0] ))
+                print(f"PDB 3 fwd built with {len(self.pdb1)} states.")
+                self.pdb4 = self.build_pdb( tuple([self.initial_peg] * pdb_list[1] ))
+                print(f"PDB 4 fwd built with {len(self.pdb2)} states.")
+                print(f"Saving pdbs to: {self.pdb_dir}")
+                util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb3, os.path.join(self.pdb_dir, f"{pdb_list[0]}_bwd.json"), verbose=True)
+                util.save_to_json(self.pdb4, os.path.join(self.pdb_dir, f"{pdb_list[1]}_bwd.json"), verbose=True)
+            print(f"Fwd: pdb1 has {len(self.pdb1)} states. pdb2 has {len(self.pdb2)} states.")
+            print(f"Bwd: pdb3 has {len(self.pdb3)} states. pdb4 has {len(self.pdb4)} states.")
+            self.pdb_list = pdb_list
+
+                            
         self.h_str = heuristic
         self.degradation = degradation
         self.initial_state_tuple = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
@@ -366,7 +417,7 @@ class TowersOfHanoiProblem:
         self.initial_state_bytes = util.encode_list(initial_state)
         self.goal_state_bytes = util.encode_list(goal_state)
         self.cstar = cstar
-        self._str_repr=f"TowersOfHanoi-{self.num_disks}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
+        self._str_repr=f"TowersOfHanoi-{self.num_disks}-Pegs{self.peg_count}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
 
     def initial_state(self): 
         return self.initial_state_bytes
@@ -406,7 +457,7 @@ class TowersOfHanoiProblem:
                  (('A', 'A', 'C', 'C', 'A', 'A', 'A'), 1)]
         """
         nbs=[] 
-        state = util.decode_list(state_bytes)
+        state = util.decode_list(state_bytes)  #decode byte string
         pts=self._get_peg_tops(state);
         for sp in self.pegs:
             dtm = pts[sp] # Disk To Move index (top disk on source)
@@ -418,14 +469,15 @@ class TowersOfHanoiProblem:
                         if tdod is None or dtm < tdod:
                             nsl = list(state)
                             nsl[dtm] = dp # Move disk dtm to peg dp
-                            nbs.append((util.encode_list(nsl), 1)) # Append (new_state, cost)
+                            nbs.append((util.encode_list(nsl), 1)) # Append (new_state, cost) encoded as byte str
         return nbs
 
     def heuristic(self, state_bytes, backward=False): 
-        """Calculates the standard admissible heuristic for 3 peg Towers of Hanoi and "Infinite Peg Relaxation" heuristic
-        which is admissable but relatively weak.
-        Allows for degrading heuristic by ignoring disks
-        Allows for inadmissable heuristic but A* still always finds optimal path.. 
+        """Calculates the standard admissible heuristic for 3 peg Towers of Hanoi 
+        and "Infinite Peg Relaxation" heuristic which is admissable but relatively weak.
+        and the additive pattern database heuristic (Felner et al 2004)
+        Allows for degrading heuristic 
+        Allows for inadmissable heuristic 
         """
         state = util.decode_list(state_bytes)
         h=0 
@@ -482,18 +534,43 @@ class TowersOfHanoiProblem:
                                 multiplier = random.choice(range(1,self.num_disks)) #k**k
                             num_disks_on_peg += multiplier
                     h += 2*num_disks_on_peg
+        else:   # pdb
+            if backward:
+                h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+            else:
+                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+                
 
+            if self.degradation > 0:
+                h = math.floor((h / (self.degradation+1))* 100) / 100
         return h * self.h_multiplier
 
     def get_cost(self, state1, state2, move_info=None): 
         """Cost is always 1 for Towers of Hanoi."""
         return 1
     
-#    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None,
-#                  path_type: str = '', output_file_ext: str = 'png',
-#                  display: bool = False, return_image: bool = False):
-#        """ Placeholder - see GridProblem for implemented example"""
-#        return None
+    def build_pdb(self, start_state):
+        """
+        Builds a Pattern Database for a subset of disks using Breadth-First Search.
+        The keys of the PDB are states (peg assignments for the subset encoded as byte strings),
+        and the values are the minimum number of moves to reach that state from the start state (or target state for backward).
+        NOTE: since we save the pdb to json, we convert the state to a normal string as thats all json supports
+        """
+        pdb = {}
+        start_state_str = util.encode_list(start_state).decode()
+        queue = collections.deque([start_state_str])
+        pdb[start_state_str] = 0
+
+        while queue:
+            current_state = queue.popleft()
+            current_dist = pdb[current_state]
+            neighbors = self.get_neighbors(util.encode_list(current_state))
+            for next_state_bytes, move_info in neighbors:
+                next_state = next_state_bytes.decode()  # get_neighbors() returns byte string, .decode(() converts to normal string
+                if next_state not in pdb:
+                    pdb[next_state] = current_dist + move_info
+                    queue.append(next_state)
+        return pdb
 
     def __str__(self): 
         return self._str_repr
@@ -523,7 +600,8 @@ def create_tile_probs(args):
                                             make_heuristic_inadmissable=args.tiles_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
-                                            cstar=cstar)
+                                            cstar=cstar, 
+                                            file=args.tiles_file_full)
                 problems.append(problem)
     return problems
 
@@ -547,7 +625,8 @@ def create_pancake_probs(args):
                                             make_heuristic_inadmissable=args.pancakes_inadmiss,
                                             degradation=degradation,
                                             heuristic=heuristic,
-                                            cstar=cstar)
+                                            cstar=cstar, 
+                                            file=args.pancakes_file_full)
                 problems.append(problem)
     return problems
 
@@ -566,11 +645,12 @@ def create_toh_probs(args):
                 else: 
                     cstar = scenario['cstar']
                 problem = TowersOfHanoiProblem(initial_state=scenario['initial_state'], 
-                                            goal_state=scenario['goal_state'],
-                                            make_heuristic_inadmissable=args.toh_inadmiss,
-                                            degradation=degradation,
-                                            heuristic=heuristic,
-                                            cstar=cstar)
+                                                goal_state=scenario['goal_state'],
+                                                make_heuristic_inadmissable=args.toh_inadmiss,
+                                                degradation=degradation,
+                                                heuristic=heuristic,
+                                                cstar=cstar, 
+                                                file=args.toh_file_full)
                 problems.append(problem)
     return problems
 

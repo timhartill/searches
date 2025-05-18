@@ -90,7 +90,7 @@ class generic_search:
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
 
             C = max(C, current_priority)  
-            if current_priority < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a lower priority!
+            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a lower priority
                 #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
 
