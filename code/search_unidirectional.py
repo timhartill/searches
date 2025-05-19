@@ -77,14 +77,18 @@ class generic_search:
         h_consistent = True  # optionally check the consistency of the heuristic if running A* (not exhaustive)
         h_admissable = True  # optionally check the admissability of the heuristic if running A* and cstar is supplied (not exhaustive)
         priority_diminished = 0
+        start_ram = util.get_available_ram()
+        min_ram = start_ram
 
         while not frontier.isEmpty():
             if (time.time()-start_time)/60.0 > self.timeout:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
-            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
-                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
-                break
+            if i % checkmem == 0:
+                min_ram = min(min_ram, util.get_available_ram()) 
+                if min_ram < self.min_ram:
+                    status += f"Out of RAM ({min_ram:.4f}GB remaining)."
+                    break
             i += 1
 
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
@@ -172,6 +176,8 @@ class generic_search:
                                   frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
         end_time = time.time()
+        max_ram = start_ram - max(min_ram, util.get_available_ram())
+
         image_file = 'no file'
         if not status:
             status = "Completed."
@@ -212,7 +218,7 @@ class generic_search:
                     "closed_set_len": len(closed_set),
 #                    "state_dict_len": len(state_info.state_dict),
                     "g_score_len": len(g_score),
-                    "came_from_len": len(came_from),
+                    "came_from_len": len(came_from), "max_ram_taken": max_ram,
                     "status": status}
 
         status += " No path found."
@@ -224,7 +230,7 @@ class generic_search:
                 "closed_set_len": len(closed_set), 
 #                "state_dict_len": len(state_info.state_dict),
                 "g_score_len": len(g_score),
-                "came_from_len": len(came_from),
+                "came_from_len": len(came_from), "max_ram_taken": max_ram,
                 "status": status}
 
 

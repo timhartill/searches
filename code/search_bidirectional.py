@@ -72,6 +72,8 @@ class bd_generic_search:
         checkmem = 1000
         status = ""
         cond_count = 0
+        start_ram = util.get_available_ram()
+        min_ram = start_ram
 
         while not frontier_fwd.isEmpty() and not frontier_bwd.isEmpty():
             if frontier_fwd.max_heap_size + frontier_bwd.max_heap_size > max_heap_size_combined:
@@ -79,9 +81,11 @@ class bd_generic_search:
             if (time.time()-start_time)/60.0 > self.timeout:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
-            if i % checkmem == 0 and util.get_available_ram() < self.min_ram:
-                status += f"Out of RAM ({util.get_available_ram():.4f}GB remaining)."
-                break
+            if i % checkmem == 0:
+                min_ram = min(min_ram, util.get_available_ram())
+                if min_ram < self.min_ram:
+                    status += f"Out of RAM ({min_ram:.4f}GB remaining)."
+                    break
             i += 1
 
             C = min(frontier_fwd.peek(priority_only=True), 
@@ -192,6 +196,7 @@ class bd_generic_search:
 
             
         end_time = time.time()
+        max_ram = start_ram - max(min_ram, util.get_available_ram())
         if not status:
             status = "Completed."
         if cond_count > 0:
@@ -238,7 +243,7 @@ class bd_generic_search:
                     "max_heap_len": max_heap_size_combined, 
                     "closed_set_len": len(closed_fwd)+len(closed_bwd), 
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                    "came_from_len": len(came_from_fwd)+len(came_from_bwd),
+                    "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
                     "status": status}
 
         status += " No path found."
@@ -247,7 +252,7 @@ class bd_generic_search:
                 "max_heap_len": max_heap_size_combined, 
                 "closed_set_len": len(closed_fwd)+len(closed_bwd), 
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                "came_from_len": len(came_from_fwd)+len(came_from_bwd),
+                "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
                 "status": status} # No path found
 
 
