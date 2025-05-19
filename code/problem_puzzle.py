@@ -538,16 +538,18 @@ class TowersOfHanoiProblem:
             if backward:
                 h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
             else:
-                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
-                
+                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))                
 
             if self.degradation > 0:
                 h = math.floor((h / (self.degradation+1))* 100) / 100
+
         return h * self.h_multiplier
+
 
     def get_cost(self, state1, state2, move_info=None): 
         """Cost is always 1 for Towers of Hanoi."""
         return 1
+
     
     def build_pdb(self, start_state):
         """

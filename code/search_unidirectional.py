@@ -57,7 +57,7 @@ class generic_search:
         closed_set = set()
         nodes_expanded = 0
         C = -1.0         # Current lowest cost on frontier
-        U = float('inf') # Current lowest cost found to goal
+        U = float('inf') # Current lowest cost found for start to goal
         found_path = None
         if hasattr(problem, "cstar"):
             cstar = problem.cstar
@@ -75,7 +75,7 @@ class generic_search:
         U_update_count = 0
         found_path = False
         h_consistent = True  # optionally check the consistency of the heuristic if running A* (not exhaustive)
-        h_admissable = True  # optionally check the admissability of the heuristic if running A* (not exhaustive)
+        h_admissable = True  # optionally check the admissability of the heuristic if running A* and cstar is supplied (not exhaustive)
         priority_diminished = 0
 
         while not frontier.isEmpty():
@@ -89,8 +89,8 @@ class generic_search:
 
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
 
-            C = max(C, current_priority)  
-            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a lower priority
+            C = max(C, current_priority)
+            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
                 #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
 
@@ -117,9 +117,9 @@ class generic_search:
             # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap
             if current_g_score + 1e-6 < current_priority - current_h:
                 stale_count += 1
-                continue  # skip stale dup state - rather than deleting from heapq before push in expansion
+                continue
 
-            #if current_state in closed_set: continue
+            #if current_state in closed_set: continue   # we don't need a closed set in this implementation
             #closed_set.add(current_state) 
 
             if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
@@ -131,9 +131,6 @@ class generic_search:
                     if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                         status += f"Terminating BFS as path found. U:{U}."
                         break
-                    #continue
-                    #break # if don't break here but continue then C >= U condition will fire above.
-
 
             nodes_expanded += 1
             if cstar and current_g_score < cstar:
@@ -142,7 +139,6 @@ class generic_search:
                 if c_count_dict.get(current_g_score) is None:
                     c_count_dict[current_g_score] = 0
                 c_count_dict[current_g_score] +=1
-
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -164,7 +160,6 @@ class generic_search:
                     if current_h > cost + h_score + 1e-6:
                         status += f" Inconsistent heuristic detected."
                         h_consistent = False
-
 
                 #neighbor_g_score = state_info.get_g(neighbor_state)
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
@@ -188,7 +183,7 @@ class generic_search:
             status += f" Found goal {found_goal_count} times."
         if U_update_count > 0:
             status += f" Updated U {U_update_count} times."
-        nodes_expanded_below_cstar_auto = 0
+        nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
             #status += f" c_count_dict len:{len(c_count_dict)}"
             nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)

@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--tiles", default='NONE', type=str,
                         help="File name of the sliding tile problems to run eg 15_puzzle_korf_std100.csv or 'NONE' to skip. Should be in the tiles subdir.")
     parser.add_argument('--tiles_max', default=100, type=int,
-                        help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems in the file we will run 100 tile problems in total")
+                        help="Max number of tile problems to run from the chosen tile file. Eg if 100 and 1000 problems are in the file, we will run 100 tile problems in total")
     parser.add_argument('--tiles_heur', nargs="*", default="manhattan", type=str, 
                         help="tiles heuristics. Only manhattan implemented. Eg --tiles_heur manhattan")
     parser.add_argument('--tiles_degs', nargs="*", default=0, type=int, 
@@ -117,6 +117,12 @@ if __name__ == "__main__":
                         help="When enabled this uses the tile value as the cost rather than 1. Default is false.")
     parser.add_argument("--tiles_ignore_cstar", action='store_true',
                         help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
+    parser.add_argument('--tiles_make_random', default=0, type=int,
+                        help="Create this number of tile problems to run and save back as standard csv into the tiles_dir subdir")
+    parser.add_argument('--tiles_make_size', default=16, type=int,
+                        help="Size of state for random tile puzzles to be created.")
+    parser.add_argument("--tiles_add_cstar", action='store_true',
+                        help="If set, cstar for randomly created puzzles is added into output .csv file. This may of course take far longer.")
     
     # Pancake params
     parser.add_argument("--pancakes_dir", default='pancake', type=str,
@@ -135,6 +141,12 @@ if __name__ == "__main__":
                         help="When enabled this uses the num pancakes flipped as the cost rather than 1. Default is false.")
     parser.add_argument("--pancakes_ignore_cstar", action='store_true',
                         help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
+    parser.add_argument('--pancakes_make_random', default=0, type=int,
+                        help="Create this number of pancake problems to run and save back as standard csv into the pancakes_dir subdir")
+    parser.add_argument('--pancakes_make_size', default=14, type=int,
+                        help="Size of state for random pancake puzzles to be created. Note this is WITHOUT the table. So 4-pancake could have input state (1,4,3,2) to which the table will be added dynamically when the problem is run.")
+    parser.add_argument("--pancakes_add_cstar", action='store_true',
+                        help="If set, cstar for randomly created puzzles is added into output .csv file. This may of course take far longer.")
 
     # Tower of Hanoi params
     parser.add_argument("--toh_dir", default='toh', type=str,
@@ -144,13 +156,21 @@ if __name__ == "__main__":
     parser.add_argument('--toh_max', default=50, type=int,
                         help="Max number of toh problems to run from the chosen toh file. Eg if 100 and 1000 problems in the file we will run 100 toh problems in total")
     parser.add_argument('--toh_heur', nargs="*", default="infinitepegrelaxation", type=str, 
-                        help="toh heuristics. infinitepegrelaxation and 3pegstd implemented. Eg --toh_heur 3pegstd infinitepegrelaxation")
+                        help="toh heuristics. pdb_P_X_Y, infinitepegrelaxation and 3pegstd implemented eg --toh_heur 3pegstd infinitepegrelaxation pdb_4_10+2 pdb_4_6+6. For pdb_P_X_Y: P = peg count and X+Y = number of disks. PDBs are cached in the toh subdir, to recreate just delete the pdb subdirectory.")
     parser.add_argument('--toh_degs', nargs="*", default=0, type=int, 
                         help="toh heuristic degradation(s) to run. Eg 0 1 2 3")
     parser.add_argument('--toh_inadmiss', action='store_true', 
                         help="toh heuristic admissable or inadmissable Eg --toh_inadmiss means make inadmissable heuristic.")
     parser.add_argument("--toh_ignore_cstar", action='store_true',
                         help="If set the cstar in .csv files is not used. This is typically set when using variable costs or an inadmissable heuristic.")
+    parser.add_argument('--toh_make_random', default=0, type=int,
+                        help="Create this number of toh problems to run and save back as standard csv into the toh_dir subdir")
+    parser.add_argument('--toh_num_disks', default=12, type=int,
+                        help="Size of state (number of disks) for random toh puzzles to be created.")
+    parser.add_argument('--toh_num_pegs', default=4, type=int,
+                        help="Number of pegs for random toh puzzles to be created.")
+    parser.add_argument("--toh_add_cstar", action='store_true',
+                        help="If set, cstar for randomly created puzzles is added into output .csv file. This may of course take far longer. To enable this you must set --toh_heur to the heuristic to use, typically a pdb eg --toh_heur pdb_4_10+2")
     
     # Algorithm params over all searches
     parser.add_argument('--algo_timeout', default=30.0, type=float,
@@ -162,7 +182,7 @@ if __name__ == "__main__":
 
     # Heuristic search args
     parser.add_argument('--algo_heur', nargs="*", default="astar bd_astar", type=str, 
-                        help="which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar uniformcost bestfirst bdastar. Will set priority key to g+h, g and/or h appropriately")
+                        help="which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar us bfs bd_astar. Will set priority key to g+h, g and/or h appropriately. --algo_heur names must be specified in SEARCH_MAP at the top of search_runner.py")
 
     # Monte Carlo Tree Search (MCTS) args
     parser.add_argument('--algo_mcts', nargs="*", default="mcts_noheur mcts_bothheur", type=str, 
@@ -277,16 +297,91 @@ if __name__ == "__main__":
         logger.info("Not running any MCTS algorithms.")
 
     logger.info("######")
-    logger.info("Running the following algorithms:")
-    for a in algorithms:
-        logger.info(str(a))
+    if len(algorithms) > 0:
+        logger.info("Running the following algorithms:")
+        for a in algorithms:
+            logger.info(str(a))
 
-    # --- Run Experiments ---
-    util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
-                         seed=args.seed, timestamp=args.timestamp, logger=logger)
+        # --- Run Experiments ---
 
-    logger.info(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
+        util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
+                            seed=args.seed, timestamp=args.timestamp, logger=logger)
 
+        logger.info(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
+
+
+    # --- Create random problems ----
+    algo = 'astar'  # Use astar to determine cstar, if specified 
+    algo_class = SEARCH_MAP[algo]['class']
+    algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
+                                tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
+                                tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
+                                visualise = False,
+                                min_ram = args.algo_min_remaining_gb,
+                                timeout = args.algo_timeout)
+
+    if args.tiles_make_random > 0:
+        random.seed(args.seed)
+        logger.info(f"Creating {args.tiles_make_random} Sliding Tile problems of state size {args.tiles_make_size} with cstar {args.tiles_add_cstar}...")
+        goal_state = list(range(0, args.tiles_make_size)) # 0 at beginning per Korf standard
+        states_list = util.make_random_permutations(goal_state, num_samples=args.tiles_make_random)
+        logger.info(f"Goal state: {goal_state}")
+        file = os.path.join(args.in_dir, args.tiles_dir, f"{args.tiles_make_size-1}_puzzle_probs{args.tiles_make_random}_seed{args.seed}_{args.timestamp}.csv")
+        problems = []
+        csv_list = []
+        for state in states_list: 
+            csv_list.append({"problem_type":'tile', "initial_state": state, "goal_state": goal_state, "cstar": None })
+            problems.append(problem_puzzle.SlidingTileProblem(initial_state=state, goal_state=goal_state,
+                                                        use_variable_costs=False, make_heuristic_inadmissable=False, degradation=0,
+                                                        heuristic=args.tiles_heur[0], cstar=None, file=file) )
+        f = util.write_jsonl_to_csv(csv_list, file, del_keys=None, delimiter=';', verbose=False)
+        logger.info(f"Tile probs without C* written to: {f}")
+        if args.tiles_add_cstar:
+            util.find_cstar(algo_instance, problems, csv_list, file, seed=None, logger=logger)
+
+    if args.pancakes_make_random > 0:
+        random.seed(args.seed)
+        logger.info(f"Creating {args.pancakes_make_random} Pancake problems of size {args.pancakes_make_size} with cstar {args.pancakes_add_cstar}...")
+        goal_state = list(range(1, args.pancakes_make_size+1)) # exclude table
+        states_list = util.make_random_permutations(goal_state, num_samples=args.pancakes_make_random)
+        logger.info(f"Goal state excl table: {goal_state}")
+        file = os.path.join(args.in_dir, args.pancakes_dir, f"{args.pancakes_make_size}_pancake_probs{args.pancakes_make_random}_seed{args.seed}_{args.timestamp}.csv")
+        problems = []
+        csv_list = []
+        for state in states_list: 
+            csv_list.append({"problem_type":'pancake', "initial_state": state, "goal_state": goal_state, "cstar": None })
+            problems.append(problem_puzzle.PancakeProblem(initial_state=state, goal_state=goal_state,
+                                                        use_variable_costs=False, make_heuristic_inadmissable=False, degradation=0,
+                                                        heuristic=args.pancakes_heur[0], cstar=None, file=file) )
+        f = util.write_jsonl_to_csv(csv_list, file, del_keys=None, delimiter=';', verbose=False)        
+        logger.info(f"Pancake probs without C* written to: {f}")
+        if args.pancakes_add_cstar:
+            util.find_cstar(algo_instance, problems, csv_list, file, seed=None, logger=logger)
+
+    if args.toh_make_random > 0:
+        random.seed(args.seed)
+        logger.info(f"Creating {args.toh_make_random} Towers of Hanoi problems with {args.toh_num_disks} disks and {args.toh_num_pegs} pegs with cstar {args.toh_add_cstar}...")
+        goal_state = [chr(ord('A') + args.toh_num_pegs-1)] * args.toh_num_disks
+        pegs = ['A']
+        for i in range(1, args.toh_num_pegs): 
+            pegs.append(chr(ord('A') + i))
+        states_list = util.make_random_substitutions(goal_state, substitutions=pegs, num_samples=args.toh_make_random)
+        logger.info(f"Goal state: {goal_state} Pegs:{pegs}")
+        file = os.path.join(args.in_dir, args.toh_dir, f"{args.toh_num_disks}_toh_{args.toh_num_pegs}_peg_probs{args.toh_make_random}_seed{args.seed}_{args.timestamp}.csv")
+        problems = []
+        csv_list = []
+        for state in states_list: 
+            csv_list.append({"problem_type":'toh', "initial_state": state, "goal_state": goal_state, "cstar": None })
+            problems.append(problem_puzzle.TowersOfHanoiProblem(initial_state=state, goal_state=goal_state,
+                                                        make_heuristic_inadmissable=False, degradation=0,
+                                                        heuristic=args.toh_heur[0], cstar=None, file=file) )
+        f = util.write_jsonl_to_csv(csv_list, file, del_keys=None, delimiter=';', verbose=False)
+        logger.info(f"Tower of Hanoi probs without C* written to: {f}")
+        if args.toh_add_cstar:
+            util.find_cstar(algo_instance, problems, csv_list, file, seed=None, logger=logger)
+
+
+    logger.info(f"Finished at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
 
     """
     # --- Example Problems ---

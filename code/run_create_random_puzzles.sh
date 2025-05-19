@@ -195,34 +195,29 @@ comment
 
 python search_runner.py \
         --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
-        --out_prefix "search-eval" \
+        --out_prefix "create-puzzles" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid mazetest \
-        --grid_max_per_scen 1 \
-        --grid_reverse_scen_order \
-        --grid_heur octile \
-        --grid_degs 0 1 \
-        --grid_cost_multipier 1.0 \
-        --grid_allow_diag \
-        --grid_diag_cost 1.5 \
-        --grid_ignore_cstar \
-        --tiles "" \
-        --tiles_max 100 \
+        --grid NONE \
+        --tiles NONE \
         --tiles_heur manhattan \
-        --tiles_degs 0 2 \
-        --pancakes "" \
-        --pancakes_max 100 \
+        --tiles_make_random 10 \
+        --tiles_make_size 12 \
+        --tiles_add_cstar \
+        --pancakes NONE \
         --pancakes_heur symgap \
-        --pancakes_degs 0 2 \
-        --toh "12_toh_probs1_test4peg.csv" \
-        --toh_max 100 \
-        --toh_heur infinitepegrelaxation pdb_4_6+6 pdb_4_10+2 \
-        --toh_degs 0 2 \
-        --algo_visualise \
+        --pancakes_make_random 2 \
+        --pancakes_make_size 14 \
+        --pancakes_add_cstar \
+        --toh NONE \
+        --toh_heur pdb_4_10+2 \
+        --toh_make_random 2 \
+        --toh_num_disks 12 \
+        --toh_num_pegs 4 \
+        --toh_add_cstar \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar \
+        --algo_heur NONE \
         --algo_mcts NONE
 
 

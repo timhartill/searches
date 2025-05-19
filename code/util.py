@@ -11,6 +11,7 @@ import random
 import traceback # For error reporting
 import psutil
 import copy
+import itertools
 
 import numpy as np
 
@@ -44,6 +45,54 @@ GRID_MAP = {
     'S': EMPTY,    # swamp (passable from regular terrain)
     'W': OBSTACLE # water (traversable, but not passable from terrain) NOT SUPPORTED HERE
 }
+
+def iter_product(A, B):
+    """ Return iterable that will generate cartesian product of iterable A and Iterable B
+    eg: For tup_C in iter_product(A_list, B_tuple): print(tup_C)
+    """
+    return itertools.product(A, B)
+
+def iter_permute(A):
+    """ Return iterable that will generate all permutations of iterable A as tuples
+    eg: For rand_state_tuple in iter_permute(A_state): print(rand_state_tuple) 
+    """
+    return itertools.permutations(A)
+
+def rand_shuffle(A):
+    """ Return a randomly shuffled copy of list A """
+    acopy = list(A).copy()
+    random.shuffle(acopy)
+    return acopy
+
+def make_random_permutations(A, num_samples, giveup = 10000000):
+    """ Return num_samples permuted versions of list A that don't include A and arent duplicated"""
+    A = tuple(A)
+    permutations = set()
+    curr_count = 0
+    while curr_count < num_samples and giveup > 0:
+        giveup -= 1
+        perm = tuple(rand_shuffle(A))
+        if A == perm:
+            continue
+        permutations.add(perm)
+        curr_count = len(permutations)
+    return [list(p) for p in permutations]
+
+def make_random_substitutions(A, substitutions, num_samples, giveup = 10000000):
+    """ Return num_samples randomly substituted versions of list A that don't include A and arent duplicated"""
+    A = tuple(A)
+    length = len(A)
+    perturbations = set()
+    curr_count = 0
+    while curr_count < num_samples and giveup > 0:
+        giveup -= 1
+        pert = tuple([random.choice(substitutions) for i in range(length)])
+        if A == pert:
+            continue
+        perturbations.add(pert)
+        curr_count = len(perturbations)
+    return [list(p) for p in perturbations]
+
 
 
 def bytes_to_gb(bytes_value):
@@ -96,6 +145,7 @@ def write_jsonl_to_csv(results, csv_file_path, del_keys=['path'],
                        delimiter=',', lineterminator='\n', verbose=True):
     """ Write a list of dictionaries to a CSV file optionally deleting some keys and making the columns
         consistent across all rows by adding header as superset of all keys and adding blanks to rows where necessary.
+        The order of the output columns will be the order of the keys in the first results dict minus any deleted keys plus any keys appearing in subsequent results dicts not in the first dict 
     """
     all_results = copy.deepcopy(results)
     all_keys = set()
@@ -114,7 +164,7 @@ def write_jsonl_to_csv(results, csv_file_path, del_keys=['path'],
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames, delimiter=delimiter, lineterminator=lineterminator)
         writer.writeheader()
         for result in all_results:
-            writer.writerow(result)   
+            writer.writerow(result)
     if verbose:
         print(f"Results written to {csv_file_path}")
     return csv_file_path
@@ -293,6 +343,35 @@ def load_from_json(filename, verbose=False):
         raise ValueError(f"An unexpected error occurred while loading from {filename}: {e}")
 
 
+def run_search(algorithm, problem, seed=None, logger=None):
+    """ Run an algorithm on a problem and return results """
+    if not logger: log = print
+    else: log = logger.info
+    if seed: random.seed(seed)
+    result = None    
+    try:
+        result = algorithm.search(problem) # Call the runner
+        result['algorithm'] = str(algorithm)  # Set algorithm name in result consistently
+        log(f"{str(algorithm)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
+
+    except Exception as e:
+        log(f"!!! ERROR during {str(algorithm)} on {str(problem)}: {e}")
+        log(traceback.format_exc())
+        #traceback.print_exc() 
+        result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
+                    "algorithm": str(algorithm), "status": str(e)}
+    if result: 
+        if 'status' not in result:
+            result['status'] = 'No status supplied from algorithm.'
+        result['problem'] = str(problem)
+        if 'path' in result and result['path']:
+            result['unit_cost'] = len(result['path']) - 1
+        else:
+            result['unit_cost'] = -1
+        log(f"{ {key: value for key, value in result.items() if key !='path'} }") # log result without path to avoid cluttering the log too much
+    return result        
+        
+
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
                     seed=42, timestamp=None, logger=None):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
@@ -302,10 +381,8 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
         algorithms (list): List of algorithms to use
         output_dir (str): Directory to save the results
     """
-    if not logger:
-        log = print
-    else:
-        log = logger.info
+    if not logger: log = print
+    else: log = logger.info
     if not timestamp:
         timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
     out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
@@ -325,42 +402,17 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
             log(f"No tuple representation in problem: goal_state_tuple. This should be remedied")
         log(f"Initial Heuristic: {problem.heuristic(problem.initial_state())}")
         log(f"{'-' * 20}")
-        problem_results = []
         
-        for algo in algorithms:  # For each algorithm
-            log(f"Running {str(algo)}...")
+        for algorithm in algorithms:  # For each algorithm
+            log(f"Running {str(algorithm)}...")
             log(f"Available RAM (GB) before experiment: {get_available_ram()}")
-            result = None
-            random.seed(seed)  # Reset random seed for reproducibility before each algorithm run on each problem
-            try:
-                result = algo.search(problem) # Call the runner
-                # Set algorithm name in result consistently
-                result['algorithm'] = str(algo)
-                log(f"{str(algo)} Done. Time: {result.get('time', -1):.4f}secs Nodes Expanded: {result.get('nodes_expanded', -1)} Path Cost: {result.get('cost', 'N/A')} Length: {len(result['path']) if result['path'] else 'No Path Found'}")
-
-            except Exception as e:
-                log(f"!!! ERROR during {str(algo)} on {str(problem)}: {e}")
-                log(traceback.format_exc())
-                #traceback.print_exc() 
-                result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
-                           "algorithm": str(algo), "status": str(e)}
-
-            if result: 
-                if 'status' not in result:
-                    result['status'] = 'No status supplied from algorithm.'
-                result['problem'] = str(problem)
-                if 'path' in result and result['path']:
-                    result['unit_cost'] = len(result['path']) - 1
-                else:
-                    result['unit_cost'] = -1
-
-                log(f"{ {key: value for key, value in result.items() if key !='path'} }") # log result without path to avoid cluttering the log too much
-                problem_results.append(result)
+            result = run_search(algorithm, problem, seed=seed, logger=logger)
+            if result:
                 all_results.append(result)
                 with open(json_file_path, 'w') as json_file:                                        # output results as we go
-                    json.dump(all_results, json_file, indent=4)                                     # path in json 
+                    json.dump(all_results, json_file, indent=4)                                     # solution path in json 
                 log(f"In progress results saved to {json_file_path}") 
-                write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # path not in csv
+                write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # solution path not in csv
                 log(f"In progress results saved to {csv_file_path}") 
             log(f"Available RAM (GB) after experiment: {get_available_ram()}")
 
@@ -376,17 +428,27 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
         algo_name = res.get('algorithm','N/A') 
         log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")
 
-    # --- Save Results to JSON ---
+    # --- Save Results ---
     with open(json_file_path, 'w') as json_file:
         json.dump(all_results, json_file, indent=4)
     log(f"Final Results saved to {json_file_path}") 
-
-    # --- Save Results to CSV ---
-    # Ensure all results have the same keys for CSV
-    # If some results are missing keys, fill them with None
     write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
     log("Finished!")
     return csv_file_path
 
 
-
+def find_cstar(algorithm, problems, csv_list, file, seed=None, logger=None):
+    """ Find cstar for a set of problems, updating the corresponding csv file after each search """
+    if not logger: log = print
+    else: log = logger.info
+    for i, problem in enumerate(problems):
+        log(f"Running A* to get C* for problem {i} {csv_list[i]["initial_state"]}...")
+        result = run_search(algorithm, problem, seed=seed, logger=logger)
+        if result and result.get('cost'):
+            csv_list[i]["cstar"] = result.get('cost')
+            write_jsonl_to_csv(csv_list, file, del_keys=None, delimiter=';', verbose=False)
+            log(f'Updated C* in file {file} for problem {i} {csv_list[i]["initial_state"]} to {csv_list[i]["cstar"]}')
+        else:
+            log(f"ERROR: Search failed. Unable to identify C* for problem {i} {csv_list[i]["initial_state"]}")
+    log(f"C* search completed. Unless errors, file {file} was updated.")
+    return
