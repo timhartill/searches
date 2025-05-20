@@ -196,7 +196,7 @@ class bd_generic_search:
 
             
         end_time = time.time()
-        max_ram = start_ram - max(min_ram, util.get_available_ram())
+        max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
         if not status:
             status = "Completed."
         if cond_count > 0:

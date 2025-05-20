@@ -324,7 +324,7 @@ if __name__ == "__main__":
         random.seed(args.seed)
         logger.info(f"Creating {args.tiles_make_random} Sliding Tile problems of state size {args.tiles_make_size} with cstar {args.tiles_add_cstar}...")
         goal_state = list(range(0, args.tiles_make_size)) # 0 at beginning per Korf standard
-        states_list = util.make_random_permutations(goal_state, num_samples=args.tiles_make_random)
+        states_list = util.make_random_permutations(goal_state, num_samples=args.tiles_make_random, is_tile=True)
         logger.info(f"Goal state: {goal_state}")
         file = os.path.join(args.in_dir, args.tiles_dir, f"{args.tiles_make_size-1}_puzzle_probs{args.tiles_make_random}_seed{args.seed}_{args.timestamp}.csv")
         problems = []

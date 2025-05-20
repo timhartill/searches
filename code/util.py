@@ -12,6 +12,7 @@ import traceback # For error reporting
 import psutil
 import copy
 import itertools
+import math
 
 import numpy as np
 
@@ -64,8 +65,57 @@ def rand_shuffle(A):
     random.shuffle(acopy)
     return acopy
 
-def make_random_permutations(A, num_samples, giveup = 10000000):
-    """ Return num_samples permuted versions of list A that don't include A and arent duplicated"""
+def get_puzzle_size(state):
+    """ Get the dimensions of a tile puzzle represented as a flat list """
+    n = int(math.sqrt(len(state)))
+    if n * n != len(state):
+        max_cols = n
+        # Check if the state is in the form of n x n or n+1 x n
+        max_rows, col_check = divmod(len(state), max_cols)
+        if col_check != 0:
+            raise ValueError("Invalid state length for a sliding tile puzzle. Must be n x n or n+1 x n.")
+    else: # square puzzle
+        max_rows = n
+        max_cols = n
+    return max_rows, max_cols
+
+def get_inversion_count(state):
+    """ Count inversions in a list of numbers ignoring the blank (0) """
+    arr = [x for x in state if x != 0]
+    inv_count = 0
+    for i in range(len(arr)):
+        for j in range(i + 1, len(arr)):
+            if arr[i] > arr[j]:
+                inv_count += 1
+    return inv_count
+
+def find_blank_row_from_bottom(state, row_size):
+    """ Find the row of the blank (0) counting from bottom (1-based) """
+    index = state.index(0)
+    row_from_top = index // row_size
+    return row_size - row_from_top
+
+def tile_prob_solvable(state):
+    """ Check if a tile problem is solvable by checking the number of inversions in the state
+        and the parity of the blank tile position.
+        For odd width puzzles, the puzzle is solvable if the number of inversions is even
+        For even width puzzles, the puzzle is solvable if the sum of inversions and blank row is even
+        Note This assumes the goal state is an ordered list with the blank at the beginning (Korf standard) 
+             This will fail on different goal states with even width and blank on different row eg blank at end. 
+    """
+    rows, cols = get_puzzle_size(state)
+    inversions = get_inversion_count(state)
+    if cols % 2 == 1:  # Odd width, ignore rows
+        return inversions % 2 == 0
+    else:  # Even width
+        blank_row = find_blank_row_from_bottom(state, rows)
+        return (inversions + blank_row) % 2 == 0
+
+
+def make_random_permutations(A, num_samples, giveup = 10000000, is_tile=False):
+    """ Return num_samples permuted versions of list A that don't include A and arent duplicated
+        If is_tile is True, only return solvable permutations of a tile problem
+    """
     A = tuple(A)
     permutations = set()
     curr_count = 0
@@ -73,6 +123,8 @@ def make_random_permutations(A, num_samples, giveup = 10000000):
         giveup -= 1
         perm = tuple(rand_shuffle(A))
         if A == perm:
+            continue
+        if is_tile and not tile_prob_solvable(perm):
             continue
         permutations.add(perm)
         curr_count = len(permutations)
@@ -313,12 +365,12 @@ def save_to_json(data, filename, verbose=False):
             print(f"Data successfully saved to {filename}")
         return True
     except TypeError as e:
-        raise TypeError(f"ERROR saving data to {filename}: Object of type {e} is not JSON serializable.")
+        print(f"ERROR saving data to {filename}: Object of type {e} is not JSON serializable.")
     except IOError as e:
-        raise IOError(f"ERROR saving data to {filename}: {e}")
+        print(f"ERROR saving data to {filename}: {e}")
     except Exception as e:
-        raise ValueError(f"ERROR: An unexpected error occurred while saving to {filename}: {e}")
-
+        print(f"ERROR: An unexpected error occurred while saving to {filename}: {e}")
+    return False
 
 def load_from_json(filename, verbose=False):
     """  Loads a Python object from a JSON file.  
@@ -336,11 +388,12 @@ def load_from_json(filename, verbose=False):
             print(f"Data successfully loaded from {filename}")
         return data
     except json.JSONDecodeError as e:
-        raise ValueError(f"Error loading data from {filename}: Invalid JSON format - {e}")
+        print(f"Error loading data from {filename}: Invalid JSON format - {e}")
     except IOError as e:
-        raise IOError(f"Error loading data from {filename}: {e}")
+        print(f"Error loading data from {filename}: {e}")
     except Exception as e:
-        raise ValueError(f"An unexpected error occurred while loading from {filename}: {e}")
+        print(f"An unexpected error occurred while loading from {filename}: {e}")
+    return None
 
 
 def run_search(algorithm, problem, seed=None, logger=None):
@@ -441,14 +494,24 @@ def find_cstar(algorithm, problems, csv_list, file, seed=None, logger=None):
     """ Find cstar for a set of problems, updating the corresponding csv file after each search """
     if not logger: log = print
     else: log = logger.info
+    warnings = 0
     for i, problem in enumerate(problems):
         log(f"Running A* to get C* for problem {i} {csv_list[i]["initial_state"]}...")
         result = run_search(algorithm, problem, seed=seed, logger=logger)
-        if result and result.get('cost'):
+        if result and result.get('cost') is not None:
+            if result['cost'] < 0:
+                log(f"WARNING: C* search failed. No solution found so unable to record C* for problem {i} {csv_list[i]["initial_state"]}")
+                warnings += 1
+                continue
             csv_list[i]["cstar"] = result.get('cost')
             write_jsonl_to_csv(csv_list, file, del_keys=None, delimiter=';', verbose=False)
             log(f'Updated C* in file {file} for problem {i} {csv_list[i]["initial_state"]} to {csv_list[i]["cstar"]}')
         else:
-            log(f"ERROR: Search failed. Unable to identify C* for problem {i} {csv_list[i]["initial_state"]}")
-    log(f"C* search completed. Unless errors, file {file} was updated.")
+            warnings += 1
+            log(f"ERROR: Search failed. Unable to record C* for problem {i} {csv_list[i]["initial_state"]}")
+    if warnings == 0:        
+        log(f"C* search completed. {file} was updated for all problems.")
+    else:
+        log(f"C* search completed with WARNINGS. {file} was not updated for {warnings} problems where search failed!!'")
     return
+

@@ -118,7 +118,7 @@ class generic_search:
             # that were added before a better path was found). If the extracted
             # node's priority (- h if any) is higher than its current best known g_score,
             # it means we found a better path already, so we discard this stale entry.
-            # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap
+            # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
             if current_g_score + 1e-6 < current_priority - current_h:
                 stale_count += 1
                 continue
@@ -170,13 +170,13 @@ class generic_search:
                     #state_info.add(neighbor_state, parent=current_state, g=tentative_g_score)
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
-                    h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost...
+                    h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
                     frontier.push(neighbor_state, 
                                   frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                   frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
         end_time = time.time()
-        max_ram = start_ram - max(min_ram, util.get_available_ram())
+        max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
 
         image_file = 'no file'
         if not status:

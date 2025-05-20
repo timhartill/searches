@@ -36,17 +36,18 @@ class SlidingTileProblem:
                  degradation=0, heuristic="manhattan", cstar=None, file=None):
         self.file = file  # Input csv: Not used here, but provided for compatibility with eg ToH and Spatial which do use this for differing purposes 
         self.initial_state_tuple = tuple(initial_state)
-        self.n = int(math.sqrt(len(initial_state)))
-        if self.n * self.n != len(initial_state):
-            self.max_cols = self.n
-            # Check if the state is in the form of n x n or n+1 x n
-            max_rows, col_check = divmod(len(initial_state), self.max_cols)
-            if col_check != 0:
-                raise ValueError("Invalid state length for a sliding tile puzzle. Must be n x n or n+1 x n.")
-            self.max_rows = max_rows
-        else: # square puzzle
-            self.max_rows = self.n
-            self.max_cols = self.n
+        self.max_rows, self.max_cols = util.get_puzzle_size(initial_state)
+#        self.n = int(math.sqrt(len(initial_state)))
+#        if self.n * self.n != len(initial_state):
+#            self.max_cols = self.n
+#            # Check if the state is in the form of n x n or n+1 x n
+#            max_rows, col_check = divmod(len(initial_state), self.max_cols)
+#            if col_check != 0:
+#                raise ValueError("Invalid state length for a sliding tile puzzle. Must be n x n or n+1 x n.")
+#            self.max_rows = max_rows
+#        else: # square puzzle
+#            self.max_rows = self.n
+#            self.max_cols = self.n
             
         if goal_state:
             if len(goal_state) != len(initial_state):
@@ -550,7 +551,7 @@ class TowersOfHanoiProblem:
         """Cost is always 1 for Towers of Hanoi."""
         return 1
 
-    
+
     def build_pdb(self, start_state):
         """
         Builds a Pattern Database for a subset of disks using Breadth-First Search.
