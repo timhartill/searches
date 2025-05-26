@@ -5,7 +5,7 @@
 search_runner.py usage:
 
 usage:  [-h] [--out_dir OUT_DIR] [--out_prefix OUT_PREFIX] [--in_dir IN_DIR]
-        [--seed SEED] [--grid_dir GRID_DIR] [--grid GRID]
+        [--seed SEED] [--grid_dir GRID_DIR] [--grid [GRID ...]]
         [--grid_max_per_scen GRID_MAX_PER_SCEN] [--grid_reverse_scen_order]
         [--grid_heur [GRID_HEUR ...]] [--grid_degs [GRID_DEGS ...]]
         [--grid_inadmiss] [--grid_cost_multipier GRID_COST_MULTIPIER]
@@ -44,9 +44,10 @@ options:
   --seed SEED           random seed. Reset before running each algorithm on
                         each problem.
   --grid_dir GRID_DIR   Grid subdir off in_dir.
-  --grid GRID           Domain portion of the grid problems to run eg dao. ''
-                        means don't run. This will be expanded to the
-                        ...matrices/dao-scen subdir and all .scen files in
+  --grid [GRID ...]     Space-separated list of the domain portion of the grid
+                        problems to run eg --grid dao mazes. 'NONE' means
+                        don't run. for each domain, this will be expanded to
+                        the ...matrices/dao-scen subdir and all .scen files in
                         there will be attempted. Will look for corresponding
                         grids in dao-maps subdir
   --grid_max_per_scen GRID_MAX_PER_SCEN
@@ -86,8 +87,8 @@ options:
   --tiles_dir TILES_DIR
                         Tiles subdir off in_dir.
   --tiles TILES         File name of the sliding tile problems to run eg
-                        15_puzzle_korf_std100.csv or '' to skip. Should be in
-                        the tiles subdir.
+                        15_puzzle_korf_std100.csv or 'NONE' to skip. Should be
+                        in the tiles subdir.
   --tiles_max TILES_MAX
                         Max number of tile problems to run from the chosen
                         tile file. Eg if 100 and 1000 problems in the file we
@@ -106,7 +107,7 @@ options:
                         inadmissable heuristic.
   --pancakes_dir PANCAKES_DIR
                         Pancakes subdir off in_dir.
-  --pancakes PANCAKES   File name of the pancake problems to run or '' to
+  --pancakes PANCAKES   File name of the pancake problems to run or 'NONE' to
                         skip. Should be in the pancake subdir.
   --pancakes_max PANCAKES_MAX
                         Max number of pancake problems to run from the chosen
@@ -126,8 +127,8 @@ options:
                         typically set when using variable costs or an
                         inadmissable heuristic.
   --toh_dir TOH_DIR     Toh subdir off in_dir.
-  --toh TOH             File name of the towers of hanoi problems to run or ''
-                        to skip. Should be in the toh subdir.
+  --toh TOH             File name of the towers of hanoi problems to run or
+                        'NONE' to skip. Should be in the toh subdir.
   --toh_max TOH_MAX     Max number of toh problems to run from the chosen toh
                         file. Eg if 100 and 1000 problems in the file we will
                         run 100 toh problems in total
@@ -173,12 +174,20 @@ options:
                         MCTS Heuristic Weight (if applicable)
 comment
 
-#daotest
-#"15_puzzle_probs1_testcstar66.csv"
-#"12_puzzle_probs1_easytest.csv"
+#daotest mazetest
+#dao maze
 #"8_puzzle_probs2_easytest.csv"
+#"11_puzzle_probs1_easytest.csv"
+#11_puzzle_probs10_seed42_2025-05-20_17-08-21.csv
+#"15_puzzle_probs1_testcstar66.csv"
+#"15_puzzle_probs100_korf_std.csv"
+#"8_pancake_probs1_easytest.csv"
 #"14_pancake_probs2_test.csv"
-#"7_toh_probs3_easytest13peg24peg.csv"
+#"14_pancake_probs100_seed42_2025-05-20_17-21-23.csv"
+#"7_toh_3_peg_probs1_easytest.csv"
+#"7_toh_4_peg_probs2_easytest.csv"
+#"12_toh_4_peg_probs2_test.csv"
+#"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
 #--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
@@ -187,6 +196,7 @@ comment
 #        --tiles_var_cost \
 #        --pancakes_ignore_cstar \
 #        --pancakes_var_cost \
+#        --toh_inadmiss \
 
 
 python search_runner.py \
@@ -194,35 +204,31 @@ python search_runner.py \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid "daotest" \
-        --grid_max_per_scen 2 \
+        --grid mazetest \
+        --grid_max_per_scen 1 \
         --grid_reverse_scen_order \
         --grid_heur octile \
-        --grid_degs 0 1 \
+        --grid_degs 0 3 \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --grid_inadmiss \
-        --tiles "12_puzzle_probs1_easytest.csv" \
+        --tiles "15_puzzle_probs1_testcstar66.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
-        --tiles_inadmiss \
         --pancakes "14_pancake_probs2_test.csv" \
         --pancakes_max 100 \
         --pancakes_heur symgap \
         --pancakes_degs 0 2 \
-        --pancakes_inadmiss \
-        --toh "7_toh_probs3_easytest13peg24peg.csv" \
+        --toh "12_toh_4_peg_probs2_test.csv" \
         --toh_max 100 \
-        --toh_heur infinitepegrelaxation \
+        --toh_heur infinitepegrelaxation pdb_4_10+2 \
         --toh_degs 0 2 \
-        --toh_inadmiss \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar \
-        --algo_mcts NONE \
+        --algo_heur astar bd_astar \
+        --algo_mcts NONE
 
 

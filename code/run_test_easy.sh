@@ -175,13 +175,19 @@ options:
 comment
 
 #daotest mazetest
-#"15_puzzle_probs1_testcstar66.csv"
-#"12_puzzle_probs1_easytest.csv"
+#dao maze
 #"8_puzzle_probs2_easytest.csv"
-#"14_pancake_probs2_test.csv"
+#"11_puzzle_probs1_easytest.csv"
+#11_puzzle_probs10_seed42_2025-05-20_17-08-21.csv
+#"15_puzzle_probs1_testcstar66.csv"
+#"15_puzzle_probs100_korf_std.csv"
 #"8_pancake_probs1_easytest.csv"
-#"7_toh_probs3_easytest13peg24peg.csv"
-#"12_toh_probs1_test4peg.csv"
+#"14_pancake_probs2_test.csv"
+#"14_pancake_probs100_seed42_2025-05-20_17-21-23.csv"
+#"7_toh_3_peg_probs1_easytest.csv"
+#"7_toh_4_peg_probs2_easytest.csv"
+#"12_toh_4_peg_probs2_test.csv"
+#"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
 #--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
@@ -207,22 +213,22 @@ python search_runner.py \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --tiles "" \
+        --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 2 \
-        --pancakes "" \
+        --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
         --pancakes_heur symgap \
         --pancakes_degs 0 2 \
-        --toh "12_toh_probs1_test4peg.csv" \
+        --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
-        --toh_heur infinitepegrelaxation pdb_4_6+6 pdb_4_10+2 \
+        --toh_heur infinitepegrelaxation pdb_4_5+2 \
         --toh_degs 0 2 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar \
+        --algo_heur astar uc bfs bd_astar bd_uc bd_bfs \
         --algo_mcts NONE
 
 

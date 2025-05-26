@@ -12,20 +12,20 @@ import data_structures
 algo_name_map = {'g': "UniformCost", 'h': "GreedyBestFirst", 'f': "Astar"}
 
 
-# --- Generic Unidirectional Search Function ---
 class generic_search:
     """
-    Performs a generic best-first search using a closed set.
+    Performs a generic unidirectional heuristic search.
     Priority can be based on 'g', 'h', or 'f' = g+h. Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
                  visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0):
         """
-        :param problem: The search problem to solve
-        :param priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
-        :param visualise: If True, will output a visualisation of the search to a subdir off the problem input dir.
-        :param tiebreaker2: 2nd level Tiebreaker for the priority queue. Can be 'FIFO', 'LIFO', or 'NONE' for no 2nd level.
+        priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
+        visualise: If True, will output a visualisation of the search to a subdir off the output dir.
+        tiebreaker1/2: 1st and 2nd level Tiebreaker for the priority queue. Can be eg 'g', 'FIFO', 'LIFO', or 'NONE' for no tiebreaker = heap ordering.
+        min_ram: Minimum RAM in GB to keep available during search. If RAM goes below this, the search will (sometimes) stop but in practice Python may sometimes grab all mem and the os will kill the process before this condition fires.
+        timeout: Timeout in minutes for the search. If the search takes longer than this, it will stop.
         """
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         self.timeout = timeout
@@ -39,7 +39,8 @@ class generic_search:
 
 
     def search(self, problem):
-        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed) or (self.priority_key=='FIFO' and problem.optimality_guaranteed and not problem.use_variable_costs)
+        """ Run the search on a problem instance and return dict of results."""
+        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed) #or (self.priority_key=='FIFO' and problem.optimality_guaranteed and not problem.use_variable_costs)
         
         start_time = time.time() 
         start_node = problem.initial_state()
@@ -54,11 +55,11 @@ class generic_search:
         came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
         g_score = {start_node: g_initial}
         #state_info.add(start_node, parent=None, g=g_initial)
-        closed_set = set()
+        closed_set = set() # Unused in this implementation
+
         nodes_expanded = 0
         C = -1.0         # Current lowest cost on frontier
         U = float('inf') # Current lowest cost found for start to goal
-        found_path = None
         if hasattr(problem, "cstar"):
             cstar = problem.cstar
         else:
@@ -66,7 +67,6 @@ class generic_search:
         nodes_expanded_below_cstar = 0
         nodes_expanded_below_cstar_auto = 0
         c_count_dict = {}
-
         i = 0
         checkmem = 1000
         status = ""
@@ -102,7 +102,6 @@ class generic_search:
                 found_path = True
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
-
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
@@ -152,7 +151,6 @@ class generic_search:
                 else:
                     neighbor_state = neighbor_info
                     move_info = None
-
                 #if neighbor_state in closed_set: continue
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
@@ -194,9 +192,8 @@ class generic_search:
             #status += f" c_count_dict len:{len(c_count_dict)}"
             nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
         
-
-
         print(status)
+
         if found_path:
             #print("#### C count Dict ####")
             #if len(c_count_dict) < 100:
@@ -207,7 +204,7 @@ class generic_search:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
-                                               visited_fwd=closed_set, visualise_dirname=self.visualise_dirname)
+                                               visited_fwd=set(g_score.keys()), visualise_dirname=self.visualise_dirname)
                 if not image_file: 
                     image_file = 'no file'
 

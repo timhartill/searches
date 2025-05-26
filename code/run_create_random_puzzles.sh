@@ -14,7 +14,7 @@ python search_runner.py \
         --grid NONE \
         --tiles NONE \
         --tiles_heur manhattan \
-        --tiles_make_random 0 \
+        --tiles_make_random 10 \
         --tiles_make_size 12 \
         --tiles_add_cstar \
         --pancakes NONE \

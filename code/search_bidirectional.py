@@ -1,5 +1,5 @@
 """
-Bidirectional Searches
+Generic Bidirectional Searches
 
 Bidirectional A*, Bi dir Uniform Cost and Bi dir Best-First
 
@@ -21,6 +21,13 @@ class bd_generic_search:
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', 
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0):
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
+        """
+        priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
+        visualise: If True, will output a visualisation of the search to a subdir off the output dir.
+        tiebreaker1/2: 1st and 2nd level Tiebreaker for the priority queue. Can be eg 'g', 'FIFO', 'LIFO', or 'NONE' for no tiebreaker = heap ordering.
+        min_ram: Minimum RAM in GB to keep available during search. If RAM goes below this, the search will (sometimes) stop but in practice Python may sometimes grab all mem and the os will kill the process before this condition fires.
+        timeout: Timeout in minutes for the search. If the search takes longer than this, it will stop.
+        """
         self.timeout = timeout
         self.min_ram = min_ram
         self.visualise = visualise
@@ -32,7 +39,7 @@ class bd_generic_search:
 
 
     def search(self, problem):
-        #optimality_guaranteed = problem.optimality_guaranteed
+        """ Run the search on a problem instance and return dict of results."""
         optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
 
         start_time = time.time()
@@ -44,7 +51,8 @@ class bd_generic_search:
         h_initial = problem.heuristic(start_node)
         frontier_fwd = data_structures.PriorityQueue(priority_key=self.priority_key, 
                                                      tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
-        frontier_fwd.push(start_node, frontier_fwd.calc_priority(0, h_initial), 0) # Push with priority and tiebreaker
+        frontier_fwd.push(start_node, 
+                          frontier_fwd.calc_priority(0, h_initial), 0) # Push with priority and tiebreaker
         came_from_fwd = {start_node: None}
         g_score_fwd = {start_node: 0}
         closed_fwd = set() 
@@ -52,26 +60,33 @@ class bd_generic_search:
         h_goal = problem.heuristic(goal_node, backward=True)
         frontier_bwd = data_structures.PriorityQueue(priority_key=self.priority_key, 
                                                      tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2)
-        frontier_bwd.push(goal_node, frontier_bwd.calc_priority(0, h_goal), 0) # Push with priority and tiebreaker
+        frontier_bwd.push(goal_node, 
+                          frontier_bwd.calc_priority(0, h_goal), 0) # Push with priority and tiebreaker
         came_from_bwd = {goal_node: None}
         g_score_bwd = {goal_node: 0}
         closed_bwd = set() 
 
         nodes_expanded = 0
-        meeting_node = None
-        max_heap_size_combined = 0
         C = -1.0        # Current lowest cost on either frontier
-        U = float('inf') # Current lowest cost of path found
-
+        U = float('inf') # Current lowest cost of path found in either direction
         if hasattr(problem, "cstar"):
             cstar = problem.cstar
         else:
             cstar = None
-        #nodes_expanded_below_cstar = 0
+        nodes_expanded_below_cstar = 0
+        nodes_expanded_below_cstar_auto = 0
+        c_count_dict = {}
+        meeting_node = None
+        max_heap_size_combined = 0
         i = 0
         checkmem = 1000
         status = ""
-        cond_count = 0
+        stale_count = 0
+        found_goal_count = 0
+        U_update_count = 0
+        h_consistent = True  # optionally check the consistency of the heuristic if running A* (not exhaustive)
+        h_admissable = True  # optionally check the admissability of the heuristic if running A* and cstar is supplied (not exhaustive)
+        priority_diminished = 0
         start_ram = util.get_available_ram()
         min_ram = start_ram
 
@@ -88,40 +103,64 @@ class bd_generic_search:
                     break
             i += 1
 
-            C = min(frontier_fwd.peek(priority_only=True), 
-                    frontier_bwd.peek(priority_only=True))
-            
+            current_priority = min( frontier_fwd.peek(priority_only=True), 
+                                    frontier_bwd.peek(priority_only=True) )
+
+            C = max(C, current_priority)
+            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
+                #print(f" Current priority {current_priority} is less than C {C}.")
+                priority_diminished += 1
+
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
 
             # --- Forward Step ---
-            if not frontier_fwd.isEmpty() and C == frontier_fwd.peek(priority_only=True):
+            if not frontier_fwd.isEmpty() and current_priority == frontier_fwd.peek(priority_only=True):
                 current_state_fwd = frontier_fwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
-                if current_state_fwd in closed_fwd: 
+                current_g_fwd = g_score_fwd.get(current_state_fwd)
+                if self.priority_key == 'g': 
+                    current_h = 0
+                else: 
+                    current_h = problem.heuristic(current_state_fwd)
+                    if self.priority_key == 'f' and h_admissable:
+                        if cstar and current_g_fwd + current_h > cstar + 1e-6:
+                            status += f" Inadmissable heuristic detected (Fwd)."
+                            h_admissable = False
+                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
+                # that were added before a better path was found). If the extracted
+                # node's priority (- h if any) is higher than its current best known g_score,
+                # it means we found a better path already, so we discard this stale entry.
+                # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
+                if current_g_fwd + 1e-6 < current_priority - current_h:
+                    stale_count += 1
                     continue
-                closed_fwd.add(current_state_fwd)
-                current_g_fwd = g_score_fwd.get(current_state_fwd, float('inf'))
-                nodes_expanded += 1
-                #if cstar and current_g_fwd < cstar:
-                #    nodes_expanded_below_cstar += 1
-                #if current_g_fwd >= U:  # + problem.heuristic(current_state_fwd, backward=False) >= U: #TODO remove?
-                #    cond_count += 1
-                #    continue
+
+                #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
+                #closed_fwd.add(current_state_fwd) 
 
                 if current_state_fwd in g_score_bwd: 
-                    current_path_cost = current_g_fwd + g_score_bwd[current_state_fwd]
+                    current_path_cost = g_score_bwd[current_state_fwd] + current_g_fwd
+                    found_goal_count += 1
                     if current_path_cost < U:
                         U = current_path_cost
                         meeting_node = current_state_fwd
+                        U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                            status += f"Terminating BFS as path found. U:{U}."
+                            status += f"Terminating BFS as path found (fwd). U:{U}."
                             break
-                        continue # TODO No sense expanding?
                         #break   #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
                     #else:  # finds nonoptimal paths
                     #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
                     #    break    
+
+                nodes_expanded += 1
+                if cstar and current_g_fwd < cstar:
+                    nodes_expanded_below_cstar += 1
+                if self.priority_key != 'h':
+                    if c_count_dict.get(current_g_fwd) is None:
+                        c_count_dict[current_g_fwd] = 0
+                    c_count_dict[current_g_fwd] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -131,46 +170,72 @@ class bd_generic_search:
                     else:
                         neighbor_state = neighbor_info
                         move_info = None
-                    if neighbor_state in closed_fwd: continue
+                    #if neighbor_state in closed_fwd: continue
+
                     cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                     tentative_g_score = current_g_fwd + cost
+
+                    # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                    if self.priority_key == 'f' and h_consistent:
+                        h_score = problem.heuristic(neighbor_state)
+                        if current_h > cost + h_score + 1e-6:
+                            status += f" Inconsistent heuristic detected (fwd)."
+                            h_consistent = False
+
                     if tentative_g_score < g_score_fwd.get(neighbor_state, float('inf')):
                         came_from_fwd[neighbor_state] = current_state_fwd 
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
-                        #f_score = tentative_g_score + h_score
-                        #if f_score < U: # Enabling this caused ~ 30% fewer node expansions but would be cheating for uc and might cause inadmissable heuristics to make the search fail
                         frontier_fwd.push(  neighbor_state, 
                                             frontier_fwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
             
             # --- Backward Step ---
-            if not frontier_bwd.isEmpty() and C == frontier_bwd.peek(priority_only=True):
+            if not frontier_bwd.isEmpty() and current_priority == frontier_bwd.peek(priority_only=True):
                 current_state_bwd = frontier_bwd.pop(item_only=True)   # item, priority, tiebreaker1, tiebreaker2
-                if current_state_bwd in closed_bwd: 
+                current_g_bwd = g_score_bwd.get(current_state_bwd)
+                if self.priority_key == 'g': 
+                    current_h = 0
+                else: 
+                    current_h = problem.heuristic(current_state_bwd, backward=True)
+                    if self.priority_key == 'f' and h_admissable:
+                        if cstar and current_g_bwd + current_h > cstar + 1e-6:
+                            status += f" Inadmissable heuristic detected (Bwd)."
+                            h_admissable = False
+                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
+                # that were added before a better path was found). If the extracted
+                # node's priority (- h if any) is higher than its current best known g_score,
+                # it means we found a better path already, so we discard this stale entry.
+                # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
+                if current_g_bwd + 1e-6 < current_priority - current_h:
+                    stale_count += 1
                     continue
-                current_g_bwd = g_score_bwd.get(current_state_bwd, float('inf'))
-                closed_bwd.add(current_state_bwd)
-                nodes_expanded += 1
-                #if cstar and current_g_bwd < cstar:
-                #    nodes_expanded_below_cstar += 1
-                #if current_g_bwd >= U: #+ problem.heuristic(current_state_bwd, backward=True) >= U: #TODO remove
-                #    cond_count += 1
-                #    continue 
+
+                #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
+                #closed_bwd.add(current_state_bwd) 
 
                 if current_state_bwd in g_score_fwd: 
                     current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
+                    found_goal_count += 1
                     if current_path_cost < U: 
                         U = current_path_cost
                         meeting_node = current_state_bwd
+                        U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                            status += f"Terminating BFS as path found. U:{U}."
+                            status += f"Terminating BFS as path found (bwd). U:{U}."
                             break
-                        continue    #TODO "continue" here as pointless expanding the node after it found a path?
                         #break  #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
                     #else: #finds non-optimal paths
                     #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
                     #    break    
+
+                nodes_expanded += 1
+                if cstar and current_g_bwd < cstar:
+                    nodes_expanded_below_cstar += 1
+                if self.priority_key != 'h':
+                    if c_count_dict.get(current_g_bwd) is None:
+                        c_count_dict[current_g_bwd] = 0
+                    c_count_dict[current_g_bwd] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_bwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -180,16 +245,22 @@ class bd_generic_search:
                     else:
                         neighbor_state = neighbor_info
                         move_info = None
-
-                    if neighbor_state in closed_bwd: continue
+                    #if neighbor_state in closed_bwd: continue
+                    
                     cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
                     tentative_g_score = current_g_bwd + cost 
+
+                    # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                    if self.priority_key == 'f' and h_consistent:
+                        h_score = problem.heuristic(neighbor_state, backward=True)
+                        if current_h > cost + h_score + 1e-6:
+                            status += f" Inconsistent heuristic detected (bwd)."
+                            h_consistent = False
+
                     if tentative_g_score < g_score_bwd.get(neighbor_state, float('inf')):
                         came_from_bwd[neighbor_state] = current_state_bwd 
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
-                        #f_score = tentative_g_score + h_score
-                        #if f_score < U: # Enabling this caused ~ 30% fewer node expansions but would be cheating for uc and might also cause inadmissable heuristics to fail
                         frontier_bwd.push(  neighbor_state, 
                                             frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
@@ -197,28 +268,32 @@ class bd_generic_search:
             
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
+
+        image_file = 'no file'
         if not status:
             status = "Completed."
-        if cond_count > 0:
-            status += f" {cond_count} dup nodes skipped."    
-        print(status)    
-        image_file = 'no file'   
-        nodes_expanded_below_cstar = 0
-        print(f"Calculating count of nodes below {U} from forward closed set |{len(closed_fwd)}|..")
-        for state in closed_fwd:
-            if g_score_fwd.get(state, 0) < U:
-                nodes_expanded_below_cstar += 1
-        print(f"Calculating count of nodes below {U} from backward closed set |{len(closed_bwd)}|..")
-        for state in closed_bwd:
-            if g_score_bwd.get(state, 0) < U:
-                nodes_expanded_below_cstar += 1
+        if priority_diminished > 0:
+            status += f" Priority diminished count:{priority_diminished}."
+        if stale_count > 0:
+            status += f" Stale count:{stale_count}."
+        if found_goal_count > 0:
+            status += f" Found goal {found_goal_count} times."
+        if U_update_count > 0:
+            status += f" Updated U {U_update_count} times."
+        nodes_expanded_below_cstar_auto = -1
+        if len(c_count_dict) > 0:
+            #status += f" c_count_dict len:{len(c_count_dict)}"
+            nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
+
+        print(status)
+
         if meeting_node:
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
-                                            meeting_node=meeting_node, visited_fwd=closed_fwd, visited_bwd=closed_bwd, 
+                                            meeting_node=meeting_node, visited_fwd=set(g_score_fwd.keys()), visited_bwd=set(g_score_bwd.keys()), 
                                             visualise_dirname=self.visualise_dirname)
                 if not image_file: image_file = 'no file'
             final_cost = -1
@@ -237,8 +312,8 @@ class bd_generic_search:
             if cost_mismatch: 
                 print(f"Warning: Bidirectional cost mismatch! PathRecalc={final_cost}, SearchCost={U}")
             final_reported_cost = U # Report cost found by search
-            return {"path": path, "cost": final_reported_cost if path else -1, 
-                    "nodes_expanded": nodes_expanded,  "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+            return {"path": path, "cost": final_reported_cost, "nodes_expanded": nodes_expanded,  
+                    "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
                     "closed_set_len": len(closed_fwd)+len(closed_bwd), 
@@ -247,7 +322,8 @@ class bd_generic_search:
                     "status": status}
 
         status += " No path found."
-        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, "nodes_expanded_below_cstar": nodes_expanded_below_cstar,
+        return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
+                "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
                 "closed_set_len": len(closed_fwd)+len(closed_bwd), 
