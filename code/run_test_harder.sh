@@ -1,6 +1,6 @@
 #!/bin/bash
-
 # Test script for search runner options
+
 <<comment
 search_runner.py usage:
 
