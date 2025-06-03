@@ -189,7 +189,7 @@ comment
 #"12_toh_4_peg_probs2_test.csv"
 #"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
-#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
+#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs lb_nbs_a_eps lb_nbs_f_eps lb_nbs_a lb_nbs_f \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 
 #        --tiles_ignore_cstar \
@@ -216,19 +216,19 @@ python search_runner.py \
         --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
-        --tiles_degs 0 2 \
+        --tiles_degs 0 2 4\
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
-        --pancakes_heur symgap \
-        --pancakes_degs 0 2 \
+        --pancakes_heur symgap gap \
+        --pancakes_degs 0 2 6 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
         --toh_heur infinitepegrelaxation pdb_4_5+2 \
-        --toh_degs 0 2 \
+        --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar uc bfs bd_astar bd_uc bd_bfs \
+        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps lb_nbs_f lb_nbs_a \
         --algo_mcts NONE
 
 

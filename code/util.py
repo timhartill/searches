@@ -343,9 +343,12 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
                             problem[col_name] = None
                         else:
                             try:
-                                problem[col_name] = convert_func(col_value)
+                                if convert_func == json.loads:  # special case for json.loads
+                                    problem[col_name] = convert_func(col_value.replace("'", '"'))  # replace single quotes with double quotes for valid JSON
+                                else:    
+                                    problem[col_name] = convert_func(col_value)
                             except Exception as e:
-                                print(f"Error converting column {col_name} with value {col_value} to {convert_func}: {e}")
+                                print(f"load_csv_file: Error converting column {col_name} with value {col_value} to {convert_func}: {e}")
     return data
 
 

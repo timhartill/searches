@@ -42,7 +42,7 @@ import problem_spatial
 # searches
 from search_mcts import heuristic_mcts_search
 from search_unidirectional import generic_search
-from search_bidirectional import bd_generic_search
+from search_bidirectional import bd_generic_search, bd_lb_search
 
 # map search algorithm input string to a search class and it's parameters
 # Edit this dict to add new algorithms and if necessary add "from newsearch import supersearch" above
@@ -55,6 +55,10 @@ SEARCH_MAP = {
     "bd_uc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "bd_huc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bd_bfs": {"class":bd_generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
+    "lb_nbs_a": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 0.0},  
+    "lb_nbs_f": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 0.0},  
+    "lb_nbs_a_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
+    "lb_nbs_f_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
     "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
@@ -266,13 +270,24 @@ if __name__ == "__main__":
         for algo in args.algo_heur:
             assert algo in SEARCH_MAP
             algo_class = SEARCH_MAP[algo]['class']
-            algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
-                                       tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
-                                       tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
-                                       visualise = args.algo_visualise,
-                                       visualise_dirname = args.visualise_dir,
-                                       min_ram = args.algo_min_remaining_gb,
-                                       timeout = args.algo_timeout)
+            if algo.startswith('lb_'):
+                # LB Pairs-based algorithms
+                algo_instance = algo_class(tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
+                                           tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
+                                           visualise = args.algo_visualise,
+                                           visualise_dirname = args.visualise_dir,
+                                           min_ram = args.algo_min_remaining_gb,
+                                           timeout = args.algo_timeout,
+                                           version=SEARCH_MAP[algo]['version'],
+                                           min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'])
+            else:
+                algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
+                                        tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
+                                        tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
+                                        visualise = args.algo_visualise,
+                                        visualise_dirname = args.visualise_dir,
+                                        min_ram = args.algo_min_remaining_gb,
+                                        timeout = args.algo_timeout)
             algorithms.append(algo_instance)
     else:
         logger.info("Not running any heuristic algorithms.")

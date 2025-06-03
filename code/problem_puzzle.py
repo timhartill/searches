@@ -191,7 +191,9 @@ class PancakeProblem:
         self.degradation = degradation
         self.cstar = cstar
         cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self.h_str = heuristic   #"SymGap" # Symmetric Gap heuristic is the only one implemented
+        if heuristic not in ["symgap", "gap"]:
+            raise ValueError(f"Invalid heuristic: {heuristic}. Must be 'symgap' or 'gap'.")
+        self.h_str = heuristic   #"symgap or gap" # Symmetric Gap heuristic is the only one implemented
         self._str_repr = f"Pancake-{self.n-1}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
         
     def initial_state(self): 
@@ -306,9 +308,13 @@ class PancakeProblem:
         """
         if backward: target_tuple = self.initial_state_tuple
         else: target_tuple = self.goal_state_tuple
-        return max(self.gap_heuristic(state, target_tuple), 
-                   self.gap_heuristic(target_tuple, state)) * self.h_multiplier
 
+        if self.h_str == "symgap":
+            return max(self.gap_heuristic(state, target_tuple), 
+                    self.gap_heuristic(target_tuple, state)) * self.h_multiplier
+        else:  # gap
+            return self.gap_heuristic(state, target_tuple) * self.h_multiplier
+        
     def __str__(self): 
         return self._str_repr
 
@@ -539,7 +545,7 @@ class TowersOfHanoiProblem:
             if backward:
                 h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
             else:
-                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))                
+                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
 
             if self.degradation > 0:
                 h = math.floor((h / (self.degradation+1))* 100) / 100
