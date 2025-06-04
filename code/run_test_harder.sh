@@ -192,6 +192,7 @@ comment
 
 #--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
+#--toh_heur infinitepegrelaxation pdb_4_10+2 pdb_4_6+6 
 
 #        --tiles_ignore_cstar \
 #        --tiles_var_cost \
@@ -206,7 +207,7 @@ python search_runner.py \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
         --grid mazetest daotest \
-        --grid_max_per_scen 2 \
+        --grid_max_per_scen 0 \
         --grid_reverse_scen_order \
         --grid_heur octile \
         --grid_degs 0 \
@@ -215,21 +216,21 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs2_test.csv" \
-        --tiles_max 100 \
+        --tiles_max 0 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs2_test.csv" \
-        --pancakes_max 100 \
+        --pancakes_max 0 \
         --pancakes_heur gap \
-        --pancakes_degs 0 2 4 6 \
+        --pancakes_degs 0 1 2 \
         --toh "12_toh_4_peg_probs2_test.csv" \
         --toh_max 100 \
-        --toh_heur infinitepegrelaxation pdb_4_10+2 pdb_4_6+6 \
+        --toh_heur pdb_4_10+2 pdb_4_6+6 \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar lb_nbs_a_eps lb_nbs_f_eps lb_nbs_a \
+        --algo_heur astar lb_nbs_a_eps lb_nbs_f_eps \
         --algo_mcts NONE
 
 

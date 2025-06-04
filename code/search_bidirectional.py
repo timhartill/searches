@@ -155,12 +155,12 @@ class bd_generic_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_g_fwd < cstar:
+                if cstar and current_priority < cstar:
                     nodes_expanded_below_cstar += 1
                 if self.priority_key != 'h':
-                    if c_count_dict.get(current_g_fwd) is None:
-                        c_count_dict[current_g_fwd] = 0
-                    c_count_dict[current_g_fwd] +=1
+                    if c_count_dict.get(current_priority) is None:
+                        c_count_dict[current_priority] = 0
+                    c_count_dict[current_priority] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -230,12 +230,12 @@ class bd_generic_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_g_bwd < cstar:
+                if cstar and current_priority < cstar:
                     nodes_expanded_below_cstar += 1
                 if self.priority_key != 'h':
-                    if c_count_dict.get(current_g_bwd) is None:
-                        c_count_dict[current_g_bwd] = 0
-                    c_count_dict[current_g_bwd] +=1
+                    if c_count_dict.get(current_priority) is None:
+                        c_count_dict[current_priority] = 0
+                    c_count_dict[current_priority] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_bwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -283,7 +283,7 @@ class bd_generic_search:
         nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
             #status += f" c_count_dict len:{len(c_count_dict)}"
-            nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
+            nodes_expanded_below_cstar_auto = sum(c_count_dict[p] for p in c_count_dict if p < U)
 
         print(status)
 
@@ -476,11 +476,11 @@ class bd_lb_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_g_fwd < cstar:
+                if cstar and new_GLB < cstar:
                     nodes_expanded_below_cstar += 1
-                if c_count_dict.get(current_g_fwd) is None:
-                    c_count_dict[current_g_fwd] = 0
-                c_count_dict[current_g_fwd] +=1
+                if c_count_dict.get(new_GLB) is None:
+                    c_count_dict[new_GLB] = 0
+                c_count_dict[new_GLB] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -548,11 +548,11 @@ class bd_lb_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_g_bwd < cstar:
+                if cstar and new_GLB < cstar:
                     nodes_expanded_below_cstar += 1
-                if c_count_dict.get(current_g_bwd) is None:
-                    c_count_dict[current_g_bwd] = 0
-                c_count_dict[current_g_bwd] +=1
+                if c_count_dict.get(new_GLB) is None:
+                    c_count_dict[new_GLB] = 0
+                c_count_dict[new_GLB] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_bwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -605,7 +605,7 @@ class bd_lb_search:
         nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
             #status += f" c_count_dict len:{len(c_count_dict)}"
-            nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
+            nodes_expanded_below_cstar_auto = sum(c_count_dict[glb] for glb in c_count_dict if glb < U)
 
         print(status)
 

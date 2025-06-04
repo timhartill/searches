@@ -264,7 +264,6 @@ class WaitingReadyPriorityQueue:
                 return g, f, ordering, state
         return None
 
-
     def isEmpty(self):
         """ Check if both Wait and Ready heaps are empty excluding items marked for removal
         """
@@ -282,7 +281,7 @@ class WaitingReadyPriorityQueue:
                 return self.wait_heap[0][0]
             else:
                 return self.wait_heap[0]   # Return the whole entry
-        return 0
+        return float('inf')
 
     def peek_ready(self, priority_only=True):
         """View the lowest priority element on Ready (gmin) without popping it
@@ -296,7 +295,7 @@ class WaitingReadyPriorityQueue:
                 return self.ready_heap[0][0]
             else:
                 return self.ready_heap[0]     # Return the whole entry
-        return None
+        return float('inf')
 
 
 class LBPairs:

@@ -389,29 +389,31 @@ class TowersOfHanoiProblem:
             if sum(pdb_list) != self.num_disks:
                     raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y. Sum of X + Y must equal disk count {self.num_disks}")
 
-            self.pdb_dir = os.path.join(os.path.dirname(self.file), heuristic)
+            self.pdb_dir = os.path.join(os.path.dirname(self.file), f"{util.encode_list(initial_state).decode()}_{heuristic}")
             if os.path.exists(self.pdb_dir):
                 print(f"Loading cached pdbs from: {self.pdb_dir}")
-                self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_fwd.json"), verbose=True)
-                self.pdb2 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_fwd.json"), verbose=True)
-                self.pdb3 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_bwd.json"), verbose=True)
-                self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_bwd.json"), verbose=True)
+                self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)  #Add _1_ so 6+6 doesnt overwrite itself
+                self.pdb2 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
+                self.pdb3 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
+                self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
             else:
                 print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))
+                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))  #TODO WRONG: needs to be built from target peg to THIS initial state. Otherwise from goal to AAAAAAAAAAA is typically longer than to a random state???
                 print(f"PDB 1 fwd built with {len(self.pdb1)} states.")
                 self.pdb2 = self.build_pdb( tuple([self.target_peg] * pdb_list[1] ))
                 print(f"PDB 2 fwd built with {len(self.pdb2)} states.")
                 print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-                self.pdb3 = self.build_pdb( tuple([self.initial_peg] * pdb_list[0] ))
+#                self.pdb3 = self.build_pdb( tuple([self.initial_peg] * pdb_list[0] ))  #TODO WRONG? might be right for forward, needs to be built EACH initial state to goal
+                self.pdb3 = self.build_pdb( tuple( initial_state[:pdb_list[0]] ))  #TODO WRONG? might be right for forward, needs to be built EACH initial state to goal
                 print(f"PDB 3 fwd built with {len(self.pdb1)} states.")
-                self.pdb4 = self.build_pdb( tuple([self.initial_peg] * pdb_list[1] ))
+#                self.pdb4 = self.build_pdb( tuple([self.initial_peg] * pdb_list[1] ))
+                self.pdb4 = self.build_pdb( tuple(initial_state[pdb_list[0]:] ))
                 print(f"PDB 4 fwd built with {len(self.pdb2)} states.")
                 print(f"Saving pdbs to: {self.pdb_dir}")
-                util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_fwd.json"), verbose=True)
-                util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_fwd.json"), verbose=True)
-                util.save_to_json(self.pdb3, os.path.join(self.pdb_dir, f"{pdb_list[0]}_bwd.json"), verbose=True)
-                util.save_to_json(self.pdb4, os.path.join(self.pdb_dir, f"{pdb_list[1]}_bwd.json"), verbose=True)
+                util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb3, os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
+                util.save_to_json(self.pdb4, os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
             print(f"Fwd: pdb1 has {len(self.pdb1)} states. pdb2 has {len(self.pdb2)} states.")
             print(f"Bwd: pdb3 has {len(self.pdb3)} states. pdb4 has {len(self.pdb4)} states.")
             self.pdb_list = pdb_list
@@ -575,7 +577,7 @@ class TowersOfHanoiProblem:
             current_dist = pdb[current_state]
             neighbors = self.get_neighbors(util.encode_list(current_state))
             for next_state_bytes, move_info in neighbors:
-                next_state = next_state_bytes.decode()  # get_neighbors() returns byte string, .decode(() converts to normal string
+                next_state = next_state_bytes.decode()  # get_neighbors() returns byte string, .decode(() converts to normal string for json compatibility
                 if next_state not in pdb:
                     pdb[next_state] = current_dist + move_info
                     queue.append(next_state)
@@ -665,6 +667,44 @@ def create_toh_probs(args):
 
 
 
+"""
+#pdb calc issue:
+toh = TowersOfHanoiProblem(initial_state=['B','B','C','C','D','A','A'], 
+                        goal_state=['D'], heuristic='pdb_4_5+2', cstar=18, 
+                        file="/media/tim/dl3storage/gitprojects/searches/problems/toh/7_toh_4_peg_probs2_easytest.csv")
+toh.heuristic(util.encode_list(['B','D','D','C','A','A','A']))   # 14
+toh.heuristic(util.encode_list(['B','D','D','C','A','A','A']), backward=True)   # 5
+14+5 # 19  but cstar for this problem is 18!
 
+toh.heuristic(util.encode_list(['A','A','A','A','A','A','A']))   # 16
+toh.heuristic(util.encode_list(['A','A','A','A','A','A','A']), backward=True)   # 0
+
+toh.heuristic(util.encode_list(['D','D','D','D','D','D','D']))   # 0
+toh.heuristic(util.encode_list(['D','D','D','D','D','D','D']), backward=True)   # 16
+
+toh.heuristic(util.encode_list(['A','A','A','A','A','A','D']))   # 14
+toh.heuristic(util.encode_list(['A','A','A','A','A','A','D']), backward=True)   # 3
+
+toh.heuristic(util.encode_list(['A','A','A','B','D','D','C']))   # 9
+toh.heuristic(util.encode_list(['A','A','A','B','D','D','C']), backward=True)   # 13
+9+13 = 22! 
+
+toh.heuristic(util.encode_list(['A','A','A','C','D','D','B']))   # 9
+toh.heuristic(util.encode_list(['A','A','A','C','D','D','B']), backward=True)   # 13
+
+toh.heuristic(util.encode_list(['A','A','A','D','D','D','B']))   # 8
+toh.heuristic(util.encode_list(['A','A','A','D','D','D','B']), backward=True)   # 14
+
+Try: create csv with problematic state and see what it's actual c* is
+Investigate g value calculation for this state
+
+toh = TowersOfHanoiProblem(initial_state=["A", "D", "A", "B", "D", "C", "C", "D", "D", "D", "B", "D"], 
+                        goal_state=['D'], heuristic='pdb_4_10+2', cstar=48, 
+                        file="/media/tim/dl3storage/gitprojects/searches/problems/toh/12_toh_4_peg_probs2_test.csv")
+toh.heuristic(util.encode_list(['D','D','D','D','D','D','D','D','D','D','D','D']))   # 0
+toh.heuristic(util.encode_list(['D','D','D','D','D','D','D','D','D','D','D','D']), backward=True)   # 52 wrong!
+
+
+"""
 
 

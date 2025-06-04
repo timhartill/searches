@@ -136,12 +136,12 @@ class generic_search:
                         break
 
             nodes_expanded += 1
-            if cstar and current_g_score < cstar:
+            if cstar and current_priority < cstar:
                 nodes_expanded_below_cstar += 1
             if self.priority_key != 'h':
-                if c_count_dict.get(current_g_score) is None:
-                    c_count_dict[current_g_score] = 0
-                c_count_dict[current_g_score] +=1
+                if c_count_dict.get(current_priority) is None:
+                    c_count_dict[current_priority] = 0
+                c_count_dict[current_priority] +=1
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -190,7 +190,7 @@ class generic_search:
         nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
             #status += f" c_count_dict len:{len(c_count_dict)}"
-            nodes_expanded_below_cstar_auto = sum(c_count_dict[g] for g in c_count_dict if g < U)
+            nodes_expanded_below_cstar_auto = sum(c_count_dict[p] for p in c_count_dict if p < U)
         
         print(status)
 
