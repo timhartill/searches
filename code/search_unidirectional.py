@@ -40,8 +40,8 @@ class generic_search:
 
     def search(self, problem):
         """ Run the search on a problem instance and return dict of results."""
-        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed) #or (self.priority_key=='FIFO' and problem.optimality_guaranteed and not problem.use_variable_costs)
-        
+        optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
+
         start_time = time.time() 
         start_node = problem.initial_state()
         h_initial = problem.heuristic(start_node) if self.priority_key in ['h', 'f'] else 0
@@ -212,23 +212,20 @@ class generic_search:
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                     "max_heap_len": frontier.max_heap_size, 
-#                    "closed_set_len": len(closed_set),
-#                    "state_dict_len": len(state_info.state_dict),
                     "g_score_len": len(g_score),
-                    "came_from_len": len(came_from), "max_ram_taken": max_ram,
-                    "status": status}
+                    "max_ram_taken": max_ram,
+                    "status": status,
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
 
         status += " No path found."
-
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar,  "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file, 
                 "max_heap_len": frontier.max_heap_size, 
-#                "closed_set_len": len(closed_set), 
-#                "state_dict_len": len(state_info.state_dict),
                 "g_score_len": len(g_score),
-                "came_from_len": len(came_from), "max_ram_taken": max_ram,
-                "status": status}
+                "max_ram_taken": max_ram,
+                "status": status,
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
 
 
     def __str__(self): # enable str(object) to return algo name

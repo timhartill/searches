@@ -206,8 +206,8 @@ python search_runner.py \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid mazetest daotest \
-        --grid_max_per_scen 1 \
+        --grid maze dao \
+        --grid_max_per_scen 20 \
         --grid_random_scen_order \
         --grid_heur octile \
         --grid_degs 0 \
@@ -215,22 +215,22 @@ python search_runner.py \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --tiles "15_puzzle_probs2_test.csv" \
+        --tiles "15_puzzle_probs100_korf_std.csv" \
         --tiles_max 2 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
-        --pancakes "14_pancake_probs2_test.csv" \
+        --pancakes "14_pancake_probs100_seed42_2025-05-20_17-21-23.csv" \
         --pancakes_max 100 \
         --pancakes_heur gap \
         --pancakes_degs 0 1 2 \
-        --toh "12_toh_4_peg_probs2_test.csv" \
+        --toh "12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv" \
         --toh_max 100 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar lb_nbs_a_eps lb_nbs_f_eps \
+        --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps \
         --algo_mcts NONE
 
 

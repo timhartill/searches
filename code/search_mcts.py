@@ -120,6 +120,10 @@ class heuristic_mcts_search:
 
 
     def search(self, problem):
+
+        if hasattr(problem, 'load_or_create_pdbs') and problem.h_str.startswith('pdb'):  # create pdb here so it doesn't get pre-loaded for every problem instance in advance
+            problem.load_or_create_pdbs()
+
         start_time = time.time()
         start_node = problem.initial_state()
         # Use the HeuristicMCTSNode

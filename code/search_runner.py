@@ -3,7 +3,7 @@ This code implements various search algorithms for solving
   - Sliding Tile, Pancake, Pathfinder and Towers of Hanoi problems.
 Using:  
 Dijkstra/Uniform cost (g), Best first (h) ,A* f=g+h, 
-Bidirectional A*/UC/BFS, 
+Bidirectional A*/UC/BFS, Bidirectional LBPairs
 MCTS, Heuristic MCTS
 
 Author: Tim Hartill
@@ -47,7 +47,9 @@ from search_bidirectional import bd_generic_search, bd_lb_search
 # map search algorithm input string to a search class and it's parameters
 # Edit this dict to add new algorithms and if necessary add "from newsearch import supersearch" above
 SEARCH_MAP = {
-    "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
+    "astar_negg": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "astar_fifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE'},
     "uc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "huc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bfs": {"class":generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
@@ -89,10 +91,12 @@ if __name__ == "__main__":
                         help="Max number of problems to run from any ONE .scen file. Eg if 21 and 156 .scen files in chosen subdir we will run 21 * 156 problems in total")
     parser.add_argument('--grid_reverse_scen_order', action='store_true',
                         help="If set, reverse the order of entries in each scen file before selection of --grid_max_per_scen entries (noting that higher cstar problems tend to occur later in file i.e. files are ordered by c* buckets of ~10 problems)")
+    parser.add_argument('--grid_random_scen_order', action='store_true',
+                        help="If set, randomise the order of entries in each scen file before selection of --grid_max_per_scen entries (noting that higher cstar problems tend to occur later in file i.e. files are ordered by c* buckets of ~10 problems this will eliminate thate bias)")
     parser.add_argument('--grid_heur', nargs="*", default="octile", type=str, 
                         help="grid heuristics. Eg --grid_heur octile euclidean chebyshev manhattan")
     parser.add_argument('--grid_degs', nargs="*", default=0, type=int, 
-                        help="grid heuristic degradation(s) to run. Eg 0 1 2 3")
+                        help="grid heuristic degradation(s) to run. Eg 0 1 2 3. Degrades the heuristic by dividing it by degradation+1")
     parser.add_argument('--grid_inadmiss', action='store_true', 
                         help="grid heuristic admissable or inadmissable Eg --grid_inadmiss means make inadmissable heuristic.")
     parser.add_argument('--grid_cost_multipier', default=1.0, type=float,
@@ -249,17 +253,21 @@ if __name__ == "__main__":
     tile_list, pancake_list, toh_list, grid_list = [], [], [], []
     if args.tiles.upper() != "NONE":
         tile_list = problem_puzzle.create_tile_probs(args)
+        logger.info(f"Created {len(tile_list)} tile problems from {args.tiles_file_full}")
     if args.pancakes.upper() != "NONE":
         pancake_list = problem_puzzle.create_pancake_probs(args)
+        logger.info(f"Created {len(pancake_list)} pancake problems from {args.pancakes_file_full}")
     if args.toh.upper() != "NONE":
         toh_list = problem_puzzle.create_toh_probs(args)
+        logger.info(f"Created {len(toh_list)} Towers of Hanoi problems from {args.toh_file_full}")
     if args.grid[0].upper() != 'NONE':
         grid_list = problem_spatial.create_grid_probs(args)
+        logger.info(f"Created {len(grid_list)} grid problems from {args.grid_dir_full}")
 
     problems = tile_list + pancake_list + toh_list + grid_list
 
     logger.info("######")
-    logger.info("The following problems will be run:")
+    logger.info(f"The following {len(problems)} problems will be run:")
     for prob in problems:
         logger.info(str(prob))
 
@@ -313,7 +321,7 @@ if __name__ == "__main__":
 
     logger.info("######")
     if len(algorithms) > 0:
-        logger.info("Running the following algorithms:")
+        logger.info(f"Running the following {len(algorithms)} algorithms:")
         for a in algorithms:
             logger.info(str(a))
 

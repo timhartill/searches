@@ -37,18 +37,6 @@ class SlidingTileProblem:
         self.file = file  # Input csv: Not used here, but provided for compatibility with eg ToH and Spatial which do use this for differing purposes 
         self.initial_state_tuple = tuple(initial_state)
         self.max_rows, self.max_cols = util.get_puzzle_size(initial_state)
-#        self.n = int(math.sqrt(len(initial_state)))
-#        if self.n * self.n != len(initial_state):
-#            self.max_cols = self.n
-#            # Check if the state is in the form of n x n or n+1 x n
-#            max_rows, col_check = divmod(len(initial_state), self.max_cols)
-#            if col_check != 0:
-#                raise ValueError("Invalid state length for a sliding tile puzzle. Must be n x n or n+1 x n.")
-#            self.max_rows = max_rows
-#        else: # square puzzle
-#            self.max_rows = self.n
-#            self.max_cols = self.n
-            
         if goal_state:
             if len(goal_state) != len(initial_state):
                 raise ValueError("Goal state must be the same length as initial state.")
@@ -70,9 +58,11 @@ class SlidingTileProblem:
             self.h_multiplier = 1    
         self.degradation = degradation    
         self.cstar = cstar
-        cost_type = "VarCost" if use_variable_costs else "UnitCost"
+        self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = heuristic  #"Manhattan" # Manhattan distance heuristic is the only one implemented
-        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
+        self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
+        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self.prob_str = f"SlidingTile-{self.max_rows}x{self.max_cols}-{self.cost_type}"
 
     def initial_state(self): 
         return self.initial_state_bytes
@@ -190,11 +180,13 @@ class PancakeProblem:
             self.h_multiplier = 1    
         self.degradation = degradation
         self.cstar = cstar
-        cost_type = "VarCost" if use_variable_costs else "UnitCost"
+        self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
         if heuristic not in ["symgap", "gap"]:
             raise ValueError(f"Invalid heuristic: {heuristic}. Must be 'symgap' or 'gap'.")
         self.h_str = heuristic   #"symgap or gap" # Symmetric Gap heuristic is the only one implemented
-        self._str_repr = f"Pancake-{self.n-1}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{self.h_str}-d{degradation}-a{not make_heuristic_inadmissable}-cs{cstar}"
+        self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
+        self._str_repr = f"Pancake-{self.n-1}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self.prob_str = f"Pancake-{self.n-1}-{self.cost_type}"
         
     def initial_state(self): 
         return self.initial_state_bytes
@@ -371,62 +363,28 @@ class TowersOfHanoiProblem:
             raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation' or 'pdb_p_X+Y'.")
         if len(self.pegs) > 3 and heuristic == "3pegstd": # not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False
-        if heuristic.startswith('pdb'):
-            h = heuristic[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
-            if len(h) != 2:
-                raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y")
-            if int(h[0]) != self.peg_count:
-                raise ValueError(f"Invalid pdb heuristic {heuristic} for peg count {self.peg_count}. Must be of the form pdb_p_X+Y where p matches the peg count of the problem.")
-
-            pdb_list = h[1].split('+')  # pdb_4_10+2 -> ['10', '2']
-            if len(pdb_list) != 2:
-                raise ValueError(f"Invalid pdb element count {heuristic}. Must be of the form pdb_p_X+Y")
-            for i in range(len(pdb_list)):
-                try:
-                    pdb_list[i] = int(pdb_list[i])
-                except:
-                    raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y")
-            if sum(pdb_list) != self.num_disks:
-                    raise ValueError(f"Invalid pdb heuristic format {heuristic}. Must be of the form pdb_p_X+Y. Sum of X + Y must equal disk count {self.num_disks}")
-
-            self.pdb_dir = os.path.join(os.path.dirname(self.file), f"{util.encode_list(initial_state).decode()}_{heuristic}")
-            if os.path.exists(self.pdb_dir):
-                print(f"Loading cached pdbs from: {self.pdb_dir}")
-                self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)  #Add _1_ so 6+6 doesnt overwrite itself
-                self.pdb2 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
-                self.pdb3 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
-                self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
-            else:
-                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))  #TODO WRONG: needs to be built from target peg to THIS initial state. Otherwise from goal to AAAAAAAAAAA is typically longer than to a random state???
-                print(f"PDB 1 fwd built with {len(self.pdb1)} states.")
-                self.pdb2 = self.build_pdb( tuple([self.target_peg] * pdb_list[1] ))
-                print(f"PDB 2 fwd built with {len(self.pdb2)} states.")
-                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-#                self.pdb3 = self.build_pdb( tuple([self.initial_peg] * pdb_list[0] ))  #TODO WRONG? might be right for forward, needs to be built EACH initial state to goal
-                self.pdb3 = self.build_pdb( tuple( initial_state[:pdb_list[0]] ))  #TODO WRONG? might be right for forward, needs to be built EACH initial state to goal
-                print(f"PDB 3 fwd built with {len(self.pdb1)} states.")
-#                self.pdb4 = self.build_pdb( tuple([self.initial_peg] * pdb_list[1] ))
-                self.pdb4 = self.build_pdb( tuple(initial_state[pdb_list[0]:] ))
-                print(f"PDB 4 fwd built with {len(self.pdb2)} states.")
-                print(f"Saving pdbs to: {self.pdb_dir}")
-                util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)
-                util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
-                util.save_to_json(self.pdb3, os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
-                util.save_to_json(self.pdb4, os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
-            print(f"Fwd: pdb1 has {len(self.pdb1)} states. pdb2 has {len(self.pdb2)} states.")
-            print(f"Bwd: pdb3 has {len(self.pdb3)} states. pdb4 has {len(self.pdb4)} states.")
-            self.pdb_list = pdb_list
-
                             
         self.h_str = heuristic
+        if self.h_str.startswith('pdb'):
+            h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
+            if len(h) != 2:
+                raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y")
+            if int(h[0]) != self.peg_count:
+                raise ValueError(f"Invalid pdb heuristic {self.h_str} for peg count {self.peg_count}. Must be of the form pdb_p_X+Y where p matches the peg count of the problem.")
+            self.pdb_list = []  # Used as flag to trigger pbd load/create in self.heuristic(..)
+
         self.degradation = degradation
         self.initial_state_tuple = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self.goal_state_tuple=tuple(goal_state)      # (C, C, C, ..., C)
         self.initial_state_bytes = util.encode_list(initial_state)
         self.goal_state_bytes = util.encode_list(goal_state)
         self.cstar = cstar
-        self._str_repr=f"TowersOfHanoi-{self.num_disks}-Pegs{self.peg_count}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cs{cstar}"
+        self.cost_type = "UnitCost"
+        self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
+
+        self._str_repr=f"TowersOfHanoi-{self.num_disks}-Pegs{self.peg_count}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self.prob_str = f"TowersOfHanoi-{self.num_disks}-Pegs{self.peg_count}-{self.cost_type}"
+
 
     def initial_state(self): 
         return self.initial_state_bytes
@@ -524,7 +482,9 @@ class TowersOfHanoiProblem:
                             if self.make_heuristic_inadmissable:
                                 multiplier = random.choice(range(1,self.num_disks)) #k**k
                             num_disks_on_peg += multiplier
-                    h += (2*num_disks_on_peg) - 1
+                    if num_disks_on_peg > 0:
+                        #h += (2*num_disks_on_peg) - 1  # Very occasionally gives inadmissable on bwd. Felner: 2 * n - 1  but unclear where the brackets are from the wording.
+                        h += (2*(num_disks_on_peg-1))  # Fixes inadmissability
                 else:  # goal peg    
                     # 2 Sum for goal peg = 2 * each disk that must move to allow other disks to move onto goal. Count downward from largest until break
                     goal_disks = []
@@ -544,6 +504,8 @@ class TowersOfHanoiProblem:
                             num_disks_on_peg += multiplier
                     h += 2*num_disks_on_peg
         else:   # pdb
+            if self.pdb_list == []:  # If not loaded yet, load or create the PDBs
+                self.load_or_create_pdbs()
             if backward:
                 h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
             else:
@@ -554,11 +516,49 @@ class TowersOfHanoiProblem:
 
         return h * self.h_multiplier
 
-
     def get_cost(self, state1, state2, move_info=None): 
         """Cost is always 1 for Towers of Hanoi."""
         return 1
 
+    def load_or_create_pdbs(self):
+            h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
+            pdb_list = h[1].split('+')  # pdb_4_10+2 -> ['10', '2']
+            if len(pdb_list) != 2:
+                raise ValueError(f"Invalid pdb element count {self.h_str}. Must be of the form pdb_p_X+Y")
+            for i in range(len(pdb_list)):
+                try:
+                    pdb_list[i] = int(pdb_list[i])
+                except:
+                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y")
+            if sum(pdb_list) != self.num_disks:
+                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y. Sum of X + Y must equal disk count {self.num_disks}")
+
+            self.pdb_dir = os.path.join(os.path.dirname(self.file), f"{util.encode_list(self.initial_state_tuple).decode()}_{self.h_str}")
+            if os.path.exists(self.pdb_dir):
+                print(f"Loading cached pdbs from: {self.pdb_dir}")
+                self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)  #Add _1_ so 6+6 doesnt overwrite itself
+                self.pdb2 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
+                self.pdb3 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
+                self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
+            else:
+                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
+                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))  
+                print(f"PDB 1 fwd built with {len(self.pdb1)} states.")
+                self.pdb2 = self.build_pdb( tuple([self.target_peg] * pdb_list[1] ))
+                print(f"PDB 2 fwd built with {len(self.pdb2)} states.")
+                print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
+                self.pdb3 = self.build_pdb( tuple( self.initial_state_tuple[:pdb_list[0]] ))  
+                print(f"PDB 3 fwd built with {len(self.pdb1)} states.")
+                self.pdb4 = self.build_pdb( tuple(self.initial_state_tuple[pdb_list[0]:] ))
+                print(f"PDB 4 fwd built with {len(self.pdb2)} states.")
+                print(f"Saving pdbs to: {self.pdb_dir}")
+                util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
+                util.save_to_json(self.pdb3, os.path.join(self.pdb_dir, f"{pdb_list[0]}_3_bwd.json"), verbose=True)
+                util.save_to_json(self.pdb4, os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
+            print(f"Fwd: pdb1 has {len(self.pdb1)} states. pdb2 has {len(self.pdb2)} states.")
+            print(f"Bwd: pdb3 has {len(self.pdb3)} states. pdb4 has {len(self.pdb4)} states.")
+            self.pdb_list = pdb_list
 
     def build_pdb(self, start_state):
         """

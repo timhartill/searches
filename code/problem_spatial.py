@@ -90,7 +90,7 @@ class GridProblem:
                  make_heuristic_inadmissable=False,
                  degradation=0,
                  allow_diagonal=False,
-                 diag_cost = 2.0,
+                 diag_cost = 1.5,
                  heuristic='octile',
                  cstar=None):
         if file is None or not os.path.exists(file):
@@ -153,8 +153,11 @@ class GridProblem:
         self.cost_multiplier = cost_multiplier 
         self.diag_cost = diag_cost
         self.cstar = cstar
-        cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
-        self._str_repr = f"{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-{cost_type}-h{heuristic}-d{degradation}-a{self.optimality_guaranteed and not make_heuristic_inadmissable}-cm{cost_multiplier}-dc{self.diag_cost}-cs{cstar}"
+        self.cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
+        self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
+        self._str_repr = f"{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self.prob_str = f"{self.griddomain}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}"
+
 
     def initial_state(self): 
         return self.initial_state_tuple
@@ -364,9 +367,20 @@ def create_grid_probs(args):
             scenarios = util.load_scen_file( os.path.join(domain, scen_file) )  # NOTE: adds path to map_dir
             if args.grid_reverse_scen_order:
                 scenarios.reverse()
-
+            if args.grid_random_scen_order:
+                random.shuffle(scenarios)
+            count=0
             for i, scenario in enumerate(scenarios):
-                if i >= args.grid_max_per_scen:
+                if not scenario['map_dir'] or not os.path.exists(scenario['map_dir']):
+                    print(f"Skipping scenario in {scen_file} as map file '{scenario['map_dir']}' does not exist.")
+                    continue
+                if not scenario['initial_state']:
+                    print(f"Skipping scenario in {scen_file} as initial state '{scenario['initial_state']}' is invalid.")
+                    continue
+                if not scenario['goal_state']:
+                    print(f"Skipping scenario in {scen_file} as goal state '{scenario['goal_state']}' is invalid.")
+                    continue
+                if count >= args.grid_max_per_scen:
                     break
                 for heuristic in args.grid_heur:
                     for degradation in args.grid_degs:
@@ -385,6 +399,7 @@ def create_grid_probs(args):
                                                 heuristic=heuristic,
                                                 cstar=cstar )
                         problems.append(problem)
+                count += 1
     return problems
 
 

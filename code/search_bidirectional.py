@@ -316,20 +316,20 @@ class bd_generic_search:
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
-                    #"closed_set_len": len(closed_fwd)+len(closed_bwd), 
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                    "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
-                    "status": status}
+                    "max_ram_taken": max_ram,
+                    "status": status,
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
 
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
-                #"closed_set_len": len(closed_fwd)+len(closed_bwd), 
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
-                "status": status} # No path found
+                "max_ram_taken": max_ram,
+                "status": status,
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
 
 
     def __str__(self): # enable str(object) to return algo name
@@ -372,6 +372,7 @@ class bd_lb_search:
     def search(self, problem):
         """ Run the search on a problem instance and return dict of results."""
         optimality_guaranteed = problem.optimality_guaranteed
+
         self.ordering = 0   
         start_time = time.time()
         start_node = problem.initial_state()
@@ -638,20 +639,20 @@ class bd_lb_search:
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
-                    #"closed_set_len": len(closed_fwd)+len(closed_bwd), 
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                    "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
-                    "status": status}
+                    "max_ram_taken": max_ram,
+                    "status": status, 
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
 
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
-                #"closed_set_len": len(closed_fwd)+len(closed_bwd), 
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),
-                "came_from_len": len(came_from_fwd)+len(came_from_bwd), "max_ram_taken": max_ram,
-                "status": status} # No path found
+                "max_ram_taken": max_ram,
+                "status": status,
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,} # No path found
 
     def calc_ordering(self):
         """ Calculate fifo/lifo ordering """

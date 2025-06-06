@@ -204,11 +204,11 @@ python search_runner.py \
         --out_prefix "search-eval" \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
-        --grid mazetest \
-        --grid_max_per_scen 1 \
-        --grid_reverse_scen_order \
+        --grid mazetest daotest \
+        --grid_max_per_scen 2 \
+        --grid_random_scen_order \
         --grid_heur octile \
-        --grid_degs 0 1 \
+        --grid_degs 0 \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
@@ -216,7 +216,7 @@ python search_runner.py \
         --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 100 \
         --tiles_heur manhattan \
-        --tiles_degs 0 2 4\
+        --tiles_degs 0 4\
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
         --pancakes_heur symgap gap \
@@ -228,7 +228,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps lb_nbs_f lb_nbs_a \
+        --algo_heur astar astar_negg astar_fifo lb_nbs_f_eps lb_nbs_a_eps \
         --algo_mcts NONE
 
 

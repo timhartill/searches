@@ -277,10 +277,10 @@ def load_scen_file(file_path):
                 scenario[col] = SCEN_COL_TYPES[col](cols[index])
             scenario['map_dir'] = os.path.join(dir_name_map, scenario['map']) # map col is mandatory and hence also bucket 
             scenario['initial_state'] = None
-            if scenario['start_x'] and scenario['start_y']:
+            if scenario['start_x'] is not None and scenario['start_y'] is not None:
                 scenario['initial_state'] = [scenario['start_y'], scenario['start_x']]
             scenario['goal_state'] = None
-            if scenario['goal_x'] and scenario['goal_y']:
+            if scenario['goal_x'] is not None and scenario['goal_y'] is not None:
                 scenario['goal_state'] = [scenario['goal_y'], scenario['goal_x']]
             scenarios.append(scenario)
     return scenarios
@@ -404,7 +404,7 @@ def run_search(algorithm, problem, seed=None, logger=None):
     if not logger: log = print
     else: log = logger.info
     if seed: random.seed(seed)
-    result = None    
+    result = None
     try:
         result = algorithm.search(problem) # Call the runner
         result['algorithm'] = str(algorithm)  # Set algorithm name in result consistently
