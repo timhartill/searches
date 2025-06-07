@@ -449,6 +449,10 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
     out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
     json_file_path = f"{out_file_base}.json"
     csv_file_path = f"{out_file_base}.csv"
+    total_experiments = len(problems) * len(algorithms)
+    curr_experiment = 0
+    log(f"Running {total_experiments} experiments with {len(problems)} problems and {len(algorithms)} algorithms")
+
     all_results = []
     for problem in problems:  # For each problem
         log(f"\n{'=' * 20}")
@@ -465,7 +469,8 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
         log(f"{'-' * 20}")
         
         for algorithm in algorithms:  # For each algorithm
-            log(f"Running {str(algorithm)}...")
+            curr_experiment += 1
+            log(f"Experiment: {curr_experiment}/{total_experiments} Running {str(algorithm)} on {str(problem)}...")
             log(f"Available RAM (GB) before experiment: {get_available_ram()}")
             result = run_search(algorithm, problem, seed=seed, logger=logger, save_path=save_path)  # Run the search
             if result:
@@ -475,7 +480,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
                 log(f"In progress results saved to {json_file_path}") 
                 write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # solution path not in csv
                 log(f"In progress results saved to {csv_file_path}") 
-            log(f"Available RAM (GB) after experiment: {get_available_ram()}")
+            log(f"Finished experiment:{curr_experiment}/{total_experiments} Available RAM (GB) after experiment: {get_available_ram()}")
         problem = None  # Clear problem to free up memory
 
     # Overall Summary
