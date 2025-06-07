@@ -399,7 +399,7 @@ def load_from_json(filename, verbose=False):
     return None
 
 
-def run_search(algorithm, problem, seed=None, logger=None):
+def run_search(algorithm, problem, seed=None, logger=None, save_path=True):
     """ Run an algorithm on a problem and return results """
     if not logger: log = print
     else: log = logger.info
@@ -414,7 +414,7 @@ def run_search(algorithm, problem, seed=None, logger=None):
         log(f"!!! ERROR during {str(algorithm)} on {str(problem)}: {e}")
         log(traceback.format_exc())
         #traceback.print_exc() 
-        result = { "path": None, "cost": -1, "nodes_expanded": -1, "time": -1, 
+        result = { "path_length": -1, "cost": -1, "nodes_expanded": -1, "time": -1, 
                     "algorithm": str(algorithm), "status": str(e)}
     if result: 
         if 'status' not in result:
@@ -422,14 +422,19 @@ def run_search(algorithm, problem, seed=None, logger=None):
         result['problem'] = str(problem)
         if 'path' in result and result['path']:
             result['unit_cost'] = len(result['path']) - 1
+            result['path_length'] = len(result['path'])
         else:
             result['unit_cost'] = -1
+            result['path_length'] = -1
+        if not save_path:  # if not saving path, remove it from the result
+            del result['path']
+        result['seed'] = seed  # store seed in result for reproducibility and also so we can aggregate results over sampled runs
         log(f"{ {key: value for key, value in result.items() if key !='path'} }") # log result without path to avoid cluttering the log too much
     return result        
         
 
 def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
-                    seed=42, timestamp=None, logger=None):
+                    seed=42, timestamp=None, logger=None, save_path=True):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
         and a json file (with path) in the specified output directory.
     Args:
@@ -462,7 +467,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
         for algorithm in algorithms:  # For each algorithm
             log(f"Running {str(algorithm)}...")
             log(f"Available RAM (GB) before experiment: {get_available_ram()}")
-            result = run_search(algorithm, problem, seed=seed, logger=logger)
+            result = run_search(algorithm, problem, seed=seed, logger=logger, save_path=save_path)  # Run the search
             if result:
                 all_results.append(result)
                 with open(json_file_path, 'w') as json_file:                                        # output results as we go
@@ -471,15 +476,16 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
                 write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # solution path not in csv
                 log(f"In progress results saved to {csv_file_path}") 
             log(f"Available RAM (GB) after experiment: {get_available_ram()}")
+        problem = None  # Clear problem to free up memory
 
     # Overall Summary
     log(f"\n{'*'*15} Overall Summary {'*'*15}")
     for res in all_results:
-        if res.get('path'):
-            summary = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path'])}"
+        if res.get('path_length', -1) >= 0:
+            summary = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path_length'])}"
         else: 
             summary = "No Path Found"
-        #log("Path:", res['path']) # Uncomment to see the full path states
+        #log("Path:", res.get('path') ) # Uncomment to see the full path states if saved
         optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
         algo_name = res.get('algorithm','N/A') 
         log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")

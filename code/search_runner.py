@@ -80,8 +80,10 @@ if __name__ == "__main__":
     parser.add_argument("--in_dir", default='/media/tim/dl3storage/gitprojects/searches/problems', type=str,
                         help="Full path to input directory BASE. Expected subdirs off here are matrices, pancake, tile and toh. matrices should have np-scen and np-map and eg dao-map and dao-scen etc off it.")
     parser.add_argument('--seed', default=42, type=int,
-                        help="random seed. Reset before running each algorithm on each problem.")
-
+                        help="random seed. Used to set problem order and also to create random probs. If sample_count=0 then reset to this seed before each algo/problem run.")
+    parser.add_argument('--sample_count', default=0, type=int,
+                        help="Number of samples to run if > 0. random seed. If > 0, runs each algo on each problem sample_count times with seed=incrementing number from 0 to sample_count-1.")
+    
     # Matrices / Grids params
     parser.add_argument("--grid_dir", default='matrices', type=str,
                         help="Grid subdir off in_dir.")
@@ -187,6 +189,8 @@ if __name__ == "__main__":
                         help="Minimum GB RAM remaining before algorithm is killed.") 
     parser.add_argument('--algo_visualise', action='store_true', 
                         help="Output .png files showing nodes expanded, path, meeting point etc for each algorithm and problem type that supports this.")
+    parser.add_argument('--algo_save_path_in_json', action='store_true', 
+                        help="If set, the path from start to goal is saved in the JSON output file otherwise it is not, typically to save memory on runs of many algorithms and many problems. Note that the CSV output file never includes the path.")
 
     # Heuristic search args
     parser.add_argument('--algo_heur', nargs="*", default="astar bd_astar", type=str, 
@@ -232,44 +236,48 @@ if __name__ == "__main__":
             args.grid_dir_full.append( os.path.join(args.in_dir, args.grid_dir, grid_scen_dir) )
             assert os.path.exists(args.grid_dir_full[-1])
 
-
     args.timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
-
     log_filename = f"{args.out_prefix}_{args.timestamp}.log"
-
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S',
                     level=logging.INFO,
                     handlers=[logging.FileHandler(os.path.join(args.out_dir, log_filename)),
                               logging.StreamHandler()])
     logger = logging.getLogger(__name__)
-
     logger.info(f"Running search comparison at {args.timestamp}")
     logger.info(args)
 
-    random.seed(args.seed)
 
     # Set up the problems to be run ###################################
     tile_list, pancake_list, toh_list, grid_list = [], [], [], []
     if args.tiles.upper() != "NONE":
+        random.seed(args.seed)
+        logger.info("Loading Tile problems...")
         tile_list = problem_puzzle.create_tile_probs(args)
         logger.info(f"Created {len(tile_list)} tile problems from {args.tiles_file_full}")
     if args.pancakes.upper() != "NONE":
+        random.seed(args.seed)
+        logger.info("Loading Pancake problems...")
         pancake_list = problem_puzzle.create_pancake_probs(args)
         logger.info(f"Created {len(pancake_list)} pancake problems from {args.pancakes_file_full}")
     if args.toh.upper() != "NONE":
+        random.seed(args.seed)
+        logger.info("Loading Towers of Hanoi problems...")
         toh_list = problem_puzzle.create_toh_probs(args)
         logger.info(f"Created {len(toh_list)} Towers of Hanoi problems from {args.toh_file_full}")
-    if args.grid[0].upper() != 'NONE':
+    if args.grid[0].upper() != 'NONE':  # NOTE: grids are currently the only prob type that uses random and seed is set in create_grid_probs for each domain
+        logger.info("Loading Grid problems...")
         grid_list = problem_spatial.create_grid_probs(args)
         logger.info(f"Created {len(grid_list)} grid problems from {args.grid_dir_full}")
 
-    problems = tile_list + pancake_list + toh_list + grid_list
+    problems = toh_list + grid_list + pancake_list + tile_list
 
     logger.info("######")
     logger.info(f"The following {len(problems)} problems will be run:")
     for prob in problems:
         logger.info(str(prob))
+
+    random.seed(args.seed)
 
     algorithms = []
     # Set up the heuristic algorithms to be run ########################
@@ -300,6 +308,8 @@ if __name__ == "__main__":
     else:
         logger.info("Not running any heuristic algorithms.")
 
+    random.seed(args.seed)
+
     # Set up the MCTS algorithms to be run ########################
     # MCTS algorithms must accept the parameters as shown here.. 
     if args.algo_mcts[0].upper() != "NONE":
@@ -326,9 +336,14 @@ if __name__ == "__main__":
             logger.info(str(a))
 
         # --- Run Experiments ---
-
-        util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
-                            seed=args.seed, timestamp=args.timestamp, logger=logger)
+        if sample_count == 0:
+            util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
+                                seed=args.seed, timestamp=args.timestamp, logger=logger, save_path=args.algo_save_path_in_json)
+        else:
+            logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
+            for i in range(args.sample_count):
+                util.run_experiments(problems, algorithms, args.out_dir, args.out_prefix, 
+                                    seed=i, timestamp=args.timestamp, logger=logger, save_path=args.algo_save_path_in_json)
 
         logger.info(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
 

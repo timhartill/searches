@@ -360,6 +360,7 @@ def create_grid_probs(args):
     """
     problems = []
     for domain in args.grid_dir_full:
+        random.seed(args.seed)  # run the same random order each time on each domain
         scen_files = os.listdir(domain)
         for scen_file in scen_files:
             if not scen_file.endswith('.scen'):
