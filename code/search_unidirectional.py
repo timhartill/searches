@@ -125,15 +125,15 @@ class generic_search:
             #if current_state in closed_set: continue   # we don't need a closed set in this implementation
             #closed_set.add(current_state) 
 
-            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
-                found_goal_count += 1
-                if current_g_score < U:
-                    U = current_g_score
-                    found_path = True
-                    U_update_count += 1
-                    if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                        status += f"Terminating BFS as path found. U:{U}."
-                        break
+#            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
+#                found_goal_count += 1
+#                if current_g_score < U:
+#                    U = current_g_score
+#                    found_path = True
+#                    U_update_count += 1
+#                    if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+#                        status += f"Terminating BFS as path found. U:{U}."
+#                        break
 
             nodes_expanded += 1
             if cstar and current_priority < cstar:
@@ -156,6 +156,18 @@ class generic_search:
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
 
+                force_low_tb = False
+                if problem.is_goal(neighbor_state):  # Works when here
+                    found_goal_count += 1
+                    if tentative_g_score < U:
+                        U = tentative_g_score
+                        found_path = True
+                        force_low_tb = True  # Force low tiebreaker
+                        U_update_count += 1
+                        if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                            status += f"Terminating BFS as path found. U:{U}."
+                            break
+
                 # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                 if self.priority_key == 'f' and h_consistent:
                     h_score = problem.heuristic(neighbor_state)
@@ -169,9 +181,18 @@ class generic_search:
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
-                    frontier.push(neighbor_state, 
-                                  frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                  frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
+                    if force_low_tb:
+                        frontier.push(neighbor_state, 
+                                      frontier.calc_priority(g=tentative_g_score, h=h_score), 
+                                      -1000000000)
+                    else:
+                        frontier.push(neighbor_state, 
+                                    frontier.calc_priority(g=tentative_g_score, h=h_score), 
+                                    frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
+
+            if self.priority_key == 'h' and found_path:        
+                break  # If BFS, break after first path found
+
 
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)

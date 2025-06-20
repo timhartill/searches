@@ -228,7 +228,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar astar_negg astar_fifo lb_nbs_f_eps lb_nbs_a_eps \
+        --algo_heur astar astar_negg lb_nbs_f_eps lb_nbs_a_eps \
         --algo_mcts NONE
 
 

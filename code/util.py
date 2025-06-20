@@ -242,7 +242,7 @@ def load_scen_file(file_path):
 
     Note: Different HOG2 problems seem to use different diagonal costs hence it is hard to consistently replicate their cstar calculations. 
          Some eg maze512-1-6.map.scen use diag cost is 2 (and our cost multiplier = 1.0) but others use differing costs...
-         Therefore we have created scen files for all the HOG2 problems that we have downloaded to output with diag cost 1.5 following Alacazar 2020
+         Therefore in our experiments we always use diag cost 1.5 following Alacazar 2020 ans Siag 2023
     """
     if not file_path.endswith('.scen'):
         raise ValueError(f"File {file_path} is not a .scen file")
@@ -351,6 +351,105 @@ def load_csv_file(file_path, delimiter=';', apply_col_types=True):
                                 print(f"load_csv_file: Error converting column {col_name} with value {col_value} to {convert_func}: {e}")
     return data
 
+def convert_std_file(file_path, out_dir, file_type='pancake'):
+    """ Load a text file in the format of Siag et al 2023 with one problem per line in the formats:
+    0:     2 9 13 6 3 4 10 8 5 11 7 1 12 0  # pancake 0-based, we are 1-based
+    0:     (0) 4 1 (1) 11 10 7 (2) 8 3 2 (3) 12 9 6 5  # toh pegs in brackets, convert to [A C C A D D B ...]
+    dao/arena.map:  (1, 10)-(13, 11)  # dao (x,y)-(x,y)
+
+    Convert and save to out_dir in our formats
+
+    To run in python terminal eg:
+    convert_std_file('/media/tim/dl3storage/gitprojects/searches/problems/pancake_instances.txt', 
+                     '/media/tim/dl3storage/gitprojects/searches/problems/pancake', 
+                     file_type='pancake')
+    convert_std_file('/media/tim/dl3storage/gitprojects/searches/problems/toh_instances.txt', 
+                     '/media/tim/dl3storage/gitprojects/searches/problems/toh', 
+                     file_type='toh')
+    convert_std_file('/media/tim/dl3storage/gitprojects/searches/problems/grid_instances.txt', 
+                     '/media/tim/dl3storage/gitprojects/searches/problems/matrices/daostd-scen', 
+                     file_type='grid')
+
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File {file_path} does not exist")
+    data = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line:  # skip empty lines
+                parts = line.split(':')
+                if len(parts) != 2:
+                    raise ValueError(f"Warning: Invalid line in {file_path}: {line}")
+                parts[0] = parts[0].strip()  # map file name for dao otherwise line #
+                parts[1] = parts[1].strip()  # initial state or problem description
+                if file_type == 'pancake':
+                    initial_state = [int(x)+1 for x in parts[1].split()]  # For pancake problems, initial state is space-separated list of integers
+                    problem = {
+                        "problem_type": "pancake",
+                        "initial_state": initial_state,
+                        "goal_state": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        "cstar": None
+                    }
+                elif file_type == 'toh':
+                    initial_state = [' '] * 12  # 12 disks
+                    prob = parts[1].split()  # ['(0)', '4', '1', '(1)', '11', '10', '7', '(2)', '8', '3', '2', '(3)', '12', '9', '6', '5']
+                    i = 0
+                    for pstr in prob:
+                        if pstr.startswith('('):
+                            peg = chr(ord('A') + int(pstr[1:-1]))  # convert (0) to A, (1) to B, etc.
+                            continue
+                        disk = int(pstr) - 1  # convert to 0-based disk number
+                        if disk < 0 or disk >= len(initial_state):
+                            raise ValueError(f"Invalid disk number {disk} in {file_path} line: {line}")
+                        initial_state[disk] = peg  # place disk on peg
+                    if ' ' in initial_state:
+                        raise ValueError(f"Invalid initial state {initial_state} in {file_path} line: {line}")
+                    problem = {
+                        "problem_type": "toh",
+                        "initial_state": initial_state,
+                        "goal_state": ['D'] * 12,
+                        "cstar": None
+                    }
+                elif file_type == 'grid':
+                    coords = parts[1].strip().replace('(', '').replace(')', '').split('-')
+                    if len(coords) != 2:
+                        raise ValueError(f"Invalid grid problem format in {file_path} line: {line}")
+                    start_coords = coords[0].split(',')
+                    goal_coords = coords[1].split(',')
+                    problem = {
+                        "problem_type": "grid",
+                        "bucket": 0,
+                        "map_file": parts[0].split('/')[1].strip(),
+                        "map_width": 0,
+                        "map_height": 0,
+                        "start_x": int(start_coords[0]),  # Convert to int
+                        "start_y": int(start_coords[1]),
+                        "goal_x": int(goal_coords[0]),  # Convert to int
+                        "goal_y": int(goal_coords[1]),
+                        "cstar": None
+                    }
+                else:
+                    raise ValueError(f"Unsupported file type {file_type} in {file_path}. Supported types are pancake, toh, grid.")
+                data.append(problem)
+    
+    if file_type in ['pancake', 'toh']:
+        if file_type == 'pancake':
+            out_file = os.path.join(out_dir, f"14_pancake_probs{len(data)}_std.csv")
+        else:  # toh
+            out_file = os.path.join(out_dir, f"12_toh_4_peg_probs{len(data)}_std.csv")
+        write_jsonl_to_csv(data, out_file, del_keys=None, delimiter=';', verbose=True)
+    else: # grid
+        os.makedirs(out_dir, exist_ok=True)
+        out_file = os.path.join(out_dir, f"dao_probs{len(data)}_std.scen")
+        out_list = ['Version std\n']
+        for problem in data:
+            out_line = f"{problem['bucket']}\t{problem['map_file']}\t{problem['map_width']}\t{problem['map_height']}\t{problem['start_x']}\t{problem['start_y']}\t{problem['goal_x']}\t{problem['goal_y']}\n"
+            out_list.append(out_line)
+        with open(out_file, 'w') as f:
+            f.writelines(out_list)
+    return data
+
 
 def save_to_json(data, filename, verbose=False):
     """ Saves a Python object to a JSON file.  """
@@ -433,8 +532,8 @@ def run_search(algorithm, problem, seed=None, logger=None, save_path=True):
     return result        
         
 
-def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval', 
-                    seed=42, timestamp=None, logger=None, save_path=True):
+def run_experiments(problems, algorithms, out_dir='', out_file_base=None, 
+                    seed=42, logger=None, save_path=True):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
         and a json file (with path) in the specified output directory.
     Args:
@@ -444,9 +543,10 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
     """
     if not logger: log = print
     else: log = logger.info
-    if not timestamp:
-        timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
-    out_file_base = os.path.join(out_dir,f"{out_prefix}_{timestamp}")
+    if not out_file_base:    
+        out_file_base = os.path.join(out_dir, f"search_eval_{time.strftime('%Y-%m-%d_%H-%M-%S')}")
+    else:
+        out_file_base = os.path.join(out_dir, out_file_base)    
     json_file_path = f"{out_file_base}.json"
     csv_file_path = f"{out_file_base}.csv"
     total_experiments = len(problems) * len(algorithms)
@@ -487,7 +587,7 @@ def run_experiments(problems, algorithms, out_dir, out_prefix='search_eval',
     log(f"\n{'*'*15} Overall Summary {'*'*15}")
     for res in all_results:
         if res.get('path_length', -1) >= 0:
-            summary = f"Cost: {res.get('cost', 'N/A')} Length: {len(res['path_length'])}"
+            summary = f"Cost: {res.get('cost', 'N/A')} Length: {res['path_length']}"
         else: 
             summary = "No Path Found"
         #log("Path:", res.get('path') ) # Uncomment to see the full path states if saved

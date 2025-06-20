@@ -194,8 +194,10 @@ class WaitingReadyPriorityQueue:
             entry[-1][-1] = REMOVED
 
     def push(self, item, priority):
-        """ Push item list of [g, fifo/lifovalue, state] onto Wait queue, removing any existing item with matching state first.
-        Note: heapq will order by priority then by each element in the item list so equivalent to priority, fifo/lifovalue, state
+        """ Push item list of [g, fifo/lifovalue, state] onto Wait queue, 
+            removing any existing item with matching state first.
+            Note: heapq will order by priority then by each element in the item list so order is: 
+                  priority, fifo/lifovalue, state
         """
         self.remove_task(item[-1])  # 'Remove' the state if it already exists in the wait_heap or ready_heap
         entry = (priority, item)  # entry is (f, [g, fifo/lifo_value, state]) and allowable to update state to 'R' as it's in a list even though nested in a tuple!
@@ -207,7 +209,7 @@ class WaitingReadyPriorityQueue:
 
     def move_to_ready(self, GLB, always_move_equal=False):
         """ Move all states from Wait to Ready that satisfy the GLB condition
-        Returns the number of states moved
+            Returns the number of states moved
         """
         count = 0
         while self.wait_heap and self.wait_heap[0][0] < GLB:
@@ -306,7 +308,7 @@ class LBPairs:
     Wait priority queue entries are tuples of (f, [g, fifo/lifo_value, state])
     Ready priority queue entries are tuples of (g, [f, fifo/lifo_value, state])
 
-    NOTE: GLB is called C_LB in Chen 2017, LB in Shperberg 2019 and C in A* and naive BDHS
+    NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and naive BDHS
     """
     def __init__(self, version='A', min_edge_cost=1.0):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
@@ -335,7 +337,7 @@ class LBPairs:
 
     def move_to_ready(self, GLB, always_move_equal=False):
         """ Move all states from Wait to Ready that satisfy the < or <= GLB condition in each direction
-        Returns the number of states moved in each direction (countF, CountB)
+            Returns the number of states moved in each direction (countF, CountB)
         """
         count_f = self.forward.move_to_ready(GLB, always_move_equal)
         count_b = self.backward.move_to_ready(GLB, always_move_equal)
@@ -343,7 +345,7 @@ class LBPairs:
 
     def move_one_to_ready(self, GLB):
         """ Move one state from Wait to Ready that satisfies the <= GLB condition in each direction
-        Returns the number of states moved in each direction (countF, CountB)
+            Returns the number of states moved in each direction (countF, CountB)
         """
         count_f = self.forward.move_one_to_ready(GLB)
         count_b = self.backward.move_one_to_ready(GLB)
