@@ -236,7 +236,8 @@ class generic_search:
                     "g_score_len": len(g_score),
                     "max_ram_taken": max_ram,
                     "status": status,
-                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                    "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
 
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
@@ -246,7 +247,9 @@ class generic_search:
                 "g_score_len": len(g_score),
                 "max_ram_taken": max_ram,
                 "status": status,
-                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,}
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
+
 
 
     def __str__(self): # enable str(object) to return algo name

@@ -205,7 +205,7 @@ python search_runner.py \
         --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
         --grid mazetest daotest \
-        --grid_max_per_scen 2 \
+        --grid_max_per_scen 1 \
         --grid_random_scen_order \
         --grid_heur octile \
         --grid_degs 0 \
@@ -219,8 +219,8 @@ python search_runner.py \
         --tiles_degs 0 4\
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
-        --pancakes_heur symgap gap \
-        --pancakes_degs 0 2 6 \
+        --pancakes_heur symgap \
+        --pancakes_degs 0 6 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
         --toh_heur infinitepegrelaxation pdb_4_5+2 \
@@ -228,7 +228,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar astar_negg lb_nbs_f_eps lb_nbs_a_eps \
+        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps \
         --algo_mcts NONE
 
 

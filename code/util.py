@@ -554,7 +554,7 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
     log(f"Running {total_experiments} experiments with {len(problems)} problems and {len(algorithms)} algorithms")
 
     all_results = []
-    for problem in problems:  # For each problem
+    for i, problem in enumerate(problems):  # For each problem
         log(f"\n{'=' * 20}")
         log(f"Solving: {problem}")
         if hasattr(problem, "initial_state_tuple"):
@@ -576,12 +576,13 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
             if result:
                 all_results.append(result)
                 with open(json_file_path, 'w') as json_file:                                        # output results as we go
-                    json.dump(all_results, json_file, indent=4)                                     # solution path in json 
+                    json.dump(all_results, json_file, indent=4)                                     # solution path in json if save_path 
                 log(f"In progress results saved to {json_file_path}") 
                 write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'], verbose=False)    # solution path not in csv
                 log(f"In progress results saved to {csv_file_path}") 
             log(f"Finished experiment:{curr_experiment}/{total_experiments} Available RAM (GB) after experiment: {get_available_ram()}")
-        problem = None  # Clear problem to free up memory
+        #problem = None  
+        problems[i] = None  # Clear problem in list to free up memory
 
     # Overall Summary
     log(f"\n{'*'*15} Overall Summary {'*'*15}")

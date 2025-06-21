@@ -249,35 +249,6 @@ if __name__ == "__main__":
     logger.info(args)
 
 
-    # Set up the problems to be run ###################################
-    tile_list, pancake_list, toh_list, grid_list = [], [], [], []
-    if args.tiles.upper() != "NONE":
-        random.seed(args.seed)
-        logger.info("Loading Tile problems...")
-        tile_list = problem_puzzle.create_tile_probs(args)
-        logger.info(f"Created {len(tile_list)} tile problems from {args.tiles_file_full}")
-    if args.pancakes.upper() != "NONE":
-        random.seed(args.seed)
-        logger.info("Loading Pancake problems...")
-        pancake_list = problem_puzzle.create_pancake_probs(args)
-        logger.info(f"Created {len(pancake_list)} pancake problems from {args.pancakes_file_full}")
-    if args.toh.upper() != "NONE":
-        random.seed(args.seed)
-        logger.info("Loading Towers of Hanoi problems...")
-        toh_list = problem_puzzle.create_toh_probs(args)
-        logger.info(f"Created {len(toh_list)} Towers of Hanoi problems from {args.toh_file_full}")
-    if args.grid[0].upper() != 'NONE':  # NOTE: grids are currently the only prob type that uses random and seed is set in create_grid_probs for each domain
-        logger.info("Loading Grid problems...")
-        grid_list = problem_spatial.create_grid_probs(args)
-        logger.info(f"Created {len(grid_list)} grid problems from {args.grid_dir_full}")
-
-    problems = tile_list + toh_list + grid_list + pancake_list 
-
-    logger.info("######")
-    logger.info(f"The following {len(problems)} problems will be run:")
-    for prob in problems:
-        logger.info(str(prob))
-
     random.seed(args.seed)
 
     algorithms = []
@@ -331,22 +302,102 @@ if __name__ == "__main__":
         logger.info("Not running any MCTS algorithms.")
 
     logger.info("######")
+
     if len(algorithms) > 0:
         logger.info(f"Running the following {len(algorithms)} algorithms:")
         for a in algorithms:
             logger.info(str(a))
 
-        # --- Run Experiments ---
-        if args.sample_count == 0:
-            util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
-        else:
-            logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
-            for i in range(args.sample_count):
+        cum_prob_count = 0
+        # Set up the problems to be run ###################################
+        if args.tiles.upper() != "NONE":
+            random.seed(args.seed)
+            logger.info("Loading Tile problems...")
+            problems = problem_puzzle.create_tile_probs(args)
+            cum_prob_count += len(problems)
+            logger.info(f"Created {len(problems)} tile problems from {args.tiles_file_full}")
+            logger.info("######")
+            logger.info(f"The following {len(problems)} problems will be run:")
+            for prob in problems:
+                logger.info(str(prob))
+            # --- Run Experiments ---
+            logger.info("######")
+            if args.sample_count == 0:
                 util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                    seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+            else:
+                logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
+                for i in range(args.sample_count):
+                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+            print("#################### Finished running Tile problems #######################")
 
-        logger.info(f"Finished search comparison at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
+        if args.pancakes.upper() != "NONE":
+            random.seed(args.seed)
+            logger.info("Loading Pancake problems...")
+            problems = problem_puzzle.create_pancake_probs(args)
+            cum_prob_count += len(problems)
+            logger.info(f"Created {len(problems)} pancake problems from {args.pancakes_file_full}")
+            logger.info("######")
+            logger.info(f"The following {len(problems)} problems will be run:")
+            for prob in problems:
+                logger.info(str(prob))
+            # --- Run Experiments ---
+            logger.info("######")
+            if args.sample_count == 0:
+                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+            else:
+                logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
+                for i in range(args.sample_count):
+                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+            print("#################### Finished running Pancake problems #######################")
+
+        if args.toh.upper() != "NONE":
+            random.seed(args.seed)
+            logger.info("Loading Towers of Hanoi problems...")
+            problems = problem_puzzle.create_toh_probs(args)
+            cum_prob_count += len(problems)
+            logger.info(f"Created {len(problems)} Towers of Hanoi problems from {args.toh_file_full}")
+            logger.info("######")
+            logger.info(f"The following {len(problems)} problems will be run:")
+            for prob in problems:
+                logger.info(str(prob))
+            # --- Run Experiments ---
+            logger.info("######")
+            if args.sample_count == 0:
+                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+            else:
+                logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
+                for i in range(args.sample_count):
+                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+            print("#################### Finished running TOH problems #######################")
+
+        if args.grid[0].upper() != 'NONE':  # NOTE: grids are currently the only prob type that uses random and seed is set in create_grid_probs for each domain
+            logger.info("Loading Grid problems...")
+            problems = problem_spatial.create_grid_probs(args)
+            cum_prob_count += len(problems)
+            logger.info(f"Created {len(problems)} grid problems from {args.grid_dir_full}")
+            logger.info("######")
+            logger.info(f"The following {len(problems)} problems will be run:")
+            for prob in problems:
+                logger.info(str(prob))
+            # --- Run Experiments ---
+            logger.info("######")
+            if args.sample_count == 0:
+                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+            else:
+                logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
+                for i in range(args.sample_count):
+                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+            print("#################### Finished running Grid problems #######################")
+
+        logger.info(f"Finished {cum_prob_count} experiments at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
 
 
     # --- Create random problems ----
