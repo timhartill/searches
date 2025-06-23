@@ -397,7 +397,7 @@ if __name__ == "__main__":
                                         seed=i, logger=logger, save_path=args.algo_save_path_in_json)
             print("#################### Finished running Grid problems #######################")
 
-        logger.info(f"Finished {cum_prob_count} experiments at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
+        logger.info(f"Finished {cum_prob_count*len(algorithms)} experiments at {time.strftime('%Y-%m-%d %H:%M:%CS')}")
 
 
     # --- Create random problems ----

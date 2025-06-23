@@ -5,7 +5,10 @@ import heapq
 import random
 import util
 
-REMOVED = '^'  # Used to mark an entry as removed in the Ready and Wait priority queues
+from sortedcontainers import SortedDict
+from sortedcontainers import SortedKeyList
+
+REMOVED = '^'  # Used to mark an entry as removed in the Ready and Wait structures
 
 class PriorityQueue:
     """ Priority Queue implementation optionally supporting 3 levels of priority: 
@@ -176,12 +179,12 @@ class WaitingReadyPriorityQueue:
         self.version = version
         if self.version not in ['A', 'F']:
             raise ValueError(f"Invalid version: {self.version}. Must be 'A' or 'F'.")
-        self.wait_heap = []
-        self.ready_heap = []
-        self.wait_max_heap_size = 0
-        self.ready_max_heap_size = 0
-        self.wait_entry_finder = {}  # mapping of state to entry in wait_heap for deletion
-        self.ready_entry_finder = {} # mapping of state to entry in ready_heap 
+        self.wait = []
+        self.ready = []
+        self.wait_max_size = 0
+        self.ready_max_size = 0
+        self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
+        self.ready_entry_finder = {} # mapping of state to entry in ready 
         return
 
     def remove_task(self, state):
@@ -193,18 +196,19 @@ class WaitingReadyPriorityQueue:
             entry = self.ready_entry_finder.pop(state)
             entry[-1][-1] = REMOVED
 
-    def push(self, item, priority):
+    def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
         """ Push item list of [g, fifo/lifovalue, state] onto Wait queue, 
             removing any existing item with matching state first.
             Note: heapq will order by priority then by each element in the item list so order is: 
                   priority, fifo/lifovalue, state
         """
-        self.remove_task(item[-1])  # 'Remove' the state if it already exists in the wait_heap or ready_heap
+        if prior_f != float('inf'):
+            self.remove_task(item[-1])  # 'Remove' the state if it already exists in the wait or ready
         entry = (priority, item)  # entry is (f, [g, fifo/lifo_value, state]) and allowable to update state to 'R' as it's in a list even though nested in a tuple!
-        heapq.heappush(self.wait_heap, entry)
+        heapq.heappush(self.wait, entry)
         self.wait_entry_finder[item[-1]] = entry
-        if self.wait_max_heap_size < len(self.wait_heap):
-            self.wait_max_heap_size = len(self.wait_heap)
+        if self.wait_max_size < len(self.wait):
+            self.wait_max_size = len(self.wait)
         return
 
     def move_to_ready(self, GLB, always_move_equal=False):
@@ -212,41 +216,41 @@ class WaitingReadyPriorityQueue:
             Returns the number of states moved
         """
         count = 0
-        while self.wait_heap and self.wait_heap[0][0] < GLB:
-            f, (g, ordering, state) = heapq.heappop(self.wait_heap)
+        while self.wait and self.wait[0][0] < GLB:
+            f, (g, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:  # Only move if the state is not marked as REMOVED
                 del self.wait_entry_finder[state]
                 entry = (g, [f, ordering, state])
-                heapq.heappush(self.ready_heap, entry)
+                heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 count += 1
         if self.version == 'A' or always_move_equal:
-            while self.wait_heap and self.wait_heap[0][0] == GLB:
+            while self.wait and self.wait[0][0] == GLB:
                 # If we are in the "all" version and the next item is exactly GLB, we also move it to ready
-                f, (g, ordering, state) = heapq.heappop(self.wait_heap)
+                f, (g, ordering, state) = heapq.heappop(self.wait)
                 if state != REMOVED:
                     del self.wait_entry_finder[state]
                     entry = (g, [f, ordering, state])
-                    heapq.heappush(self.ready_heap, entry)
+                    heapq.heappush(self.ready, entry)
                     self.ready_entry_finder[state] = entry
                     count += 1
-        if self.ready_max_heap_size < len(self.ready_heap):
-            self.ready_max_heap_size = len(self.ready_heap)
+        if self.ready_max_size < len(self.ready):
+            self.ready_max_size = len(self.ready)
         return count
     
     def move_one_to_ready(self, GLB):
         """ Move one state from Wait to Ready that satisfies the GLB condition
         Returns 1 if a state was moved, 0 otherwise
         """
-        while self.wait_heap and self.wait_heap[0][0] <= GLB:
-            f, (g, ordering, state) = heapq.heappop(self.wait_heap)
+        while self.wait and self.wait[0][0] <= GLB:
+            f, (g, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:
                 del self.wait_entry_finder[state]
                 entry = (g, [f, ordering, state])
-                heapq.heappush(self.ready_heap, entry)
+                heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
-                if self.ready_max_heap_size < len(self.ready_heap):
-                    self.ready_max_heap_size = len(self.ready_heap)
+                if self.ready_max_size < len(self.ready):
+                    self.ready_max_size = len(self.ready)
                 return 1
         return 0
 
@@ -254,8 +258,8 @@ class WaitingReadyPriorityQueue:
         """ Pop the lowest priority element from Ready. Entry Format: (g, [f, ordering, state]) 
         """
         state = REMOVED
-        while self.ready_heap:
-            g, (f, ordering, state) = heapq.heappop(self.ready_heap)   # Pop until we find a valid state that is not marked as REMOVED
+        while self.ready:
+            g, (f, ordering, state) = heapq.heappop(self.ready)   # Pop until we find a valid state that is not marked as REMOVED
             if state != REMOVED:
                 del self.ready_entry_finder[state]
                 break
@@ -275,29 +279,233 @@ class WaitingReadyPriorityQueue:
         """View the lowest priority element on Wait (fmin) without popping it 
         after popping any entries marked as REMOVED
         """
-        while self.wait_heap and self.wait_heap[0][-1][-1] == REMOVED:
-            heapq.heappop(self.wait_heap)
+        while self.wait and self.wait[0][-1][-1] == REMOVED:
+            heapq.heappop(self.wait)
 
-        if self.wait_heap:
+        if self.wait:
             if priority_only:
-                return self.wait_heap[0][0]
+                return self.wait[0][0]
             else:
-                return self.wait_heap[0]   # Return the whole entry
+                return self.wait[0]   # Return the whole entry
         return float('inf')
 
     def peek_ready(self, priority_only=True):
         """View the lowest priority element on Ready (gmin) without popping it
         after popping any entries marked as REMOVED
         """
-        while self.ready_heap and self.ready_heap[0][-1][-1] == REMOVED:
-            heapq.heappop(self.ready_heap)
+        while self.ready and self.ready[0][-1][-1] == REMOVED:
+            heapq.heappop(self.ready)
 
-        if self.ready_heap:
+        if self.ready:
             if priority_only:
-                return self.ready_heap[0][0]
+                return self.ready[0][0]
             else:
-                return self.ready_heap[0]     # Return the whole entry
+                return self.ready[0]     # Return the whole entry
         return float('inf')
+
+
+
+class WaitingReadyBuckets:
+    """ Two SortedDicts: one for buckets of waiting states and one for buckets of ready states
+    Used in LB Pairs family of Bidirectional search algorithms - one of these in each direction
+    Wait priority is f and Ready priority is g, so expandable nodes are those in Ready which satisfy 
+    g_forward + g_backward + epsilon <= GLB ("C" in A*/"naive BDHS") having already satisfied f_direction <= GLB to be moved from Wait to Ready
+    Wait format: wait[f][g]: SortedKeyList( [ [fifo/lifo_value, state], ... ] ) with SKL key=state
+    Ready formet: ready[g][f]: SortedKeyList( [ [fifo/lifo_value, state], ... ] ) with SKL key=state
+    """
+    def __init__(self, version='A'):
+        """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
+        """
+        self.version = version
+        if self.version not in ['A', 'F']:
+            raise ValueError(f"Invalid version: {self.version}. Must be 'A' or 'F'.")
+        self.wait = SortedDict()  # SortedDict[key=f] and value=SortedDict[key=g] with value: SKList of entries [fifo/lifo_value, state]
+        self.ready = SortedDict()  # SortedDict[key=g] and value=SortedDict[key=f] with value: SKList of entries [fifo/lifo_value, state]
+        self.wait_max_size = 0
+        self.ready_max_size = 0
+        self.wait_curr_size = 0
+        self.ready_curr_size = 0
+#        self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
+#        self.ready_entry_finder = {} # mapping of state to entry in ready 
+        return
+
+    def remove_task(self, state, f, g):
+        """ Delete an existing entry. entry format: ([fifo/lifo_value, state], f, g)
+        Note f,g must be the prior values of the entry to be removed not the current values..
+        """
+        if f in self.wait and g in self.wait[f]:
+            curr_len = len(self.wait[f][g])
+            if curr_len:
+                idx = self.wait[f][g].bisect_key_left(state)
+                if idx < curr_len and self.wait[f][g][idx][-1] == state:
+                    entry = self.wait[f][g].pop(idx)
+                    self.wait_curr_size -= 1
+
+        if g in self.ready and f in self.ready[g]:
+            curr_len = len(self.ready[g][f])
+            if curr_len:
+                idx = self.ready[g][f].bisect_key_left(state)
+                if idx < curr_len and self.ready[g][f][idx][-1] == state:
+                    entry = self.ready[g][f].pop(idx)
+                    self.ready_curr_size -= 1
+        return
+
+    def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
+        """ Push item list of [g, fifo/lifovalue, state] onto Wait with priority f, 
+            removing any existing item with matching state first.
+        """
+        g = item[0]
+        if prior_f != float('inf'):
+            self.remove_task(item[-1], prior_f, prior_g)  # Remove the state from the previous bucket
+        entry = [item[1], item[-1]]  # entry is [fifo/lifo_value, state]
+        if priority not in self.wait:
+            self.wait[priority] = SortedDict()
+        if g not in self.wait[priority]:
+            self.wait[priority][g] = SortedKeyList(key=lambda e: e[-1])  # SortedKeyList to keep entries sorted by state
+        self.wait[priority][g].add(entry)  # Insert the entry in the list of entries in this [f][g] bucket
+        self.wait_curr_size += 1
+        if self.wait_max_size < self.wait_curr_size:
+            self.wait_max_size = self.wait_curr_size
+        return
+
+    def move_to_ready(self, GLB, always_move_equal=False):
+        """ Move all states from Wait to Ready that satisfy the GLB condition
+            Returns the number of states moved
+        """
+        count = 0
+        while self.wait:
+            f = self.wait.keys()[0]  # Get the lowest f value
+            if f >= GLB:  # take f < GLB
+                break
+            g_buckets = self.wait.pop(f)  # Get the SortedDict of g buckets for this f
+            for g, entries in g_buckets.items():
+                bucket_len = len(entries)
+                if bucket_len > 0:
+                    if g not in self.ready:
+                        self.ready[g] = SortedDict()
+                    if f not in self.ready[g]:
+                        self.ready[g][f] = entries
+                    else:
+                        self.ready[g][f].update(entries)
+                    count += bucket_len
+                    self.ready_curr_size += bucket_len
+                    self.wait_curr_size -= bucket_len
+
+        if self.version == 'A' or always_move_equal:
+            while self.wait:
+                f = self.wait.keys()[0]  # Get the lowest f value
+                if f > GLB:  # take f = GLB
+                    break
+                g_buckets = self.wait.pop(f)  # Get the SortedDict of g buckets for this f
+                for g, entries in g_buckets.items():
+                    bucket_len = len(entries)
+                    if bucket_len > 0:
+                        if g not in self.ready:
+                            self.ready[g] = SortedDict()
+                        if f not in self.ready[g]:
+                            self.ready[g][f] = entries
+                        else:
+                            self.ready[g][f].update(entries)
+                        count += bucket_len
+                        self.ready_curr_size += bucket_len
+                        self.wait_curr_size -= bucket_len
+        if self.ready_max_size < self.ready_curr_size:
+            self.ready_max_size = self.ready_curr_size
+        return count
+    
+    def move_one_to_ready(self, GLB):
+        """ Move one f-g bucket from Wait to Ready that satisfies the GLB condition
+            Returns num entries moved if a bucket was moved, 0 otherwise
+        """
+        while self.wait:
+            f = self.wait.keys()[0]  # Get the lowest f value
+            if f > GLB:  # take f <= GLB
+                return 0
+            if not self.wait[f]:
+                self.wait.pop(f)
+                continue  # remove if no g buckets
+            while self.wait[f]:
+                lowest_g = self.wait[f].keys()[0]  # Get the lowest g value in this f bucket
+                entries = self.wait[f].pop(lowest_g)  # Get the SortedKeyList of entries
+                bucket_len = len(entries)
+                if bucket_len > 0:
+                    if lowest_g not in self.ready:
+                        self.ready[lowest_g] = SortedDict()
+                    if f not in self.ready[lowest_g]:
+                        self.ready[lowest_g][f] = entries
+                    else:
+                        self.ready[lowest_g][f].update(entries)
+                    self.ready_curr_size += bucket_len
+                    self.wait_curr_size -= bucket_len
+                    if self.ready_max_size < self.ready_curr_size:
+                        self.ready_max_size = self.ready_curr_size
+                    return bucket_len  # Return the number of entries moved
+        return 0  # No entries moved
+
+    def pop(self, item_only=True):
+        """ Pop SortedDict of f buckets in the lowest g from Ready excluding empty buckets. 
+            Entry Format: SortedDict[f]: SortedKeyList( [ [ordering, state] ])
+        """
+        out_dict = SortedDict()  # Create a new SortedDict[f] to hold the popped SortedKeyLists of entries
+        while self.ready:
+            g = self.ready.keys()[0]  # Get the lowest g value
+            f_buckets = self.ready.pop(g)  # Get the SortedDict of f buckets for this g
+            for f, entries in f_buckets.items():
+                bucket_len = len(entries)
+                if bucket_len == 0:    # skip empty f buckets
+                    continue
+                out_dict[f] = entries  # Add the f bucket (a SortedKeyList) to the output dict
+                self.ready_curr_size -= bucket_len
+            if out_dict:  # If we have any entries to return
+                return out_dict if item_only else (g, out_dict)
+        return None  # No entries left in Ready
+
+    def isEmpty(self):
+        """ Check if both Wait and Ready heaps are empty excluding items marked for removal
+        """
+        return self.wait_curr_size == 0 and self.ready_curr_size == 0
+
+    def peek_wait(self, priority_only=True):
+        """View the lowest priority element on Wait (fmin) without popping it 
+        after removing empty buckets up till the lowest f and lowest g within f that has entries
+        """
+        while self.wait:
+            f = self.wait.keys()[0]  # Get the lowest f value
+            if not self.wait[f]:
+                self.wait.pop(f)
+                continue  # remove if no g buckets
+            while self.wait[f]:
+                g = self.wait[f].keys()[0]
+                if len(self.wait[f][g]) == 0:
+                    self.wait[f].pop(g)
+                    continue  # remove if no entries in g bucket
+                if priority_only:
+                    return f
+                else:
+                    return (f, g, self.wait[f][g])
+        return float('inf')
+
+
+    def peek_ready(self, priority_only=True):
+        """View the lowest priority element on Ready (gmin) without popping it
+            after removing empty buckets up till the lowest g and lowest f within g that has entries
+        """
+        while self.ready:
+            g = self.ready.keys()[0]  # Get the lowest g value
+            if not self.ready[g]:
+                self.ready.pop(g)
+                continue  # remove if no f buckets
+            while self.ready[g]:
+                f = self.ready[g].keys()[0]
+                if len(self.ready[g][f]) == 0:
+                    self.ready[g].pop(f)
+                    continue  # remove if no entries in f bucket
+                if priority_only:
+                    return g
+                else:
+                    return (f, g, self.ready[g][f])
+        return float('inf')
+
 
 
 class LBPairs:
@@ -324,13 +532,13 @@ class LBPairs:
         self.backward = WaitingReadyPriorityQueue(version)
         return
 
-    def push(self, direction, item, priority):
+    def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
         """ Push item list of [g, fifo/lifovalue, state] onto Wait queue with priority f
         """
         if direction == 'F':
-            self.forward.push(item, priority)
+            self.forward.push(item, priority, prior_f, prior_g)
         elif direction == 'B':
-            self.backward.push(item, priority)
+            self.backward.push(item, priority, prior_f, prior_g)
         else:
             raise ValueError(f"Invalid direction: {direction}. Must be 'F' or 'B'.")
         return
@@ -366,19 +574,19 @@ class LBPairs:
         """ Get the new CLB value (the final CLB in prepare_expandable is the new GLB)
             NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and naive BDHS        
         """
-        if self.forward.ready_heap:
+        if self.forward.ready:
             gmin_f = self.forward.peek_ready(priority_only=True)
         else:
             gmin_f = float('inf')
-        if self.backward.ready_heap:
+        if self.backward.ready:
             gmin_b = self.backward.peek_ready(priority_only=True)
         else:
             gmin_b = float('inf')
-        if self.forward.wait_heap:
+        if self.forward.wait:
             fmin_f = self.forward.peek_wait(priority_only=True)
         else:
             fmin_f = float('inf') 
-        if self.backward.wait_heap:
+        if self.backward.wait:
             fmin_b = self.backward.peek_wait(priority_only=True)
         else:
             fmin_b = float('inf')
@@ -396,11 +604,11 @@ class LBPairs:
         while True:
             count_f, count_b = self.move_to_ready(CLB)
             #print(f"After initial move to ready Moved:{count_f} {count_b}")
-            #print(f"Fwd Ready:{self.forward.ready_heap} Fwd Wait:{self.forward.wait_heap}")
-            #print(f"Bwd Ready:{self.backward.ready_heap} Bwd Wait:{self.backward.wait_heap}")
+            #print(f"Fwd Ready:{self.forward.ready} Fwd Wait:{self.forward.wait}")
+            #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
             if self.forward.isEmpty() and self.backward.isEmpty():
                 break
-            if self.forward.ready_heap and self.backward.ready_heap:
+            if self.forward.ready and self.backward.ready:
                 gmin = self.min_edge_cost
                 gmin += self.forward.peek_ready(priority_only=True)
                 gmin += self.backward.peek_ready(priority_only=True)
@@ -414,8 +622,8 @@ class LBPairs:
             else:
                 count_f, count_b = 0, 0
             #print(f"After next move to ready Moved:{count_f} {count_b}")
-            #print(f"Fwd Ready:{self.forward.ready_heap} Fwd Wait:{self.forward.wait_heap}")
-            #print(f"Bwd Ready:{self.backward.ready_heap} Bwd Wait:{self.backward.wait_heap}")
+            #print(f"Fwd Ready:{self.forward.ready} Fwd Wait:{self.forward.wait}")
+            #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
             if count_f == 0 or count_b == 0:
                 CLB = self.get_new_LB()
                 #print(f"NEW CLB: {CLB}")
@@ -424,8 +632,8 @@ class LBPairs:
     def get_max_heap_size(self):
         """ Get the total size over both forward and backward queues
         """
-        return sum([self.forward.wait_max_heap_size, self.forward.ready_max_heap_size,
-                   self.backward.wait_max_heap_size, self.backward.ready_max_heap_size])
+        return sum([self.forward.wait_max_size, self.forward.ready_max_size,
+                   self.backward.wait_max_size, self.backward.ready_max_size])
 
     
 
@@ -456,3 +664,63 @@ class StateInfo():
         if state_info:
             return state_info.get('parent', noval)
         return noval
+
+
+
+"""
+fwd = WaitingReadyBuckets('F')
+
+print(f"WAIT max:{fwd.wait_max_size} curr:{fwd.wait_curr_size} READY max:{fwd.ready_max_size} curr:{fwd.ready_curr_size}")
+print(f"WAIT f keys:{list(fwd.wait.keys())}")
+print(f"WAIT:{fwd.wait}")
+print(f"READY g keys:{list(fwd.ready.keys())}")
+print(f"READY:{fwd.ready}") 
+
+fwd.push([0, 0, 'hh'], 100, float('inf'), float('inf'))
+fwd.push([10, 0, 'jj'], 90, float('inf'), float('inf'))
+fwd.push([9, 0, 'jj'], 88, 90, 10)
+fwd.push([9, 0, 'kk'], 70, float('inf'), float('inf'))  #same g as jj but lower f
+fwd.push([9, 0, 'll'], 70, float('inf'), float('inf'))  #same g as jj, kk same f as kk
+fwd.push([8, 0, 'll'], 69, 70, 9) # update ll with new f,g. bucket splits correctly
+fwd.push([8, 0, 'mm'], 69, float('inf'), float('inf')) # 2 items in same f,g bucket
+fwd.wait[68] = SortedDict()  # Add a new f bucket with no entries
+fwd.wait[67] = SortedDict()
+fwd.wait[67][667] = SortedKeyList(key=lambda e: e[-1])  # Add a new g bucket with no entries
+fwd.peek_wait(priority_only=False) # correct: (69, 8, SortedKeyList([[0, 'll'], [0, 'mm']]
+
+fwd.move_to_ready(70)  # 2 Move all entries with f < 70 to ready
+fwd.move_to_ready(70, always_move_equal=True) # 1
+fwd.peek_ready(priority_only=True) # 8
+fwd.peek_ready(priority_only=False) # ll mm
+fwd.ready[7] = SortedDict()  # Add a new f bucket with no entries
+fwd.ready[6] = SortedDict()
+fwd.ready[7][777] = SortedKeyList(key=lambda e: e[-1])  # Add a new g bucket with no entries
+fwd.peek_ready(priority_only=False) # 8: ll mm
+fwd.move_one_to_ready(88) # 66: jj
+fwd.move_one_to_ready(88) # correctly removes empty bucket, moves nothing
+fwd.move_one_to_ready(90) # correctly removes empty bucket, moves nothing
+
+fwd.move_to_ready(88, always_move_equal=True) # 0 correct and removes empty
+fwd.move_to_ready(90, always_move_equal=True) # 0 correct and removes empty
+
+fwd.pop(item_only=False) # correct: (8, SortedDict({69: SortedKeyList([[0, 'll'], [0, 'mm']])})
+fwd.pop(item_only=False) # correct g9 2 f buckets ready now empty
+fwd.pop(item_only=False) # correct, returns None
+
+fwd.move_to_ready(90, always_move_equal=True)
+fwd.move_one_to_ready(90)
+fwd.move_one_to_ready(100)  # correctly moves 1. wait now empty, ready has 1
+fwd.isEmpty() # False
+fwd.pop(item_only=False)
+fwd.isEmpty() # True
+
+gbuckets  = fwd.pop(item_only=False) # correct (8, SortedDict({69: SortedKeyList([[0, 'll'], [0, 'mm']])})
+fwd.ready[gbuckets[0]] = gbuckets[1]  # Add the popped buckets back to ready
+gbuckets  = fwd.pop(item_only=True) # correct: SortedDict({8: SortedKeyList([[0, 'll'], [0, 'mm']])})
+fwd.ready[8] = gbuckets
+fwd.ready[6] = SortedDict()  # Add a new g bucket with no entries
+fwd.ready[6][666] = SortedKeyList(key=lambda e: e[-1])  # Add a new f bucket with no entries
+fwd.ready[7] = SortedDict()  # Add a new g bucket with no entries
+gbuckets  = fwd.pop(item_only=False) # correct: SortedDict({8: SortedKeyList([[0, 'll'], [0, 'mm']])})
+
+"""

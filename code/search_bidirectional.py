@@ -182,13 +182,16 @@ class bd_generic_search:
                             status += f" Inconsistent heuristic detected (fwd)."
                             h_consistent = False
 
-                    if tentative_g_score < g_score_fwd.get(neighbor_state, float('inf')):
+                    prior_g = g_score_fwd.get(neighbor_state, float('inf'))
+                    if tentative_g_score < prior_g:
                         came_from_fwd[neighbor_state] = current_state_fwd 
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state
                         frontier_fwd.push(  neighbor_state, 
-                                            frontier_fwd.calc_priority(g=tentative_g_score, h=h_score), 
-                                            frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
+                                            frontier_fwd.calc_priority(g=tentative_g_score, h=h_score),
+                                            frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score),
+                                            prior_f, prior_g)  
             
             # --- Backward Step ---
             if not frontier_bwd.isEmpty() and current_priority == frontier_bwd.peek(priority_only=True):
@@ -257,13 +260,16 @@ class bd_generic_search:
                             status += f" Inconsistent heuristic detected (bwd)."
                             h_consistent = False
 
-                    if tentative_g_score < g_score_bwd.get(neighbor_state, float('inf')):
+                    prior_g = g_score_bwd.get(neighbor_state, float('inf'))
+                    if tentative_g_score < prior_g:
                         came_from_bwd[neighbor_state] = current_state_bwd 
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state
                         frontier_bwd.push(  neighbor_state, 
                                             frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
-                                            frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score))  # Use -g score as tiebreaker to prefer higher g_score
+                                            frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score),
+                                            prior_f, prior_g)  
 
             
         end_time = time.time()
