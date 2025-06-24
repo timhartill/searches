@@ -530,8 +530,9 @@ class bd_lb_search:
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
                         prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                        frontiers.push( 'F', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score, 
-                                        prior_f, prior_g)  
+                        frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                       tentative_g_score+h_score, 
+                                       prior_f, prior_g)  
            
             # --- Backward Step ---
             if not frontiers.backward.isEmpty():
@@ -605,8 +606,9 @@ class bd_lb_search:
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
                         prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                        frontiers.push( 'B', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score,
-                                        prior_f, prior_g)
+                        frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                       tentative_g_score+h_score,
+                                       prior_f, prior_g)
             
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
@@ -631,7 +633,11 @@ class bd_lb_search:
         print(status)
 
         if meeting_node:
-            path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node)
+            if str(problem).startswith('GRID-'):
+                convert_func = util.decode_numbers
+            else:
+                convert_func = tuple
+            path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node, convert_func=convert_func)
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
@@ -690,7 +696,7 @@ class bd_lb_search:
 
 
 
-def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, goal_state, meeting_node):
+def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, goal_state, meeting_node, convert_func=tuple):
     """Reconstructs path for bidirectional search."""
     path1 = []
     curr = meeting_node
@@ -699,7 +705,7 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
 
     count = 0
     while curr is not None: 
-        path1.append(tuple(curr))
+        path1.append(convert_func(curr))
         curr = came_from_fwd.get(curr)
         count += 1
         if count > limit: print("Error: Path fwd reconstruction exceeded limit."); return None
@@ -709,7 +715,7 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
     curr = came_from_bwd.get(meeting_node) 
     count = 0
     while curr is not None: 
-         path2.append(tuple(curr))
+         path2.append(convert_func(curr))
          curr = came_from_bwd.get(curr)
          count += 1
          if count > limit: print("Error: Path bwd reconstruction exceeded limit."); return None

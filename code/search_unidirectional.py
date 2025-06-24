@@ -220,7 +220,11 @@ class generic_search:
             #if len(c_count_dict) < 100:
             #    print(c_count_dict)
             #path = reconstruct_path(state_info, start_node, found_path)
-            path = reconstruct_path(came_from, start_node, problem.goal_state())
+            if str(problem).startswith('GRID-'):
+                convert_func = util.decode_numbers
+            else:
+                convert_func = tuple
+            path = reconstruct_path(came_from, start_node, problem.goal_state(), convert_func=convert_func)
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
@@ -257,18 +261,18 @@ class generic_search:
 
 
 #def reconstruct_path(state_info, start_state, goal_state):
-def reconstruct_path(came_from, start_state, goal_state):
+def reconstruct_path(came_from, start_state, goal_state, convert_func=tuple):
     """Reconstructs the path from start to goal. Path is list of states"""
     path = []
     current = goal_state
     start_node = start_state 
-    if current == start_node: return [tuple(start_node)]
+    if current == start_node: return [convert_func(start_node)]
     
     limit = 100000 # Generic large limit
 
     count = 0
     while current != start_node:
-        path.append(tuple(current))
+        path.append(convert_func(current))
 #        parent = state_info.get_parent(current)
         parent = came_from.get(current)
         if parent is None:
@@ -281,7 +285,7 @@ def reconstruct_path(came_from, start_state, goal_state):
             print(f"Error: Path reconstruction exceeded limit ({limit}).")
             return None
             
-    path.append(tuple(start_node))
+    path.append(convert_func(start_node))
     return path[::-1] 
 
 

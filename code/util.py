@@ -13,6 +13,7 @@ import psutil
 import copy
 import itertools
 import math
+import struct
 
 import numpy as np
 
@@ -174,6 +175,15 @@ def decode_list(bstr, tup=True):
     if tup: return tuple(bstr.decode('utf-8'))
     return list(bstr.decode('utf-8'))
 
+def encode_numbers(state):
+    """ Encode a list or tuple of numbers 0 - 65535 as a byte string """
+    return struct.pack('>HH', *state)  # '>HH' means big-endian unsigned short (2 bytes) for each number
+
+def decode_numbers(bstr, tup=True):
+    """ Decode a byte string into a list of numbers 0 - 65535 """
+    if tup:
+        return struct.unpack('>HH', bstr)  # '>HH' means big-endian unsigned short (2 bytes) for each number
+    return list(struct.unpack('>HH', bstr))  # Convert to list if not returning tuple
 
 def make_prob_serial(prob, prefix="__", suffix=""):
     """ Make filename-friendly key for a problem description eg initial state """
@@ -533,7 +543,7 @@ def run_search(algorithm, problem, seed=None, logger=None, save_path=True):
         
 
 def run_experiments(problems, algorithms, out_dir='', out_file_base=None, 
-                    seed=42, logger=None, save_path=True):
+                    seed=42, logger=None, save_path=True, all_results=[]):
     """ Run a set of algorithms on a set of problems and save the results to a CSV file (without path)
         and a json file (with path) in the specified output directory.
     Args:
@@ -553,7 +563,7 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
     curr_experiment = 0
     log(f"Running {total_experiments} experiments with {len(problems)} problems and {len(algorithms)} algorithms")
 
-    all_results = []
+    #all_results = []
     for i, problem in enumerate(problems):  # For each problem
         log(f"\n{'=' * 20}")
         log(f"Solving: {problem}")
@@ -602,7 +612,7 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
     log(f"Final Results saved to {json_file_path}") 
     write_jsonl_to_csv(all_results, csv_file_path, del_keys=['path'])
     log("Finished!")
-    return csv_file_path
+    return all_results
 
 
 def find_cstar(algorithm, problems, csv_list, file, seed=None, logger=None):

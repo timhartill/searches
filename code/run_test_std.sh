@@ -201,7 +201,7 @@ comment
 #        --toh_inadmiss \
 
 #        --grid_max_per_scen 21 \
-#         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps \
+#         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
 
 
 python search_runner.py \
@@ -218,7 +218,7 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 100 \
+        --tiles_max 2 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
@@ -232,7 +232,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_a_eps lb_nbs_f_eps \
+        --algo_heur astar lb_nbs_f_eps lb_nbb_f_eps lb_nbb_a_eps \
         --algo_mcts NONE
 
 

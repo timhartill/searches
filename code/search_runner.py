@@ -239,7 +239,8 @@ if __name__ == "__main__":
             assert os.path.exists(args.grid_dir_full[-1])
 
     args.timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
-    args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'_'.join(args.algo_heur)}_mcts-{'_'.join(args.algo_mcts)}_grid-{'_'.join(args.grid)}{args.grid_max_per_scen}_tiles-{args.tiles}{args.tiles_max}_pan-{args.pancakes}{args.pancakes_max}_toh-{args.toh}{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
+    #args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'_'.join(args.algo_heur)}_mcts-{'_'.join(args.algo_mcts)}_grid-{'_'.join(args.grid)}{args.grid_max_per_scen}_tiles-{args.tiles}{args.tiles_max}_pan-{args.pancakes}{args.pancakes_max}_toh-{args.toh}{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
+    args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'-'.join(args.algo_heur)}_mcts-{'-'.join(args.algo_mcts)}_grid-{'-'.join(args.grid)}{args.grid_max_per_scen}_tiles{args.tiles_max}_pan{args.pancakes_max}_toh{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
     log_filename = f"{args.out_file_base}.log"
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S',
@@ -313,6 +314,8 @@ if __name__ == "__main__":
 
         cum_prob_count = 0
         # Set up the problems to be run ###################################
+        all_results = []  # List to accumulate all results from all problems and algorithms
+
         if args.tiles.upper() != "NONE":
             random.seed(args.seed)
             logger.info("Loading Tile problems...")
@@ -326,13 +329,13 @@ if __name__ == "__main__":
             # --- Run Experiments ---
             logger.info("######")
             if args.sample_count == 0:
-                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+                all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             else:
                 logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
                 for i in range(args.sample_count):
-                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+                    all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             print("#################### Finished running Tile problems #######################")
 
         if args.pancakes.upper() != "NONE":
@@ -348,13 +351,13 @@ if __name__ == "__main__":
             # --- Run Experiments ---
             logger.info("######")
             if args.sample_count == 0:
-                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+                all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             else:
                 logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
                 for i in range(args.sample_count):
-                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+                    all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             print("#################### Finished running Pancake problems #######################")
 
         if args.toh.upper() != "NONE":
@@ -370,13 +373,13 @@ if __name__ == "__main__":
             # --- Run Experiments ---
             logger.info("######")
             if args.sample_count == 0:
-                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+                all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             else:
                 logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
                 for i in range(args.sample_count):
-                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+                    all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             print("#################### Finished running TOH problems #######################")
 
         if args.grid[0].upper() != 'NONE':  # NOTE: grids are currently the only prob type that uses random and seed is set in create_grid_probs for each domain
@@ -391,13 +394,13 @@ if __name__ == "__main__":
             # --- Run Experiments ---
             logger.info("######")
             if args.sample_count == 0:
-                util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json)
+                all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                    seed=args.seed, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             else:
                 logger.info(f"Running each algorithm {args.sample_count} times on each problem with seed set to 0, 1, ..., {args.sample_count-1}.")
                 for i in range(args.sample_count):
-                    util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
-                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json)
+                    all_results = util.run_experiments(problems, algorithms, args.out_dir, args.out_file_base, 
+                                        seed=i, logger=logger, save_path=args.algo_save_path_in_json, all_results=all_results)
             print("#################### Finished running Grid problems #######################")
 
         logger.info(f"Finished {cum_prob_count*len(algorithms)} experiments at {time.strftime('%Y-%m-%d %H:%M:%CS')}")

@@ -133,6 +133,8 @@ class GridProblem:
             goal_state = [int(r[0]), int(c[0])]
         self.initial_state_tuple = tuple(initial_state)  # start coordinates (rows, columns)
         self.goal_state_tuple = tuple(goal_state)
+        self.initial_state_bytes = util.encode_numbers(self.initial_state_tuple)
+        self.goal_state_bytes = util.encode_numbers(self.goal_state_tuple)            
             
         self.allow_diagonal = allow_diagonal
         self.use_variable_costs = allow_diagonal
@@ -155,27 +157,27 @@ class GridProblem:
         self.cstar = cstar
         self.cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
         self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
-        self._str_repr = f"{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self._str_repr = f"GRID-{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
         self.prob_str = f"{self.griddomain}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}"
 
 
     def initial_state(self): 
-        return self.initial_state_tuple
+        return self.initial_state_bytes
         
     def goal_state(self): 
-        return self.goal_state_tuple
+        return self.goal_state_bytes
         
     def is_goal(self, state, backward=False): 
         if backward:
-            return state == self.initial_state_tuple
-        return state == self.goal_state_tuple
+            return state == self.initial_state_bytes
+        return state == self.goal_state_bytes
 
     def get_neighbors(self, state):
         """Returns list of tuples: (neighbor_state, cost) from state
         state = (row, col) and neighbor_state = (new_row, new_col)
         """
         neighbors = []
-        row, col = state
+        row, col = util.decode_numbers(state)
         # north = "up"
         valid_set = set()
         moves = {'north': (row-1, col), 'south': (row+1, col), 'east': (row, col+1), 'west': (row, col-1)}
@@ -184,7 +186,7 @@ class GridProblem:
                 if self.grid[new_row, new_col] == util.OBSTACLE: 
                     continue  # if obstacle
                 new_state_tuple = (new_row, new_col)
-                neighbors.append( (new_state_tuple, self.cost_multiplier) )
+                neighbors.append( (util.encode_numbers(new_state_tuple), self.cost_multiplier) )
                 valid_set.add(move_dir)
 
         if self.allow_diagonal and valid_set:  
@@ -198,16 +200,16 @@ class GridProblem:
                     # valid if either manhattan walk has no obstacle
                     if move_dir == 'nw' and ('north' in valid_set or 'west' in valid_set):  
                         new_state_tuple = (new_row, new_col)
-                        neighbors.append( (new_state_tuple, cost) )
+                        neighbors.append( (util.encode_numbers(new_state_tuple), cost) )
                     elif move_dir == 'ne' and ('north' in valid_set or 'east' in valid_set):
                         new_state_tuple = (new_row, new_col)
-                        neighbors.append( (new_state_tuple, cost) )
+                        neighbors.append( (util.encode_numbers(new_state_tuple), cost) )
                     elif move_dir == 'sw' and ('south' in valid_set or 'west' in valid_set):
                         new_state_tuple = (new_row, new_col)
-                        neighbors.append( (new_state_tuple, cost) )
+                        neighbors.append( (util.encode_numbers(new_state_tuple), cost) )
                     elif move_dir == 'se' and ('south' in valid_set or 'east' in valid_set):
                         new_state_tuple = (new_row, new_col)
-                        neighbors.append( (new_state_tuple, cost) )
+                        neighbors.append( (util.encode_numbers(new_state_tuple), cost) )
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -218,8 +220,10 @@ class GridProblem:
         if move_info is not None:
             return move_info
 
-        cost = euclidean(abs(state1[0] - state2[0]), 
-                         abs(state1[1] - state2[1]))
+        state1_tuple = util.decode_numbers(state1)
+        state2_tuple = util.decode_numbers(state2)
+        cost = euclidean(abs(state1_tuple[0] - state2_tuple[0]), 
+                         abs(state1_tuple[1] - state2_tuple[1]))
         if cost == SQRT2:
             cost = self.diag_cost
         return math.ceil(cost * self.cost_multiplier * 100) / 100
@@ -231,12 +235,13 @@ class GridProblem:
         NOTE: This heuristic assumes unit cost (cost=1 or SQRT2). If cost multipier > 1 is used,
         its effectiveness will decrease but still admissable since multiplied costs >= unit costs.
         """
+        state_tuple = util.decode_numbers(state)
         if backward:
-            dx = abs(state[0] - self.initial_state_tuple[0])
-            dy = abs(state[1] - self.initial_state_tuple[1])
+            dx = abs(state_tuple[0] - self.initial_state_tuple[0])
+            dy = abs(state_tuple[1] - self.initial_state_tuple[1])
         else:    
-            dx = abs(state[0] - self.goal_state_tuple[0])
-            dy = abs(state[1] - self.goal_state_tuple[1])
+            dx = abs(state_tuple[0] - self.goal_state_tuple[0])
+            dy = abs(state_tuple[1] - self.goal_state_tuple[1])
 
 
         distance = self.h_func(dx, dy)
@@ -248,7 +253,7 @@ class GridProblem:
         return math.floor(distance * self.h_multiplier * 100) / 100
     
 
-    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: tuple = None, 
+    def visualise(self, cell_size: int = 10, path: list = None, meeting_node: bytes = None, 
                   visited_fwd: set = None, visited_bwd: set = None,
                   path_type: str = '', output_file_ext: str = 'png',
                   display: bool = False, return_image: bool = False,
@@ -282,11 +287,13 @@ class GridProblem:
 
         if visited_fwd:
             # If visited_fwd is provided, set expanded values in grid_draw to EXPANDED_FWD
-            for r, c in visited_fwd:
+            for coord in visited_fwd:
+                r, c = util.decode_numbers(coord)
                 grid_draw[r, c] = util.EXPANDED_FWD
         if visited_bwd:
             # If visited_bwd is provided, set expanded values in grid_draw to EXPANDED_BWD or EXPANDED_BOTH
-            for r, c in visited_bwd:
+            for coord in visited_bwd:
+                r, c = util.decode_numbers(coord)
                 if grid_draw[r, c] == util.EXPANDED_FWD:
                     grid_draw[r, c] = util.EXPANDED_BOTH
                 else:
@@ -295,7 +302,7 @@ class GridProblem:
         if path:
             # If path is provided, set path values in grid_draw to PATH
             if meeting_node:
-                meet_r, meet_c = meeting_node
+                meet_r, meet_c = util.decode_numbers(meeting_node)
             else:
                 meet_r, meet_c = -1, -1
  

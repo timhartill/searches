@@ -8,7 +8,7 @@ import util
 from sortedcontainers import SortedDict
 from sortedcontainers import SortedKeyList
 
-REMOVED = '^'  # Used to mark an entry as removed in the Ready and Wait structures
+REMOVED = '^'.encode('utf-8')  # Used to mark an entry as removed in the Ready and Wait structures
 
 class PriorityQueue:
     """ Priority Queue implementation optionally supporting 3 levels of priority: 
@@ -213,6 +213,7 @@ class WaitingReadyPriorityQueue:
         if self.wait_max_size < len(self.wait):
             self.wait_max_size = len(self.wait)
         return
+
 
     def move_to_ready(self, GLB, always_move_equal=False):
         """ Move all states from Wait to Ready that satisfy the GLB condition
