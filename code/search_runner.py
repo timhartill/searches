@@ -61,6 +61,8 @@ SEARCH_MAP = {
     "lb_nbs_f": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 0.0},  
     "lb_nbs_a_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
     "lb_nbs_f_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbb_a_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_f_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
     "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
@@ -267,7 +269,8 @@ if __name__ == "__main__":
                                            min_ram = args.algo_min_remaining_gb,
                                            timeout = args.algo_timeout,
                                            version=SEARCH_MAP[algo]['version'],
-                                           min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'])
+                                           min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'],
+                                           data_struct=SEARCH_MAP[algo].get('data_struct', 'P'))
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],

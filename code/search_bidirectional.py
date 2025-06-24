@@ -187,7 +187,7 @@ class bd_generic_search:
                         came_from_fwd[neighbor_state] = current_state_fwd 
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
-                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state, otherwise must store past heuristics in dict
                         frontier_fwd.push(  neighbor_state, 
                                             frontier_fwd.calc_priority(g=tentative_g_score, h=h_score),
                                             frontier_fwd.calc_tiebreak1(g=tentative_g_score, h=h_score),
@@ -265,7 +265,7 @@ class bd_generic_search:
                         came_from_bwd[neighbor_state] = current_state_bwd 
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
-                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
                         frontier_bwd.push(  neighbor_state, 
                                             frontier_bwd.calc_priority(g=tentative_g_score, h=h_score), 
                                             frontier_bwd.calc_tiebreak1(g=tentative_g_score, h=h_score),
@@ -352,7 +352,7 @@ class bd_lb_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, tiebreaker1='NBS', tiebreaker2='FIFO', version='A', min_edge_cost=1.0,
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P'):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tiebreaker1/2: 1st and 2nd level Tiebreaker Corresponds to Explicit and Implicit TB in Barley et al 2025. 
@@ -372,11 +372,13 @@ class bd_lb_search:
         self.min_edge_cost = min_edge_cost  # Minimum edge cost to consider in the search
         if tiebreaker1 == 'LIFO' or tiebreaker2 == 'LIFO':
             self.increment_tb1 = -1
-        else:
+        elif tiebreaker1 == 'FIFO' or tiebreaker2 == 'FIFO':
             self.increment_tb1 = 1
+        else:
+            self.increment_tb1 = 0
         self.ordering = 0
-
-        self._str_repr = f"BiDirLBPairs-tb1{tiebreaker1}-tb2{tiebreaker2}-ver{version}-eps{min_edge_cost}"
+        self.data_struct = data_struct  # 'P' for PriorityQueue, 'B' for Buckets
+        self._str_repr = f"BiDirLBPairs-tb1{tiebreaker1}-tb2{tiebreaker2}-ver{version}-ds{self.data_struct}-eps{min_edge_cost}"
 
 
     def search(self, problem):
@@ -390,7 +392,8 @@ class bd_lb_search:
         if problem.is_goal(start_node): return {"path": [start_node], "cost": 0, "nodes_expanded": 0, "nodes_expanded_below_cstar": 0,
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
-        frontiers = data_structures.LBPairs(version=self.version, min_edge_cost=self.min_edge_cost)
+        frontiers = data_structures.LBPairs(version=self.version, min_edge_cost=self.min_edge_cost, 
+                                            data_struct=self.data_struct)
         h_initial = problem.heuristic(start_node)
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
         came_from_fwd = {start_node: None}
@@ -521,12 +524,15 @@ class bd_lb_search:
                             status += f" Inconsistent heuristic detected (fwd)."
                             h_consistent = False
 
-                    if tentative_g_score < g_score_fwd.get(neighbor_state, float('inf')):
+                    prior_g = g_score_fwd.get(neighbor_state, float('inf'))
+                    if tentative_g_score < prior_g:
                         came_from_fwd[neighbor_state] = current_state_fwd 
                         g_score_fwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state) 
-                        frontiers.push( 'F', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score) 
-            
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                        frontiers.push( 'F', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score, 
+                                        prior_f, prior_g)  
+           
             # --- Backward Step ---
             if not frontiers.backward.isEmpty():
                 g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
@@ -593,14 +599,18 @@ class bd_lb_search:
                             status += f" Inconsistent heuristic detected (bwd)."
                             h_consistent = False
 
-                    if tentative_g_score < g_score_bwd.get(neighbor_state, float('inf')):
+                    prior_g = g_score_bwd.get(neighbor_state, float('inf'))
+                    if tentative_g_score < prior_g:
                         came_from_bwd[neighbor_state] = current_state_bwd 
                         g_score_bwd[neighbor_state] = tentative_g_score
                         h_score = problem.heuristic(neighbor_state, backward=True)
-                        frontiers.push( 'B', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score)
+                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                        frontiers.push( 'B', [tentative_g_score, self.calc_ordering(), neighbor_state], tentative_g_score+h_score,
+                                        prior_f, prior_g)
             
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
+        max_bucket_size, distinct_f, distinct_g = frontiers.get_max_bucket_stats()
 
         image_file = 'no file'
         if not status:
@@ -653,7 +663,8 @@ class bd_lb_search:
                     "max_ram_taken": max_ram,
                     "status": status, 
                     "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
-                    "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
+                    "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,
+                    "max_bucket_size": max_bucket_size, "distinct_f": distinct_f, "distinct_g": distinct_g,}
 
 
         status += " No path found."
@@ -665,7 +676,8 @@ class bd_lb_search:
                 "max_ram_taken": max_ram,
                 "status": status,
                 "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
-                "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
+                "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,
+                "max_bucket_size": max_bucket_size, "distinct_f": distinct_f, "distinct_g": distinct_g,}
 
 
     def calc_ordering(self):

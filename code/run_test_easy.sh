@@ -189,7 +189,7 @@ comment
 #"12_toh_4_peg_probs2_test.csv"
 #"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
-#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs lb_nbs_a_eps lb_nbs_f_eps lb_nbs_a lb_nbs_f \
+#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs lb_nbs_a_eps lb_nbs_f_eps lb_nbs_a lb_nbs_f lb_nbb_a_eps lb_nbb_f_eps \
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 
 #        --tiles_ignore_cstar \
@@ -228,7 +228,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps \
+        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps lb_nbb_a_eps lb_nbb_f_eps \
         --algo_mcts NONE
 
 
