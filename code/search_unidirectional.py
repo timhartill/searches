@@ -169,20 +169,19 @@ class generic_search:
                     if tentative_g_score < U:
                         U = tentative_g_score
                         found_path = True
-                        force_low_tb = True  # Force low tiebreaker, only applies if inconsistent h otherwise will be terminating
+                        #force_low_tb = True  # Force low tiebreaker, only applies if inconsistent h otherwise will be terminating
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                             came_from[neighbor_state] = current_state 
                             g_score[neighbor_state] = tentative_g_score
                             status += f"Terminating BFS as path found. G:{tentative_g_score} U:{U}."
                             break
-                        if h_consistent and h_admissable:
-                            came_from[neighbor_state] = current_state 
-                            g_score[neighbor_state] = tentative_g_score
-                            status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
-                            break
+                        #if h_consistent and h_admissable:  @ This works but made no difference to most probs except 14-Pancake GAP 2
+                        #    came_from[neighbor_state] = current_state 
+                        #    g_score[neighbor_state] = tentative_g_score
+                        #    status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
+                        #    break
 
-                #neighbor_g_score = state_info.get_g(neighbor_state)
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
@@ -197,9 +196,9 @@ class generic_search:
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
             if found_path:
-                if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
-                    break
-                elif self.priority_key == 'h':
+                #if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
+                #    break
+                if self.priority_key == 'h':
                     break  # If BFS, break after first path found
 
 
