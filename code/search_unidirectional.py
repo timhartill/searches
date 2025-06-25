@@ -156,18 +156,6 @@ class generic_search:
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = current_g_score + cost
 
-                force_low_tb = False
-                if problem.is_goal(neighbor_state):  # Works when here
-                    found_goal_count += 1
-                    if tentative_g_score < U:
-                        U = tentative_g_score
-                        found_path = True
-                        force_low_tb = True  # Force low tiebreaker
-                        U_update_count += 1
-                        if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                            status += f"Terminating BFS as path found. U:{U}."
-                            break
-
                 # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                 if self.priority_key == 'f' and h_consistent:
                     h_score = problem.heuristic(neighbor_state)
@@ -175,9 +163,27 @@ class generic_search:
                         status += f" Inconsistent heuristic detected."
                         h_consistent = False
 
+                force_low_tb = False
+                if problem.is_goal(neighbor_state):  # Works when here
+                    found_goal_count += 1
+                    if tentative_g_score < U:
+                        U = tentative_g_score
+                        found_path = True
+                        force_low_tb = True  # Force low tiebreaker, only applies if inconsistent h otherwise will be terminating
+                        U_update_count += 1
+                        if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                            came_from[neighbor_state] = current_state 
+                            g_score[neighbor_state] = tentative_g_score
+                            status += f"Terminating BFS as path found. G:{tentative_g_score} U:{U}."
+                            break
+                        if h_consistent and h_admissable:
+                            came_from[neighbor_state] = current_state 
+                            g_score[neighbor_state] = tentative_g_score
+                            status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
+                            break
+
                 #neighbor_g_score = state_info.get_g(neighbor_state)
                 if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
-                    #state_info.add(neighbor_state, parent=current_state, g=tentative_g_score)
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
@@ -190,8 +196,11 @@ class generic_search:
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
-            if self.priority_key == 'h' and found_path:        
-                break  # If BFS, break after first path found
+            if found_path:
+                if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
+                    break
+                elif self.priority_key == 'h':
+                    break  # If BFS, break after first path found
 
 
         end_time = time.time()
