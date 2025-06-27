@@ -97,6 +97,7 @@ class bd_generic_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
+                time.sleep(0.001) # 1ms sleep to attempt to get get_available_ram() working reliably
                 min_ram = min(min_ram, util.get_available_ram())
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -438,6 +439,7 @@ class bd_lb_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
+                time.sleep(0.001) # 1ms sleep to attempt to get get_available_ram() working reliably
                 min_ram = min(min_ram, util.get_available_ram())
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -449,10 +451,9 @@ class bd_lb_search:
                 status += f"Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
                 break
 
-            GLB = max(GLB, new_GLB)
-            if new_GLB + 1e-6 < GLB:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
-                #print(f" Current priority {current_priority} is less than GLB {GLB}.")
+            if new_GLB + 1e-6 < GLB:  
                 priority_diminished += 1
+            GLB = new_GLB    #max(GLB, new_GLB) <- this works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with C>=U
 
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."

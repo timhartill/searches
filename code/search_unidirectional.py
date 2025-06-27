@@ -85,6 +85,7 @@ class generic_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
+                time.sleep(0.001)
                 min_ram = min(min_ram, util.get_available_ram()) 
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -93,10 +94,10 @@ class generic_search:
 
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
 
-            C = max(C, current_priority)
-            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
+            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic
                 #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
+            C = current_priority    # C = max(C, current_priority) <- this works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 found_path = True
@@ -125,15 +126,18 @@ class generic_search:
             #if current_state in closed_set: continue   # we don't need a closed set in this implementation
             #closed_set.add(current_state) 
 
-#            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
-#                found_goal_count += 1
-#                if current_g_score < U:
-#                    U = current_g_score
-#                    found_path = True
-#                    U_update_count += 1
-#                    if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-#                        status += f"Terminating BFS as path found. U:{U}."
-#                        break
+            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
+                found_goal_count += 1
+                if current_g_score < U:
+                    U = current_g_score
+                    #found_path = True
+                    U_update_count += 1
+                    #if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
+                    #    status += f"Terminating BFS in goal check as path found. U:{U}."
+                    #    break
+                found_path = True
+                status += f"Completed. Found goal state Cost:{current_g_score} U:{U}."
+                break
 
             nodes_expanded += 1
             if cstar and current_priority < cstar:
@@ -169,12 +173,12 @@ class generic_search:
                     if tentative_g_score < U:
                         U = tentative_g_score
                         found_path = True
-                        #force_low_tb = True  # Force low tiebreaker, only applies if inconsistent h otherwise will be terminating
+                        #force_low_tb = True  # Force low tiebreaker
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                             came_from[neighbor_state] = current_state 
                             g_score[neighbor_state] = tentative_g_score
-                            status += f"Terminating BFS as path found. G:{tentative_g_score} U:{U}."
+                            status += f"Terminating BFS as path found. U:{U}."
                             break
                         #if h_consistent and h_admissable:  @ This works but made no difference to most probs except 14-Pancake GAP 2
                         #    came_from[neighbor_state] = current_state 
@@ -189,11 +193,11 @@ class generic_search:
                     if force_low_tb:
                         frontier.push(neighbor_state, 
                                       frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                      -1000000000)
+                                      float('-inf'))
                     else:
                         frontier.push(neighbor_state, 
-                                    frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                    frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
+                                      frontier.calc_priority(g=tentative_g_score, h=h_score), 
+                                      frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
             if found_path:
                 #if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found

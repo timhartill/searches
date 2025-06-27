@@ -50,6 +50,9 @@ SEARCH_MAP = {
     "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "astar_negg": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
     "astar_fifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE'},
+    "astar_lifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'LIFO', "tiebreaker2": 'NONE'},
+    "astar_rand": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'R', "tiebreaker2": 'NONE'},
+    "astar_h": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'h', "tiebreaker2": 'NONE'},
     "uc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "huc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bfs": {"class":generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
@@ -196,7 +199,7 @@ if __name__ == "__main__":
 
     # Heuristic search args
     parser.add_argument('--algo_heur', nargs="*", default="astar bd_astar", type=str, 
-                        help="which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar us bfs bd_astar. Will set priority key to g+h, g and/or h appropriately. --algo_heur names must be specified in SEARCH_MAP at the top of search_runner.py")
+                        help="Which unidirectional and bidirectional heuristic searches to run. Pass NONE to not run any: eg --algo_heur astar us bfs bd_astar. Will set priority key to g+h, g and/or h appropriately. --algo_heur names must be specified in SEARCH_MAP at the top of search_runner.py")
 
     # Monte Carlo Tree Search (MCTS) args
     parser.add_argument('--algo_mcts', nargs="*", default="mcts_noheur mcts_bothheur", type=str, 

@@ -256,6 +256,10 @@ class PancakeProblem:
         Calculates a heuristic value based on the order of elements in two states,
         ignoring the first 'degradation' elements.
 
+        Always provides same values as original Helmert gap heuristic (below) for gap_heuristic(current_state, goal) 
+        but at higher degradations, gap_heuristic(goal, current_state) often has higher values. SymGap takes the max of 
+        these so often yields higher h values at higher degradations than what gap_heuristic(current_state, goal)(equiv to gap_helmert(current_state)) does 
+
         Args:
             state_1: A list of integers representing the first state.
             state_2: A list of integers representing the second state (the goal state).
@@ -288,10 +292,46 @@ class PancakeProblem:
 
         return heuristic_value
 
+    def gap_helmert(self, state_1):
+        """
+        The GAP heuristic as originally described in Helmert 2010:
+        hgap(s) := |{i | i ∈ {1, . . . , n} , |s_i - s_i+1| > 1}|.
+
+        Calculates a heuristic value based on the order of elements,
+        ignoring the first 'degradation' elements.
+
+        Args:
+            state_1: A list of integers representing the state.
+            degradation: An integer representing the number of initial elements to ignore.
+
+        Returns:
+            An integer representing the heuristic value.
+        """
+
+        heuristic_value = 0
+        ignored_pancakes = set(range(1, self.degradation + 1))
+        h_inc = 1
+
+        for i in range(len(state_1) - 1):
+            pancake_i = state_1[i]
+            pancake_j = state_1[i + 1]
+
+            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
+                continue
+           
+            if abs(pancake_i - pancake_j) == 1:  # adjacent pancakes
+                continue
+            else:
+                if self.make_heuristic_inadmissable:
+                    h_inc = i
+                heuristic_value += h_inc
+
+        return heuristic_value
+
 
     def heuristic(self, state, backward=False):
         """
-        Calculates the Symmetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
+        Calculates the Gap or Symmetric Gap Heuristic (number of adjacent non-consecutive pairs both ways).
         Note: Admissable and consistent with unit costs
         NOTE: This counts number of "breaks". If variable costs (cost=k) are used,
         this heuristic likely becomes non-admissible as one flip (cost k) can fix
@@ -300,12 +340,13 @@ class PancakeProblem:
         """
         if backward: target_tuple = self.initial_state_tuple
         else: target_tuple = self.goal_state_tuple
+        state_tuple = tuple(state)
 
         if self.h_str == "symgap":
-            return max(self.gap_heuristic(state, target_tuple), 
-                    self.gap_heuristic(target_tuple, state)) * self.h_multiplier
+            return max( self.gap_heuristic(state_tuple, target_tuple), 
+                        self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-            return self.gap_heuristic(state, target_tuple) * self.h_multiplier
+            return self.gap_heuristic(state_tuple, target_tuple) * self.h_multiplier # NOTE: equivalent to gap_helmert() when goal is the standard one
         
     def __str__(self): 
         return self._str_repr
@@ -705,6 +746,29 @@ toh.heuristic(util.encode_list(['D','D','D','D','D','D','D','D','D','D','D','D']
 toh.heuristic(util.encode_list(['D','D','D','D','D','D','D','D','D','D','D','D']), backward=True)   # 52 wrong!
 
 
+comparison of symgap ie max(gap_heuristic(current, goal), gap_heuristic(goal,current)) and orig helmert gap:
+p = PancakeProblem(initial_state=[13,12,11,10,9,8,7,6,5,4,3,2,1], heuristic="symgap", degradation=6)
+start = [1,2,3,4,5,6,7,8,9,10,11,12,13]
+goal = (1,2,3,4,5,6,7,8,9,10,11,12,13,14)
+hel_more, my_more = 0,0
+myG_more, myG_less = 0,0
+allsame = 0
+for i in range(10000000):
+    random.shuffle(start)
+    fullstate = tuple(start + [goal[-1]])
+    helgap = p.gap_helmert(fullstate)
+    mygap = p.gap_heuristic(fullstate, goal)
+    myGgap = p.gap_heuristic(goal, fullstate)
+    if helgap > mygap: hel_more +=1
+    if mygap > helgap: my_more +=1
+    if mygap > myGgap: myG_less += 1
+    if myGgap > mygap: myG_more += 1
+    if helgap == mygap and myGgap == mygap: allsame +=1
+    if i % 10000 == 0:
+        print(f"{i} hel_more than my:{hel_more} my_more than hel:{my_more} myG_less then my:{myG_less} myG_more than my:{myG_more} all same:{allsame}")
+print(f"Finished {i} hel_more than my:{hel_more} my_more than hel:{my_more} myG_less then my:{myG_less} myG_more than my:{myG_more}  all same:{allsame}")
+
+Finished 9999999 hel_more than my:0 my_more than hel:0 myG_less then my:0 myG_more than my:9994109  all same:5891
 """
 
 
