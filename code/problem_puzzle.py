@@ -346,6 +346,7 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
+            #return self.gap_helmert(state_tuple) * self.h_multiplier # tested and eqivalent
             return self.gap_heuristic(state_tuple, target_tuple) * self.h_multiplier # NOTE: equivalent to gap_helmert() when goal is the standard one
         
     def __str__(self): 
@@ -747,7 +748,7 @@ toh.heuristic(util.encode_list(['D','D','D','D','D','D','D','D','D','D','D','D']
 
 
 comparison of symgap ie max(gap_heuristic(current, goal), gap_heuristic(goal,current)) and orig helmert gap:
-p = PancakeProblem(initial_state=[13,12,11,10,9,8,7,6,5,4,3,2,1], heuristic="symgap", degradation=6)
+p = PancakeProblem(initial_state=[13,12,11,10,9,8,7,6,5,4,3,2,1], heuristic="symgap", degradation=1)
 start = [1,2,3,4,5,6,7,8,9,10,11,12,13]
 goal = (1,2,3,4,5,6,7,8,9,10,11,12,13,14)
 hel_more, my_more = 0,0

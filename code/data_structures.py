@@ -166,8 +166,8 @@ class PriorityQueue:
 
 
 class WaitingReadyPriorityQueue:
-    """ Two priority queues: one for waiting states and one for ready states
-    Used in LB Pairs family of Bidirectional search algorithms - one of these in each direction
+    """ Priority queue implementation used for Two priority queues: one for waiting states and one for ready states
+    Used in LB Pairs family of Bidirectional search algorithms - two of these in each direction
     Wait priority is f and Ready priority is g, so expandable nodes are those in Ready which satisfy 
     g_forward + g_backward + epsilon <= GLB ("C" in A*/"naive BDHS") having already satisfied f_direction <= GLB to be moved from Wait to Ready
     Wait priority queue entries are tuples of (f, [g, fifo/lifo_value, state])
@@ -206,7 +206,7 @@ class WaitingReadyPriorityQueue:
                   priority, fifo/lifovalue, state
         """
         if prior_f != float('inf'):
-            self.remove_task(item[-1])  # 'Remove' the state if it already exists in the wait or ready
+            self.remove_task(item[-1])  # 'Remove' the state if it already exists in wait or ready
         entry = (priority, item)  # entry is (f, [g, fifo/lifo_value, state]) and allowable to update state to 'R' as it's in a list even though nested in a tuple!
         heapq.heappush(self.wait, entry)
         self.wait_entry_finder[item[-1]] = entry

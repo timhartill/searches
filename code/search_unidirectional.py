@@ -99,10 +99,10 @@ class generic_search:
                 priority_diminished += 1
             C = current_priority    # C = max(C, current_priority) <- this works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
 
-            if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
-                found_path = True
-                status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
-                break
+            #if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            #    found_path = True
+            #    status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
+            #    break
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
@@ -129,14 +129,15 @@ class generic_search:
             if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
                 found_goal_count += 1
                 if current_g_score < U:
-                    U = current_g_score
+                    #U = current_g_score
                     #found_path = True
                     U_update_count += 1
                     #if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                     #    status += f"Terminating BFS in goal check as path found. U:{U}."
                     #    break
+                U = current_g_score
                 found_path = True
-                status += f"Completed. Found goal state Cost:{current_g_score} U:{U}."
+                status += f"Completed. Found goal state C:{current_priority} U:{U}."
                 break
 
             nodes_expanded += 1
@@ -172,7 +173,7 @@ class generic_search:
                     found_goal_count += 1
                     if tentative_g_score < U:
                         U = tentative_g_score
-                        found_path = True
+                        #found_path = True
                         #force_low_tb = True  # Force low tiebreaker
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
