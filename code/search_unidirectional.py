@@ -6,8 +6,10 @@ Greedy Best First Search        (h only)
 A* Search                    (f = g + h)    
 """
 import time
+from sortedcontainers import SortedDict
 import util
 import data_structures
+
 
 algo_name_map = {'g': "UniformCost", 'h': "GreedyBestFirst", 'f': "Astar"}
 
@@ -19,7 +21,7 @@ class generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
-                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0):
+                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=1.0):
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
@@ -35,7 +37,8 @@ class generic_search:
         self.visualise_dirname = visualise_dirname
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
-        self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}"
+        self.min_edge_cost = min_edge_cost
+        self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}-eps{min_edge_cost}"
 
 
     def search(self, problem):
@@ -67,6 +70,8 @@ class generic_search:
         nodes_expanded_below_cstar = 0
         nodes_expanded_below_cstar_auto = 0
         c_count_dict = {}
+        g_count_dict = SortedDict()  # key g value = count of g currently on frontier
+        g_count_dict[0] = 1 # the start node
         i = 0
         checkmem = 1000
         status = ""
@@ -104,6 +109,13 @@ class generic_search:
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
 
+            if g_count_dict:
+                gmin = g_count_dict.peekitem(index=0)
+                if gmin + self.min_edge_cost >= U:
+                    found_path = True
+                    status += f"Completed. Termination condition Gmin+eps ({gmin + self.min_edge_cost}) >= U ({U}) met."
+                    break
+
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
             if self.priority_key == 'g': 
@@ -114,6 +126,11 @@ class generic_search:
                     if cstar and current_g_score + current_h > cstar + 1e-6:
                         status += f" Inadmissable heuristic detected."
                         h_admissable = False
+
+            g_count_dict[current_priority - current_h] -= 1
+            if g_count_dict[current_priority - current_h] == 0:
+                g_count_dict.pop(current_priority - current_h)
+
             # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
             # that were added before a better path was found). If the extracted
             # node's priority (- h if any) is higher than its current best known g_score,
@@ -189,6 +206,9 @@ class generic_search:
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
+                    if g_count_dict.get(tentative_g_score) is None:
+                        g_count_dict[tentative_g_score] = 0
+                    g_count_dict[tentative_g_score] +=1
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
