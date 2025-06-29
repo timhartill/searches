@@ -256,7 +256,7 @@ python search_runner.py \
         --pancakes "14_pancake_probs50_std.csv" \
         --pancakes_max 50 \
         --pancakes_heur gap \
-        --pancakes_degs 0 1 2 \
+        --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \
@@ -264,7 +264,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar astar_negg astar_fifo astar_lifo astar_rand astar_h \
+        --algo_heur astar astar_negg \
         --algo_mcts NONE
 
 

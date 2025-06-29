@@ -264,7 +264,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar \
+        --algo_heur astar astar_negg \
         --algo_mcts NONE
 
 
