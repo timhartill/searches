@@ -250,7 +250,7 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 2 \
+        --tiles_max 100 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \

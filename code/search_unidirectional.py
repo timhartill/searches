@@ -168,13 +168,11 @@ class generic_search:
                         status += f" Inconsistent heuristic detected."
                         h_consistent = False
 
-                force_low_tb = False
                 if problem.is_goal(neighbor_state):  # Works when here
                     found_goal_count += 1
                     if tentative_g_score < U:
                         U = tentative_g_score
                         found_path = True
-                        force_low_tb = True  # Force low tiebreaker for goal node
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                             came_from[neighbor_state] = current_state 
@@ -191,14 +189,9 @@ class generic_search:
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
-                    if force_low_tb:
-                        frontier.push(neighbor_state, 
-                                      frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                      float('-inf'))
-                    else:
-                        frontier.push(neighbor_state, 
-                                      frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                      frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
+                    frontier.push(neighbor_state, 
+                                    frontier.calc_priority(g=tentative_g_score, h=h_score), 
+                                    frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
 
             if found_path:
                 #if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
