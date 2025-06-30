@@ -155,6 +155,7 @@ def bytes_to_gb(bytes_value):
 
 def get_available_ram():
   """  Gets the amount of available RAM in GB.  """
+  time.sleep(0.001)   # sleep 1ms
   mem = psutil.virtual_memory()
   return round(bytes_to_gb(mem.available), 2)    # mem.available is the actual available memory that can be given instantly to processes
 

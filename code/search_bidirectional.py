@@ -97,7 +97,6 @@ class bd_generic_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
-                time.sleep(0.001) # 1ms sleep to attempt to get get_available_ram() working reliably
                 min_ram = min(min_ram, util.get_available_ram())
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -128,11 +127,7 @@ class bd_generic_search:
                         if cstar and current_g_fwd + current_h > cstar + 1e-6:
                             status += f" Inadmissable heuristic detected (Fwd)."
                             h_admissable = False
-                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
-                # that were added before a better path was found). If the extracted
-                # node's priority (- h if any) is higher than its current best known g_score,
-                # it means we found a better path already, so we discard this stale entry.
-                # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
+                # left the check for stale entries, but PriorityQueue now removes duplicates internally s.t. only non-stale entries are popped..
                 if current_g_fwd + 1e-6 < current_priority - current_h:
                     stale_count += 1
                     continue
@@ -206,11 +201,7 @@ class bd_generic_search:
                         if cstar and current_g_bwd + current_h > cstar + 1e-6:
                             status += f" Inadmissable heuristic detected (Bwd)."
                             h_admissable = False
-                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
-                # that were added before a better path was found). If the extracted
-                # node's priority (- h if any) is higher than its current best known g_score,
-                # it means we found a better path already, so we discard this stale entry.
-                # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
+                # left the check for stale entries, but PriorityQueue now removes duplicates internally s.t. only non-stale entries are popped..
                 if current_g_bwd + 1e-6 < current_priority - current_h:
                     stale_count += 1
                     continue
@@ -408,7 +399,7 @@ class bd_lb_search:
         closed_bwd = set() # unused
 
         nodes_expanded = 0
-        GLB = 0   #min(h_initial, h_goal) #-1.0            # Current lowest cost on either frontier
+        GLB = 0   #min(h_initial, h_goal) #-1.0            # Current lowest cost on either frontier ie  min(fminF, fminB, gminF+gminb+eps)
         U = float('inf')    # Current lowest cost of path found in either direction
         if hasattr(problem, "cstar"):
             cstar = problem.cstar
@@ -439,7 +430,6 @@ class bd_lb_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
-                time.sleep(0.001) # 1ms sleep to attempt to get get_available_ram() working reliably
                 min_ram = min(min_ram, util.get_available_ram())
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -468,8 +458,6 @@ class bd_lb_search:
                     if cstar and f > cstar + 1e-6:
                         status += f" Inadmissable heuristic detected (Fwd) f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
                         h_admissable = False
-                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score that were added before a better path was found). If the extracted
-                # node's g is higher than its current best known g_score, it means we found a better path already, so we discard this stale entry.
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_fwd + 1e-6 < g:
                     stale_count += 1
@@ -544,8 +532,6 @@ class bd_lb_search:
                     if cstar and f > cstar + 1e-6:
                         status += f" Inadmissable heuristic detected (Bwd) f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_bwd}."
                         h_admissable = False
-                # Check for stale entries (duplicates in the heap with higher priority (f/g)_score that were added before a better path was found). If the extracted
-                # node's g is higher than its current best known g_score, it means we found a better path already, so we discard this stale entry.
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_bwd + 1e-6 < g:
                     stale_count += 1

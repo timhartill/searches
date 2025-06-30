@@ -90,7 +90,6 @@ class generic_search:
                 status += f"Timeout after {(time.time()-start_time)/60:.4f} mins."
                 break
             if i % checkmem == 0:
-                time.sleep(0.001)
                 min_ram = min(min_ram, util.get_available_ram()) 
                 if min_ram < self.min_ram:
                     status += f"Out of RAM ({min_ram:.4f}GB remaining)."
@@ -134,11 +133,7 @@ class generic_search:
             if g_count_dict[g_from_frontier] <= 0:
                 g_count_dict.pop(g_from_frontier)
 
-            # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
-            # that were added before a better path was found). If the extracted
-            # node's priority (- h if any) is higher than its current best known g_score,
-            # it means we found a better path already, so we discard this stale entry.
-            # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
+            # left the check for stale entries, but PriorityQueue now removes duplicates internally s.t. only non-stale entries are popped..
 #            if current_g_score + 1e-6 < g_from_frontier:
             if current_g_score < g_from_frontier:
                 stale_count += 1
@@ -200,7 +195,7 @@ class generic_search:
                             g_score[neighbor_state] = tentative_g_score
                             status += f"Terminating BFS as path found. U:{U}."
                             break
-                        #if h_consistent and h_admissable:  @ This works but made no difference to most probs except 14-Pancake GAP 2
+                        #if h_consistent and h_admissable:  @ made no difference to most probs except 14-Pancake GAP 2 where it terminated prematurely
                         #    came_from[neighbor_state] = current_state 
                         #    g_score[neighbor_state] = tentative_g_score
                         #    status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
