@@ -57,41 +57,88 @@ class PriorityQueue:
             self.increment_tb2 = 0
 
         self.max_heap_size = 0
+
+        self.entry_finder = {} # mapping of state to entry in heap
         return
 
-    def push(self, item, priority, tiebreaker1=0, tiebreaker2=0, prior_f=float('inf'), prior_g=float('inf')):
-        if self.use_tb2:
-            entry = (priority, tiebreaker1, tiebreaker2, item)
-        else:
-            entry = (priority, tiebreaker1, item)
+    def remove_task(self, state):
+        """ Mark an existing entry as REMOVED. entry format: (f/g, tb1, <tb2,> [state])"""
+        if state in self.entry_finder:
+            entry = self.entry_finder.pop(state)
+            entry[-1][-1] = REMOVED
+            #print(f"Removed: {state}")
 
+
+    def push(self, item, priority, tiebreaker1=0, tiebreaker2=0, prior_g=float('inf')):
+        """ item = state """
+        #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH 1 {item}")
+        if prior_g != float('inf'):
+            #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH REMOVE {item}")
+            self.remove_task(item)  # 'Remove' the state if it already exists
+        if self.use_tb2:
+            entry = (priority, tiebreaker1, tiebreaker2, [item]) # push as list so can set to removed...
+        else:
+            entry = (priority, tiebreaker1, [item])
         heapq.heappush(self.heap, entry)
+        self.entry_finder[item] = entry
+        #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH ADD {item}")
         if self.max_heap_size < len(self.heap):
             self.max_heap_size = len(self.heap)
         return
 
     def pop(self, item_only=True):
-        if self.use_tb2:
-            priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
-        else:
-            priority, tiebreaker1, item = heapq.heappop(self.heap)
-            tiebreaker2 = None
-        if item_only:
-            return item
-        return item, priority, tiebreaker1, tiebreaker2
+#        if self.use_tb2:
+#            priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
+#        else:
+#            priority, tiebreaker1, item = heapq.heappop(self.heap)
+#            tiebreaker2 = None
+#        if item_only:
+#            return item
+        #print(f"POP: finder:{len(self.entry_finder)}")
+
+        state = REMOVED
+        while self.heap:
+            if self.use_tb2:
+                priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
+            else:
+                priority, tiebreaker1, item = heapq.heappop(self.heap)
+                tiebreaker2 = None
+            state = item[-1]
+            if state != REMOVED:
+                #if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"POP DELETED {state}")
+                del self.entry_finder[state]
+                break
+        if state != REMOVED:
+            #if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"POPPED FINISHED {state}")
+            if item_only:
+                return state
+            else:
+                return state, priority, tiebreaker1, tiebreaker2
+        return None
 
     def isEmpty(self):
-        return len(self.heap) == 0
+        return len(self.entry_finder) == 0  #len(self.heap) == 0
 
     def peek(self, priority_only=True):
         """View the lowest priority element without popping it
+        heap entries: (priority, tiebreaker1, tiebreaker2, [item])
         """
-        if not self.isEmpty():
+        while self.heap and self.heap[0][-1][-1] == REMOVED:
+            heapq.heappop(self.heap)
+
+        if self.heap:
+ #           if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PEEK {state}")
             if priority_only:
                 return self.heap[0][0]  
             else:
                 # Return the whole entry (priority, tiebreaker1, tiebreaker2, item)
-                return self.heap[0]
+                if self.use_tb2:
+                    priority, tiebreaker1, tiebreaker2, item = self.heap[0]
+                else:
+                    priority, tiebreaker1, item = self.heap[0]
+                    tiebreaker2 = None
+                state = item[-1]
+                return priority, tiebreaker1, tiebreaker2, state
         return None
 
     def calc_priority(self, g, h=0):

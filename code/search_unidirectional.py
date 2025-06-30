@@ -110,7 +110,7 @@ class generic_search:
                 break
 
             if g_count_dict:
-                gmin = g_count_dict.peekitem(index=0)
+                gmin = g_count_dict.peekitem(index=0)[0]
                 if gmin + self.min_edge_cost >= U:
                     found_path = True
                     status += f"Completed. Termination condition Gmin+eps ({gmin + self.min_edge_cost}) >= U ({U}) met."
@@ -127,16 +127,20 @@ class generic_search:
                         status += f" Inadmissable heuristic detected."
                         h_admissable = False
 
-            g_count_dict[current_priority - current_h] -= 1
-            if g_count_dict[current_priority - current_h] == 0:
-                g_count_dict.pop(current_priority - current_h)
+            g_from_frontier = round(current_priority - current_h,2)
+            if g_from_frontier not in g_count_dict:
+                raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
+            g_count_dict[g_from_frontier] -= 1
+            if g_count_dict[g_from_frontier] <= 0:
+                g_count_dict.pop(g_from_frontier)
 
             # Check for stale entries (duplicates in the heap with higher priority (f/g)_score
             # that were added before a better path was found). If the extracted
             # node's priority (- h if any) is higher than its current best known g_score,
             # it means we found a better path already, so we discard this stale entry.
             # The alternative would have been to delete from the priority queue in expansion below which is problematic with a heap.
-            if current_g_score + 1e-6 < current_priority - current_h:
+#            if current_g_score + 1e-6 < g_from_frontier:
+            if current_g_score < g_from_frontier:
                 stale_count += 1
                 continue
 
@@ -202,7 +206,8 @@ class generic_search:
                         #    status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
                         #    break
 
-                if tentative_g_score < g_score.get(neighbor_state, float('inf')):  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
+                prior_g = g_score.get(neighbor_state, float('inf'))
+                if tentative_g_score < prior_g:  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
@@ -211,7 +216,8 @@ class generic_search:
                     g_count_dict[tentative_g_score] +=1
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
-                                    frontier.calc_tiebreak1(g=tentative_g_score, h=h_score) ) # Push with priority and tiebreaker1 calculated priority
+                                    frontier.calc_tiebreak1(g=tentative_g_score, h=h_score),
+                                    prior_g=prior_g  ) # Push with priority and tiebreaker1 calculated priority
 
             if found_path:
                 #if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
