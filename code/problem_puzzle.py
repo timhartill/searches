@@ -277,7 +277,7 @@ class PancakeProblem:
             pancake_i = state_1[i]
             pancake_j = state_1[i + 1]
 
-            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
+            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:  # NOTE was or
                 continue
 
             goal_position_i = state_2.index(pancake_i)  # find index
@@ -312,11 +312,12 @@ class PancakeProblem:
         ignored_pancakes = set(range(1, self.degradation + 1))
         h_inc = 1
 
-        for i in range(len(state_1) - 1):
+        for i in range(len(state_1) - 1):  # range(0,14), state_1[14] = 15 (table)
             pancake_i = state_1[i]
             pancake_j = state_1[i + 1]
 
-            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
+            # if pancake_j = table always check gap
+            if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
                 continue
            
             if abs(pancake_i - pancake_j) == 1:  # adjacent pancakes
@@ -346,8 +347,8 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-            #return self.gap_helmert(state_tuple) * self.h_multiplier # tested and eqivalent
-            return self.gap_heuristic(state_tuple, target_tuple) * self.h_multiplier # NOTE: equivalent to gap_helmert() when goal is the standard one
+            return self.gap_helmert(state_tuple) * self.h_multiplier # tested and equivalent but goal must be the sorted stack
+            #return self.gap_heuristic(state_tuple, target_tuple) * self.h_multiplier # NOTE: equivalent to gap_helmert() when goal is the standard one
         
     def __str__(self): 
         return self._str_repr

@@ -237,9 +237,9 @@ comment
 
 
 python search_runner.py \
-        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
+        --out_dir "../outputs" \
         --out_prefix "search-eval" \
-        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+        --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
         --grid_max_per_scen 0 \
@@ -256,7 +256,7 @@ python search_runner.py \
         --pancakes "14_pancake_probs50_std.csv" \
         --pancakes_max 50 \
         --pancakes_heur gap \
-        --pancakes_degs 2 \
+        --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 0 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \

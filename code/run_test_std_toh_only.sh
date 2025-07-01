@@ -245,7 +245,7 @@ python search_runner.py \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
-        --grid_max_per_scen 0 \
+        --grid_max_per_scen 3150 \
         --grid_heur octile \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
@@ -267,7 +267,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar astar_negg \
+        --algo_heur lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
         --algo_mcts NONE
 
 
