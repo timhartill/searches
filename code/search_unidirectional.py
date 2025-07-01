@@ -127,11 +127,11 @@ class generic_search:
                         h_admissable = False
 
             g_from_frontier = round(current_priority - current_h,2)
-            if g_from_frontier not in g_count_dict:
-                raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
-            g_count_dict[g_from_frontier] -= 1
-            if g_count_dict[g_from_frontier] <= 0:
-                g_count_dict.pop(g_from_frontier)
+#            if g_from_frontier not in g_count_dict:
+#                raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
+#            g_count_dict[g_from_frontier] -= 1
+#            if g_count_dict[g_from_frontier] <= 0:
+#                g_count_dict.pop(g_from_frontier)
 
             # left the check for stale entries, but PriorityQueue now removes duplicates internally s.t. only non-stale entries are popped..
 #            if current_g_score + 1e-6 < g_from_frontier:
@@ -206,9 +206,9 @@ class generic_search:
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
-                    if g_count_dict.get(tentative_g_score) is None:
-                        g_count_dict[tentative_g_score] = 0
-                    g_count_dict[tentative_g_score] +=1
+ #                   if g_count_dict.get(tentative_g_score) is None:
+ #                       g_count_dict[tentative_g_score] = 0
+ #                   g_count_dict[tentative_g_score] +=1
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score),

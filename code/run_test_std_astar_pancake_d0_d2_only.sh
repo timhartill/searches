@@ -234,18 +234,15 @@ comment
 
 #        --grid_max_per_scen 21 \
 #         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
-#        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
-#        --out_prefix "search-eval" \
-#        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
 
 
 python search_runner.py \
-        --out_dir "../outputs" \
+        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
         --out_prefix "search-eval" \
-        --in_dir "../problems" \
+        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
         --seed 42 \
         --grid daostd \
-        --grid_max_per_scen 3150 \
+        --grid_max_per_scen 0 \
         --grid_heur octile \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
@@ -253,17 +250,17 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 100 \
+        --tiles_max 0 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
         --pancakes_max 50 \
-        --pancakes_heur gap \
+        --pancakes_heur symgap \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 0 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \
-        --toh_degs 50 \
+        --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \

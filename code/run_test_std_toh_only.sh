@@ -245,7 +245,7 @@ python search_runner.py \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
-        --grid_max_per_scen 3150 \
+        --grid_max_per_scen 0 \
         --grid_heur octile \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
@@ -253,11 +253,11 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 100 \
+        --tiles_max 0 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
-        --pancakes_max 50 \
+        --pancakes_max 0 \
         --pancakes_heur gap \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \

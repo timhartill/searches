@@ -40,25 +40,25 @@ COLOR_MAP: Dict[int, Tuple[int, int, int]] = {
 DEFAULT_COLOR: Tuple[int, int, int] = (0, 0, 0) # Black for values outside the map
 
 
-def manhattan(dx, dy) -> float:
+def manhattan(dx, dy, diag_cost=None) -> float:
     """manhattan heuristics - inadmissable of diagonal movement allowed"""
     return dx + dy
 
 
-def euclidean(dx, dy) -> float:
+def euclidean(dx, dy, diag_cost=None) -> float:
     """euclidean distance heuristics"""
     return math.sqrt(dx * dx + dy * dy)
 
 
-def chebyshev(dx, dy) -> float:
+def chebyshev(dx, dy, diag_cost=None) -> float:
     """ Chebyshev distance. """
     return max(dx, dy)
 
 
-def octile(dx, dy) -> float:
+def octile(dx, dy, diag_cost=None) -> float:
     """ Octile distance modifies manhattan distance to account for diagonal movement 
         ie remains admissable with variable cost. """
-    f = SQRT2 - 1
+    f = diag_cost - 1
     if dx < dy:
         return f * dx + dy
     else:
@@ -226,7 +226,8 @@ class GridProblem:
                          abs(state1_tuple[1] - state2_tuple[1]))
         if cost == SQRT2:
             cost = self.diag_cost
-        return math.ceil(cost * self.cost_multiplier * 100) / 100
+#        return math.ceil(cost * self.cost_multiplier * 100) / 100
+        return cost * self.cost_multiplier
 
 
     def heuristic(self, state, backward=False):
@@ -244,13 +245,14 @@ class GridProblem:
             dy = abs(state_tuple[1] - self.goal_state_tuple[1])
 
 
-        distance = self.h_func(dx, dy)
+        distance = self.h_func(dx, dy, self.diag_cost)
 
         if self.degradation > 0:
             degrade = self.degradation+1 #random.choice(range(1,self.degradation+1))
             distance = distance / degrade  # (self.degradation+1)  # random.choice(range(1,self.degradation+1))
 
-        return math.floor(distance * self.h_multiplier * 100) / 100
+#        return math.floor(distance * self.h_multiplier * 100) / 100
+        return distance * self.h_multiplier
     
 
     def visualise(self, cell_size: int = 10, path: list = None, meeting_node: bytes = None, 

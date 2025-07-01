@@ -224,7 +224,7 @@ python search_runner.py \
         --pancakes "14_pancake_probs50_std.csv" \
         --pancakes_max 0 \
         --pancakes_heur gap \
-        --pancakes_degs 0 1 2 \
+        --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 0 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \

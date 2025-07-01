@@ -546,12 +546,14 @@ class TowersOfHanoiProblem:
                             num_disks_on_peg += multiplier
                     h += 2*num_disks_on_peg
         else:   # pdb
-            if self.pdb_list == []:  # If not loaded yet, load or create the PDBs
-                self.load_or_create_pdbs()
+            if self.pdb_list == []:  # If not loaded yet, load or create the PDBs pdb_4_10+2 -> ['10', '2']
+                self.load_or_create_pdbs()  
             if backward:
-                h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+#                h = self.pdb3.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb4.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+                h = self.pdb3.get(state_bytes[self.pdb_list[1]:].decode(), float('inf')) + self.pdb4.get(state_bytes[:self.pdb_list[1]].decode(), float('inf'))
             else:
-                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+#                h = self.pdb1.get(state_bytes[:self.pdb_list[0]].decode(), float('inf')) + self.pdb2.get(state_bytes[self.pdb_list[0]:].decode(), float('inf'))
+                h = self.pdb1.get(state_bytes[self.pdb_list[1]:].decode(), float('inf')) + self.pdb2.get(state_bytes[:self.pdb_list[1]].decode(), float('inf'))
 
             if self.degradation > 0:
                 h = math.floor((h / (self.degradation+1))* 100) / 100
@@ -563,6 +565,9 @@ class TowersOfHanoiProblem:
         return 1
 
     def load_or_create_pdbs(self):
+            """ Per Felner et al 2004 put largest disks in largest partition ie for pdb_4_10+2 put largest 10 disks in '10'/pb1/pdb4
+                and smallest 2 disks in "2"/pdb2/pdb4
+            """
             h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
             pdb_list = h[1].split('+')  # pdb_4_10+2 -> ['10', '2']
             if len(pdb_list) != 2:
@@ -584,15 +589,17 @@ class TowersOfHanoiProblem:
                 self.pdb4 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[1]}_4_bwd.json"), verbose=True)
             else:
                 print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))  
+                self.pdb1 = self.build_pdb( tuple([self.target_peg] * pdb_list[0] ))  # since all goal pegs the same, this works regardless of whether we will query pdb using largest or smallest disks
                 print(f"PDB 1 fwd built with {len(self.pdb1)} states.")
                 self.pdb2 = self.build_pdb( tuple([self.target_peg] * pdb_list[1] ))
                 print(f"PDB 2 fwd built with {len(self.pdb2)} states.")
                 print(f"Creating forward pdbs for {pdb_list[0]} and {pdb_list[1]} disks over {self.peg_count} pegs ...")
-                self.pdb3 = self.build_pdb( tuple( self.initial_state_tuple[:pdb_list[0]] ))  
-                print(f"PDB 3 fwd built with {len(self.pdb1)} states.")
-                self.pdb4 = self.build_pdb( tuple(self.initial_state_tuple[pdb_list[0]:] ))
-                print(f"PDB 4 fwd built with {len(self.pdb2)} states.")
+#                self.pdb3 = self.build_pdb( tuple( self.initial_state_tuple[:pdb_list[0]] ))  # smallest disks in first pdb
+                self.pdb3 = self.build_pdb( tuple( self.initial_state_tuple[pdb_list[1]:] ))   # largest disks in first pdb
+                print(f"PDB 3 fwd built with {len(self.pdb3)} states.")
+#                self.pdb4 = self.build_pdb( tuple(self.initial_state_tuple[pdb_list[0]:] ))   # largest disks in 2nd pdb
+                self.pdb4 = self.build_pdb( tuple(self.initial_state_tuple[:pdb_list[1]] ))    # smallest disks in 2nd pdb
+                print(f"PDB 4 fwd built with {len(self.pdb4)} states.")
                 print(f"Saving pdbs to: {self.pdb_dir}")
                 util.save_to_json(self.pdb1, os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)
                 util.save_to_json(self.pdb2, os.path.join(self.pdb_dir, f"{pdb_list[1]}_2_fwd.json"), verbose=True)
