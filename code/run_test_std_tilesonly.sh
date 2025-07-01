@@ -205,9 +205,9 @@ comment
 
 
 python search_runner.py \
-        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
+        --out_dir "../outputs" \
         --out_prefix "search-eval" \
-        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+        --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
         --grid_max_per_scen 0 \
@@ -232,7 +232,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar \
+        --algo_heur astar astar_negg\
         --algo_mcts NONE
 
 

@@ -261,9 +261,9 @@ python search_runner.py \
         --pancakes_heur gap \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
-        --toh_max 0 \
+        --toh_max 50 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \
-        --toh_degs 50 \
+        --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 2.0 \
