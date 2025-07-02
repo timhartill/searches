@@ -186,7 +186,7 @@ if __name__ == "__main__":
                         help="If set, cstar for randomly created puzzles is added into output .csv file. This may of course take far longer. To enable this you must set --toh_heur to the heuristic to use, typically a pdb eg --toh_heur pdb_4_10+2")
     
     # Algorithm params over all searches
-    parser.add_argument('--algo_timeout', default=30.0, type=float,
+    parser.add_argument('--algo_timeout', default=2880.0, type=float,
                         help="Maximum time in minutes to allow any algorithm to run for. If exceeded, statistics to that point are returned along with status of 'timeout'. Normal return status = 'completed'. It is important to set this value such that no algorithm OOMs on the particular machine running the experiments.") 
     parser.add_argument('--algo_min_remaining_gb', default=2.0, type=float,
                         help="Minimum GB RAM remaining before algorithm is killed.") 
