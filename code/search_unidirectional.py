@@ -21,7 +21,7 @@ class generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
-                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=1.0):
+                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=0.0):
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
@@ -37,7 +37,7 @@ class generic_search:
         self.visualise_dirname = visualise_dirname
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
-        self.min_edge_cost = min_edge_cost
+        self.min_edge_cost = min_edge_cost  # used for making h = max(h, eps): On std tests using eps=1 decreases expansions below C* but expansions <= C* can actually increase so use with caution
         self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}-eps{min_edge_cost}"
 
 
@@ -54,10 +54,8 @@ class generic_search:
                                                  tiebreaker1=self.tiebreaker1, tiebreaker2=self.tiebreaker2) # Priority queue
         frontier.push(start_node, 
                       frontier.calc_priority(g=g_initial, h=h_initial), 0) # Push with priority and tiebreaker1
-        #state_info = data_structures.StateInfo()
         came_from = {start_node: None}    # Dictionary of node:parent for path reconstruction
         g_score = {start_node: g_initial}
-        #state_info.add(start_node, parent=None, g=g_initial)
         closed_set = set() # Unused in this implementation
 
         nodes_expanded = 0
@@ -108,12 +106,12 @@ class generic_search:
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
 
-            if g_count_dict:
-                gmin = g_count_dict.peekitem(index=0)[0]
-                if gmin + self.min_edge_cost >= U:
-                    found_path = True
-                    status += f"Completed. Termination condition Gmin+eps ({gmin + self.min_edge_cost}) >= U ({U}) met."
-                    break
+#            if g_count_dict:
+#                gmin = g_count_dict.peekitem(index=0)[0]
+#                if gmin + self.min_edge_cost >= U:
+#                    found_path = True
+#                    status += f"Completed. Termination condition Gmin+eps ({gmin + self.min_edge_cost}) >= U ({U}) met."
+#                    break
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
@@ -121,14 +119,16 @@ class generic_search:
                 current_h = 0
             else: 
                 current_h = problem.heuristic(current_state)
+                if not problem.is_goal(current_state):
+                    current_h = max(current_h, self.min_edge_cost)  
                 if self.priority_key == 'f' and h_admissable:
                     if cstar and current_g_score + current_h > cstar + 1e-6:
                         status += f" Inadmissable heuristic detected."
                         h_admissable = False
 
-            g_from_frontier = round(current_priority - current_h,2)
-#            if g_from_frontier not in g_count_dict:
-#                raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
+            g_from_frontier = round(current_priority - current_h, 2)
+ #           if g_from_frontier not in g_count_dict:
+ #               raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
 #            g_count_dict[g_from_frontier] -= 1
 #            if g_count_dict[g_from_frontier] <= 0:
 #                g_count_dict.pop(g_from_frontier)
@@ -137,7 +137,7 @@ class generic_search:
 #            if current_g_score + 1e-6 < g_from_frontier:
             if current_g_score < g_from_frontier:
                 stale_count += 1
-                continue
+                #continue
 
             #if current_state in closed_set: continue   # we don't need a closed set in this implementation
             #closed_set.add(current_state) 
@@ -184,7 +184,9 @@ class generic_search:
                         status += f" Inconsistent heuristic detected."
                         h_consistent = False
 
+                at_goal = False
                 if problem.is_goal(neighbor_state):  # Works when here
+                    at_goal = True 
                     found_goal_count += 1
                     if tentative_g_score < U:
                         U = tentative_g_score
@@ -195,28 +197,23 @@ class generic_search:
                             g_score[neighbor_state] = tentative_g_score
                             status += f"Terminating BFS as path found. U:{U}."
                             break
-                        #if h_consistent and h_admissable:  @ made no difference to most probs except 14-Pancake GAP 2 where it terminated prematurely
-                        #    came_from[neighbor_state] = current_state 
-                        #    g_score[neighbor_state] = tentative_g_score
-                        #    status += f" Goal found with consistent and admissable heuristic to date. Terminating. G:{tentative_g_score} U:{U}."
-                        #    break
 
                 prior_g = g_score.get(neighbor_state, float('inf'))
                 if tentative_g_score < prior_g:  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
- #                   if g_count_dict.get(tentative_g_score) is None:
- #                       g_count_dict[tentative_g_score] = 0
- #                   g_count_dict[tentative_g_score] +=1
+                    if not at_goal:
+                        h_score = max(h_score, self.min_edge_cost)  # Don't use for h fns that always return in >=0 .. <=1 or this will push all h to 1.. if eg degradation pushes h to < eps or h naturually < eps then make h eps
+#                    if g_count_dict.get(tentative_g_score) is None:
+#                        g_count_dict[tentative_g_score] = 0
+#                    g_count_dict[tentative_g_score] +=1
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score),
                                     prior_g=prior_g  ) # Push with priority and tiebreaker1 calculated priority
 
             if found_path:
-                #if h_consistent and h_admissable:  # if A* with consistent/admissable h or Dijkstra can terminate with first path found
-                #    break
                 if self.priority_key == 'h':
                     break  # If BFS, break after first path found
 
@@ -246,7 +243,6 @@ class generic_search:
             #print("#### C count Dict ####")
             #if len(c_count_dict) < 100:
             #    print(c_count_dict)
-            #path = reconstruct_path(state_info, start_node, found_path)
             if str(problem).startswith('GRID-'):
                 convert_func = util.decode_numbers
             else:
@@ -287,20 +283,16 @@ class generic_search:
         return self._str_repr
 
 
-#def reconstruct_path(state_info, start_state, goal_state):
 def reconstruct_path(came_from, start_state, goal_state, convert_func=tuple):
     """Reconstructs the path from start to goal. Path is list of states"""
     path = []
     current = goal_state
     start_node = start_state 
     if current == start_node: return [convert_func(start_node)]
-    
-    limit = 100000 # Generic large limit
-
+    limit = 10000000 # Generic large limit
     count = 0
     while current != start_node:
         path.append(convert_func(current))
-#        parent = state_info.get_parent(current)
         parent = came_from.get(current)
         if parent is None:
              current_str = str(current)[:100] + ('...' if len(str(current)) > 100 else '')

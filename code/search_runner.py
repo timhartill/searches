@@ -46,11 +46,16 @@ from search_bidirectional import bd_generic_search, bd_lb_search
 # Edit this dict to add new algorithms and if necessary add "from newsearch import supersearch" above
 SEARCH_MAP = {
     "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
+    "astar_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_negg": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "astar_negg_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_fifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE'},
+    "astar_fifo_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_lifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'LIFO', "tiebreaker2": 'NONE'},
-    "astar_rand": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'R', "tiebreaker2": 'NONE'},
+    "astar_lifo_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'LIFO', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_h": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'h', "tiebreaker2": 'NONE'},
+    "astar_h_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'h', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
+    "astar_rand": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'R', "tiebreaker2": 'NONE'},
     "uc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "huc": {"class":generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bfs": {"class":generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
@@ -272,7 +277,7 @@ if __name__ == "__main__":
                                            timeout = args.algo_timeout,
                                            version=SEARCH_MAP[algo]['version'],
                                            min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'],
-                                           data_struct=SEARCH_MAP[algo].get('data_struct', 'P'))
+                                           data_struct=SEARCH_MAP[algo].get('data_struct', 'P') )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
@@ -280,7 +285,9 @@ if __name__ == "__main__":
                                         visualise = args.algo_visualise,
                                         visualise_dirname = args.visualise_dir,
                                         min_ram = args.algo_min_remaining_gb,
-                                        timeout = args.algo_timeout)
+                                        timeout = args.algo_timeout,
+                                        min_edge_cost=SEARCH_MAP[algo].get('min_edge_cost', 0.0) )
+
             algorithms.append(algo_instance)
     else:
         logger.info("Not running any heuristic algorithms.")

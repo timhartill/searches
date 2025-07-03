@@ -219,7 +219,7 @@ python search_runner.py \
         --tiles_degs 0 4\
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
-        --pancakes_heur symgap \
+        --pancakes_heur symgap gap \
         --pancakes_degs 0 6 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
@@ -228,7 +228,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 120 \
         --algo_min_remaining_gb 5.0 \
-        --algo_heur astar lb_nbs_f_eps lb_nbs_a_eps lb_nbb_a_eps lb_nbb_f_eps \
+        --algo_heur astar_negg astar_negg_eps astar_fifo_eps astar_lifo_eps\
         --algo_mcts NONE
 
 

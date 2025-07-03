@@ -66,14 +66,11 @@ class PriorityQueue:
         if state in self.entry_finder:
             entry = self.entry_finder.pop(state)
             entry[-1][-1] = REMOVED
-            #print(f"Removed: {state}")
 
 
     def push(self, item, priority, tiebreaker1=0, tiebreaker2=0, prior_g=float('inf')):
         """ item = state """
-        #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH 1 {item}")
         if prior_g != float('inf'):
-            #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH REMOVE {item}")
             self.remove_task(item)  # 'Remove' the state if it already exists
         if self.use_tb2:
             entry = (priority, tiebreaker1, tiebreaker2, [item]) # push as list so can set to removed...
@@ -81,21 +78,11 @@ class PriorityQueue:
             entry = (priority, tiebreaker1, [item])
         heapq.heappush(self.heap, entry)
         self.entry_finder[item] = entry
-        #if item == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PUSH ADD {item}")
         if self.max_heap_size < len(self.heap):
             self.max_heap_size = len(self.heap)
         return
 
     def pop(self, item_only=True):
-#        if self.use_tb2:
-#            priority, tiebreaker1, tiebreaker2, item = heapq.heappop(self.heap)
-#        else:
-#            priority, tiebreaker1, item = heapq.heappop(self.heap)
-#            tiebreaker2 = None
-#        if item_only:
-#            return item
-        #print(f"POP: finder:{len(self.entry_finder)}")
-
         state = REMOVED
         while self.heap:
             if self.use_tb2:
@@ -105,11 +92,9 @@ class PriorityQueue:
                 tiebreaker2 = None
             state = item[-1]
             if state != REMOVED:
-                #if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"POP DELETED {state}")
                 del self.entry_finder[state]
                 break
         if state != REMOVED:
-            #if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"POPPED FINISHED {state}")
             if item_only:
                 return state
             else:
@@ -127,18 +112,17 @@ class PriorityQueue:
             heapq.heappop(self.heap)
 
         if self.heap:
- #           if state == b'\x0e\r\x0f\x07\x0c\x06\t\x05\x00\x0b\x02\x01\x04\x08\n\x03': print(f"PEEK {state}")
             if priority_only:
                 return self.heap[0][0]  
             else:
-                # Return the whole entry (priority, tiebreaker1, tiebreaker2, item)
+                
                 if self.use_tb2:
-                    priority, tiebreaker1, tiebreaker2, item = self.heap[0]
+                    priority, tiebreaker1, tiebreaker2, item = self.heap[0]  
                 else:
                     priority, tiebreaker1, item = self.heap[0]
                     tiebreaker2 = None
                 state = item[-1]
-                return priority, tiebreaker1, tiebreaker2, state
+                return priority, tiebreaker1, tiebreaker2, state  # Return the whole entry (priority, tiebreaker1, tiebreaker2, item[-1])
         return None
 
     def calc_priority(self, g, h=0):
@@ -379,6 +363,7 @@ class WaitingReadyBuckets:
         self.max_bucket_size = 0  # Maximum size of any bucket in wait or ready
         self.max_distinct_f = 0  # Max number of distinct f values in wait at a time - approx as some buckets may be empty
         self.max_distinct_g = 0  # Max number of distinct g values in ready at a time - approx as some buckets may be empty
+        self.max_f_in_ready_g = 0  # Max number of f buckets in any ready[g]
         return
 
     def remove_task(self, state, f, g):
@@ -518,10 +503,10 @@ class WaitingReadyBuckets:
         out_dict = SortedDict()  # Create a new SortedDict[f] to hold the popped SortedKeyLists of entries
         while self.ready:
             g = self.ready.peekitem(index=0)[0]  # Get the lowest g value
-            f_buckets = self.ready.pop(g)  # Get the SortedDict of f buckets for this g
-            for f, entries in f_buckets.items():
+            f_buckets = self.ready.pop(g)  # Get the SortedDict of f buckets for this g 
+            for f, entries in f_buckets.items():   # implicitly removes ready[g] = empty SortedDict()
                 bucket_len = len(entries)
-                if bucket_len == 0:    # skip empty f buckets
+                if bucket_len == 0:    # skip empty f buckets - implicitly removes ready[g][f] = empty SKList()
                     continue
                 out_dict[f] = entries  # Add the f bucket (a SortedKeyList) to the output dict
                 self.ready_curr_size -= bucket_len
@@ -586,13 +571,13 @@ class WaitingReadyBuckets:
         while self.ready:
             g = self.ready.peekitem(index=0)[0]  # Get the lowest g value
             if not self.ready[g]:
-                self.ready.pop(g)
-                continue  # remove if no f buckets
+                self.ready.pop(g)  # remove if no f buckets
+                continue  
             while self.ready[g]:
                 f = self.ready[g].peekitem(index=0)[0]
                 if len(self.ready[g][f]) == 0:
-                    self.ready[g].pop(f)
-                    continue  # remove if no entries in f bucket
+                    self.ready[g].pop(f)  # remove if no entries in f bucket
+                    continue
                 if priority_only:
                     return g
                 else:
@@ -609,7 +594,7 @@ class LBPairs:
     Wait priority queue entries are tuples of (f, [g, fifo/lifo_value, state])
     Ready priority queue entries are tuples of (g, [f, fifo/lifo_value, state])
 
-    NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and naive BDHS
+    NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and our naive BDHS
     """
     def __init__(self, version='A', min_edge_cost=1.0, data_struct='P'):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
@@ -699,9 +684,8 @@ class LBPairs:
 
             Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
         """
-        CLB = 0
+        CLB = 0  # CLB starts at 0 each time
         found = False
-
         while True:
             count_f, count_b = self.move_to_ready(CLB)
             #print(f"After initial move to ready Moved:{count_f} {count_b}")
@@ -717,12 +701,11 @@ class LBPairs:
                     found = True
                     #print(f"Expandable nodes found with GLB:{CLB} g+g:{gmin}")
                     break
-            #count_f, count_b = self.move_to_ready(CLB, always_move_equal=True)
             if self.version == 'F':
                 count_f, count_b = self.move_one_to_ready(CLB)
             else:
                 count_f, count_b = 0, 0
-            #print(f"After next move to ready Moved:{count_f} {count_b}")
+            #print(f"After move ONE to ready Moved:{count_f} {count_b}")
             #print(f"Fwd Ready:{self.forward.ready} Fwd Wait:{self.forward.wait}")
             #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
             if count_f == 0 or count_b == 0:
@@ -742,9 +725,7 @@ class LBPairs:
         return (max(self.forward.max_bucket_size, self.backward.max_bucket_size), 
                 max(self.forward.max_distinct_f, self.backward.max_distinct_f), 
                 max(self.forward.max_distinct_g, self.backward.max_distinct_g) )
-        
 
-    
 
 class StateInfo():
     """ Dict with state key to store g values and parent info for path reconstruction

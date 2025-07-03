@@ -169,7 +169,7 @@ class PancakeProblem:
         else: 
             self.goal_state_tuple=tuple(sorted(list(self.initial_state_tuple)))
         self.initial_state_bytes = bytes(self.initial_state_tuple)
-        self.goal_state_bytes = bytes(self.goal_state_tuple)            
+        self.goal_state_bytes = bytes(self.goal_state_tuple)
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = (not use_variable_costs) and (not make_heuristic_inadmissable)
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
@@ -347,8 +347,7 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-            return self.gap_helmert(state_tuple) * self.h_multiplier # tested and equivalent but goal must be the sorted stack
-            #return self.gap_heuristic(state_tuple, target_tuple) * self.h_multiplier # NOTE: equivalent to gap_helmert() when goal is the standard one
+            return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
         
     def __str__(self): 
         return self._str_repr
@@ -513,7 +512,7 @@ class TowersOfHanoiProblem:
         elif self.h_str == "infinitepegrelaxation":
             # See Additive Pattern databases, Felner et al 2004
             # much weaker than pattern database heuristics but admissable for > 3 pegs and works in bidirectional
-            # NOTE: This is admissable but inconsistent even at d0!
+            # NOTE: This is admissable but inconsistent!
             for peg in self.pegs:
                 if peg != ctp:
                     # 1 Sum for non-goal pegs = 2 * # disks on peg - 1

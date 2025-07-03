@@ -443,7 +443,7 @@ class bd_lb_search:
 
             if new_GLB + 1e-6 < GLB:  
                 priority_diminished += 1
-            GLB = new_GLB    #max(GLB, new_GLB) <- this works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with C>=U
+            GLB = new_GLB    #max(GLB, new_GLB) <- this works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with GLB>=U
 
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -461,7 +461,7 @@ class bd_lb_search:
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_fwd + 1e-6 < g:
                     stale_count += 1
-                    continue
+                    #continue
 
                 #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
                 #closed_fwd.add(current_state_fwd) 
@@ -535,7 +535,7 @@ class bd_lb_search:
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_bwd + 1e-6 < g:
                     stale_count += 1
-                    continue
+                    #continue
 
                 #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
                 #closed_bwd.add(current_state_bwd) 
@@ -687,9 +687,7 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
     """Reconstructs path for bidirectional search."""
     path1 = []
     curr = meeting_node
-    
-    limit = 100000 
-
+    limit = 10000000 
     count = 0
     while curr is not None: 
         path1.append(convert_func(curr))
