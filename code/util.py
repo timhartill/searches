@@ -186,6 +186,7 @@ def decode_numbers(bstr, tup=True):
         return struct.unpack('>HH', bstr)  # '>HH' means big-endian unsigned short (2 bytes) for each number
     return list(struct.unpack('>HH', bstr))  # Convert to list if not returning tuple
 
+# NOTE NOT USING BELOW 3 Number enc fns. They work but only save a small amt of mem and are much slower than just using bytes(state)...
 def calc_bits_bytes(state):
     """ Calculate the number of bits needed to store unsigned integer of max(state) size
         and the number of bytes needed to pack len(state) such numbers into.
@@ -210,11 +211,11 @@ def encode_numbers_bytes(state, bits_per_number, num_bytes):
     for num in state:
         # Shift the existing packed_integer_stream left by BITS_PER_NUMBER to make space for the new number, then OR in the current number.
         # The (num & ((1 << BITS_PER_NUMBER) - 1)) mask ensures only the relevant 4 bits of 'num' are used.
-        packed_integer_stream = (packed_integer_stream << bits_per_number) | (num & ((1 << bits_per_number) - 1))    
-    packed_bytes_list = []
+        packed_integer_stream = (packed_integer_stream << bits_per_number) | (num & ((1 << bits_per_number) - 1))
+    packed_bytes_list = [0] * num_bytes
     for i in range(num_bytes - 1, -1, -1): # Extract bytes from the packed_integer_stream. We extract from MSB to LSB to match the typical byte order in a bytes object.
         byte_value = (packed_integer_stream >> (i * 8)) & 0xFF  # Shift right to isolate the current 8-bit segment, then mask to ensure it's a byte.
-        packed_bytes_list.append(byte_value)        
+        packed_bytes_list[i] = byte_value        
     return struct.pack('B' * len(packed_bytes_list), *packed_bytes_list)  # Use struct.pack to convert the list of byte integers into a bytes object. The format string 'B' means unsigned char (1 byte).
 
 def decode_numbers_bytes(bstr, num_elements, bits_per_number, tup=True):
@@ -229,9 +230,9 @@ def decode_numbers_bytes(bstr, num_elements, bits_per_number, tup=True):
     unpacked_integer_stream = 0
     for byte_val in bstr:
         unpacked_integer_stream = (unpacked_integer_stream << 8) | byte_val    # Convert the bytes object back into a single large integer.
-    state = [0] * num_elements # Pre-allocate list for efficiency       
+    state = [0] * num_elements # Pre-allocate list for efficiency
     for i in range(num_elements):
-        shift_amount = (num_elements - 1 - i) * bits_per_number        
+        shift_amount = (num_elements - 1 - i) * bits_per_number
         num = (unpacked_integer_stream >> shift_amount) & ((1 << bits_per_number) - 1)  # Extract the bits for the current number
         state[i] = num
     if tup:

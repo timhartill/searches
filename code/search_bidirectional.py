@@ -5,6 +5,7 @@ Bidirectional A*, Bi dir Uniform Cost and Bi dir Best-First
 
 """
 import time
+import random
 import util
 import data_structures
 
@@ -343,34 +344,88 @@ class bd_lb_search:
     Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    def __init__(self, tiebreaker1='NBS', tiebreaker2='FIFO', version='A', min_edge_cost=1.0,
+    def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0,
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P'):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
-        tiebreaker1/2: 1st and 2nd level Tiebreaker Corresponds to Explicit and Implicit TB in Barley et al 2025. 
-        tb1 can be 'NBS', 'DVCBS', 'EGBFHS'
-        tb2 can be eg 'R', 'FIFO', 'LIFO', or 'NONE' for no tiebreaker = heap ordering.
+        tb_dir: Strategy for determining direction(s) to search in 
+        'NBS': Always Both directions, 'F','B': forward/backward only, 'A': alternating, 'P': Pohl, 'R': random, 'G': dir with lowest g 
+        tb_select: Strategy for determining node(s) to select for expansion
+        tb_order: Strategy for determining order of expansion eg 'R', 'FIFO', 'LIFO', or 'NONE' = heap/bucket ordering.
         min_ram: Minimum RAM in GB to keep available during search. If RAM goes below this, the search will (sometimes) stop but in practice Python may sometimes grab all mem and the os will kill the process before this condition fires.
         timeout: Timeout in minutes for the search. If the search takes longer than this, it will stop.
+
+        tb_dir - strategy for direction choice: 
+
+        'NBS': Always expand in both directions, 
+        'F'/'B': Forward only, backward only
+        'A': expand in alternating direction to past time, 
+        'P': Pohl: expand based on smallest cardinality of open lists, 
+        'R': expand in a random direction, 
+        'G': expand based on lowest expandable g in open lists, 
+        'S': DVCBS-like: expand based on which READY_d has smallest expandable bucket, 
+        'EGBFHS': TBD 
+
+        tb_selection - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
+
+        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
+        'B': entire first bucket i.e. bucket with lowest g and lowest f
+        'R': random node from all expandable nodes
+        'G': all expandable buckets
+        'SLG': smallest bucket in lowest g
+        'S': smallest bucket of any expandable bucket
+        'DVCBS': smallest bucket of any expandable bucket that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'EGBFHS' - need your help in specifying
+
+        tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
+
+        'R': random
+        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
+        NONE - no explicit ordering applied
+        
         """
         self.timeout = timeout
         self.min_ram = min_ram
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
-        self.version = version  # Per Shperberg 2019 Pseudocode 'A' for the "Return ALL paths" version (although we only return first path) or 'F' for the "Return first path version"
-        self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
-        self.tiebreaker2 = tiebreaker2
-        self.version = version
         self.min_edge_cost = min_edge_cost  # Minimum edge cost to consider in the search
-        if tiebreaker1 == 'LIFO' or tiebreaker2 == 'LIFO':
+
+        self.version = version.upper()  # Per Shperberg 2019 Pseudocode 'A' for the "Return ALL paths" version (although we only return first path) or 'F' for the "Return first path version"
+        if self.version not in ['A', 'F']:
+            raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
+
+        self.tb_dir = tb_dir.upper()
+        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', or 'S'.")
+
+        self.tb_select = tb_select.upper()
+        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', or 'S'.")
+
+        self.tb_order = tb_order.upper()
+        if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
+            raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
+
+        self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
+        if self.data_struct not in ['P', 'B']:
+            raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P' or 'B'.")
+        
+        if self.data_struct == 'P':
+            if self.tb_select != 'F':
+                raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'F'.")
+            if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G']:
+                raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'NBS', 'F', 'B', 'A', 'P', 'R', or 'G'.")
+
+
+        if self.tb_order == 'LIFO':
             self.increment_tb1 = -1
-        elif tiebreaker1 == 'FIFO' or tiebreaker2 == 'FIFO':
+        elif self.tb_order == 'FIFO':
             self.increment_tb1 = 1
         else:
             self.increment_tb1 = 0
+        self.rand_upper_bound = 100000000000
         self.ordering = 0
-        self.data_struct = data_struct  # 'P' for PriorityQueue, 'B' for Buckets
-        self._str_repr = f"BiDirLBPairs-tb1{tiebreaker1}-tb2{tiebreaker2}-ver{version}-ds{self.data_struct}-eps{min_edge_cost}"
+        self._str_repr = f"BiDirLBPairs-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}"
 
 
     def search(self, problem):
@@ -422,6 +477,8 @@ class bd_lb_search:
         start_ram = util.get_available_ram()
         min_ram = start_ram
 
+        directions = ['F', 'B']
+
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
             if curr_heap_size > max_heap_size_combined:
@@ -465,18 +522,6 @@ class bd_lb_search:
 
                 #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
                 #closed_fwd.add(current_state_fwd) 
-
-                #if current_state_fwd in g_score_bwd: 
-                #    current_path_cost = g_score_bwd[current_state_fwd] + current_g_fwd
-                #    found_goal_count += 1
-                #    if current_path_cost < U:
-                #        U = current_path_cost
-                #        meeting_node = current_state_fwd
-                #        U_update_count += 1
-                        #break   #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
-                    #else:  # finds nonoptimal paths
-                    #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
-                    #    break    
 
                 nodes_expanded += 1
                 if cstar and new_GLB < cstar:
@@ -539,18 +584,6 @@ class bd_lb_search:
 
                 #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
                 #closed_bwd.add(current_state_bwd) 
-
-                #if current_state_bwd in g_score_fwd: 
-                #    current_path_cost = g_score_fwd[current_state_bwd] + current_g_bwd
-                #    found_goal_count += 1
-                #    if current_path_cost < U: 
-                #        U = current_path_cost
-                #        meeting_node = current_state_bwd
-                #        U_update_count += 1
-                        #break  #NOTE: if break here tend to get optimal or nearly optimal paths with far fewer node expansions than A*
-                    #else: #finds non-optimal paths
-                    #    print(f"2. Terminating as current path cost {current_path_cost} >= U {U}.")
-                    #    break    
 
                 nodes_expanded += 1
                 if cstar and new_GLB < cstar:
@@ -675,7 +708,12 @@ class bd_lb_search:
 
     def calc_ordering(self):
         """ Calculate fifo/lifo ordering """
-        self.ordering += self.increment_tb1
+        if self.tb_order in ['FIFO', 'LIFO']:
+            self.ordering += self.increment_tb1
+        elif self.tb_order == 'R':
+            self.ordering = random.randint(0, self.rand_upper_bound)
+        elif self.tb_order == 'NONE':
+            self.ordering = 0
         return self.ordering
 
     def __str__(self): # enable str(object) to return algo name

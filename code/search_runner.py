@@ -63,12 +63,12 @@ SEARCH_MAP = {
     "bd_uc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "bd_huc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bd_bfs": {"class":bd_generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
-    "lb_nbs_a": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 0.0},  
-    "lb_nbs_f": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 0.0},  
-    "lb_nbs_a_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
-    "lb_nbs_f_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
-    "lb_nbb_a_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_f_eps": {"class": bd_lb_search, "tiebreaker1": 'NBS', "tiebreaker2": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbs_a": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 0.0},  
+    "lb_nbs_f": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 0.0},  
+    "lb_nbs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
+    "lb_nbs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbb_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
     "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
@@ -269,8 +269,9 @@ if __name__ == "__main__":
             algo_class = SEARCH_MAP[algo]['class']
             if algo.startswith('lb_'):
                 # LB Pairs-based algorithms
-                algo_instance = algo_class(tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
-                                           tiebreaker2 = SEARCH_MAP[algo]['tiebreaker2'],
+                algo_instance = algo_class(tb_dir = SEARCH_MAP[algo]['tb_dir'],
+                                           tb_select = SEARCH_MAP[algo]['tb_select'],
+                                           tb_order = SEARCH_MAP[algo]['tb_order'],
                                            visualise = args.algo_visualise,
                                            visualise_dirname = args.visualise_dir,
                                            min_ram = args.algo_min_remaining_gb,

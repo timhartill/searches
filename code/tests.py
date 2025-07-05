@@ -117,3 +117,28 @@ if not sd[g][f]:
     sd[g].pop(f)  # remove if no entries in f bucket ie ready[g][f] 
     print("2")
 
+import util
+test_list_full_range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+test_list_some_values = [1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 0, 4, 8, 12]
+test_list_zeros = [0] * 16
+test_list_max = [15] * 16
+testlist=[test_list_full_range,test_list_some_values,test_list_zeros,test_list_max]
+bits_per_number, num_bytes = calc_bits_bytes(test_list_full_range)
+
+#1.0863950389903039 vs 0.09534033399540931:
+timeit.timeit("for t in testlist: encode_numbers_bytes(t, bits_per_number, num_bytes)", number=100000, globals=globals())
+timeit.timeit("for t in testlist: bytes(t)", number=100000, globals=globals())
+
+def encdec(t, bits_per_number, num_bytes):
+    return 1+1
+    bstr = encode_numbers_bytes(t, bits_per_number, num_bytes)
+    tout = decode_numbers_bytes(bstr, 16, bits_per_number)
+
+# 0.0267
+timeit.timeit("for t in testlist: encdec(t, bits_per_number, num_bytes)", number=100000, globals=globals())
+
+import pickle
+
+
+
+

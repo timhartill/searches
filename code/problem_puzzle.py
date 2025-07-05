@@ -44,10 +44,8 @@ class SlidingTileProblem:
         else:
             sorted_list = list(range(0, self.max_rows * self.max_cols))# + [0]  Korf goal = [0,1,...,15]
             self.goal_state_tuple = tuple(sorted_list)
-        self.bits_per_number, self.num_bytes = util.calc_bits_bytes(self.initial_state_tuple)
-        self.num_elements = len(self.initial_state_tuple)
-        self.initial_state_bytes = util.encode_numbers_bytes(self.initial_state_tuple, self.bits_per_number, self.num_bytes)
-        self.goal_state_bytes = util.encode_numbers_bytes(self.goal_state_tuple, self.bits_per_number, self.num_bytes)            
+        self.initial_state_bytes = bytes(self.initial_state_tuple)
+        self.goal_state_bytes = bytes(self.goal_state_tuple)
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
         self._start_positions = {tile: i for i, tile in enumerate(self.initial_state_tuple)}  # for bdhs
         self.use_variable_costs = use_variable_costs
@@ -77,13 +75,12 @@ class SlidingTileProblem:
             return state_bytes == self.initial_state_bytes
         return state_bytes == self.goal_state_bytes
 
-    def get_neighbors(self, state_bytes):
+    def get_neighbors(self, state):
         """Returns list of tuples: (neighbor_state, moved_tile_value) from state
         where moved_tile_value is the value (label) of the tile that was moved to the blank space.
         """
-        state = util.decode_numbers_bytes(state_bytes, self.num_elements, self.bits_per_number)
         neighbors = []
-        blank_index = state.index(0)    # index of blank in state list 
+        blank_index = state.index(0)    # index of blank in state byte string 
         row, col = divmod(blank_index, self.max_cols)
         moves = {'up': (row - 1, col), 'down': (row + 1, col), 'left': (row, col - 1), 'right': (row, col + 1)}
         for move_dir, (new_row, new_col) in moves.items():
@@ -93,8 +90,7 @@ class SlidingTileProblem:
                 moved_tile_value = new_state_list[new_blank_index] 
                 # swap blank with the tile in the new position:
                 new_state_list[blank_index], new_state_list[new_blank_index] = new_state_list[new_blank_index], new_state_list[blank_index]
-                neighbors.append( (util.encode_numbers_bytes(new_state_list, self.bits_per_number, self.num_bytes), 
-                                   moved_tile_value) ) 
+                neighbors.append( (bytes(new_state_list), moved_tile_value) ) 
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -111,8 +107,8 @@ class SlidingTileProblem:
         else: # Used when reconstructing path cost post-search without move_info
             blank1_idx, blank2_idx, moved_tile = -1, -1, -1
             # Ensure state1 and state2 are tuples/sequences before len()
-            state1_tuple = util.decode_numbers_bytes(state1, self.num_elements, self.bits_per_number)
-            state2_tuple = util.decode_numbers_bytes(state2, self.num_elements, self.bits_per_number)
+            state1_tuple = tuple(state1)
+            state2_tuple = tuple(state2)
             if not hasattr(state1_tuple, '__len__') or not hasattr(state2_tuple, '__len__') or len(state1_tuple) != len(state2_tuple):
                 print(f"Warning: Invalid states for cost calculation fallback: {state1_tuple}, {state2_tuple}")
                 return 1 # Fallback cost
@@ -133,7 +129,6 @@ class SlidingTileProblem:
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
-        state_tuple = util.decode_numbers_bytes(state_bytes, self.num_elements, self.bits_per_number)
         if backward: # For bidirectional search
             target_positions = self._start_positions
         else:
@@ -141,7 +136,7 @@ class SlidingTileProblem:
         distance = 0
         multiplier = 1
         ignored_tiles = set(range(self.degradation + 1))
-        for i, tile in enumerate(state_tuple):
+        for i, tile in enumerate(state_bytes):
             if tile not in ignored_tiles:
                 current_pos = divmod(i, self.max_cols)
                 goal_idx = target_positions.get(tile)
