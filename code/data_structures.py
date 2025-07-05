@@ -309,6 +309,9 @@ class WaitingReadyPriorityQueue:
         """ Check if both Wait and Ready heaps are empty excluding items marked for removal
         """
         return len(self.wait_entry_finder) == 0 and len(self.ready_entry_finder) == 0
+    
+    def curr_size(self):
+        return len(self.wait_entry_finder) + len(self.ready_entry_finder)
 
     def peek_wait(self, priority_only=True):
         """View the lowest priority element on Wait (fmin) without popping it 
@@ -524,7 +527,7 @@ class WaitingReadyBuckets:
                 continue  
             f = self.ready[g].peekitem(index=0)[0]  # Get the lowest f value
             if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is empty, remove and continue
-                self.ready[g].pop(f)  
+                self.ready[g].pop(f)
                 continue
             ordering, state  = self.ready[g][f].pop(0)  # Pop the first item in the SortedKeyList
             self.ready_curr_size -= 1
@@ -542,6 +545,9 @@ class WaitingReadyBuckets:
         """ Check if both Wait and Ready heaps are empty excluding items marked for removal
         """
         return self.wait_curr_size == 0 and self.ready_curr_size == 0
+
+    def curr_size(self):
+        return self.wait_curr_size + self.ready_curr_size
 
     def peek_wait(self, priority_only=True):
         """View the lowest priority element on Wait (fmin) without popping it 
@@ -596,7 +602,8 @@ class LBPairs:
 
     NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and our naive BDHS
     """
-    def __init__(self, version='A', min_edge_cost=1.0, data_struct='P'):
+    def __init__(self, version='A', min_edge_cost=1.0, data_struct='P', 
+                 tb_dir='NBS', tb_select='F', tb_order='NONE'):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
         eps is the minimum edge cost. If unknown can set to 0.0
         data_struct is 'P' for PriorityQueue or 'B' for WaitingReadyBuckets
@@ -610,12 +617,23 @@ class LBPairs:
         self.data_struct = data_struct
         if self.data_struct not in ['P', 'B']:
             raise ValueError(f"Invalid data_struct: {self.data_struct}. Must be 'P' for PQ or 'B' for Buckets.")
+        self.tb_dir = tb_dir
+        self.tb_select = tb_select
+        self.tb_order = tb_order
+        self.last_direction = 'B'
+
         if self.data_struct == 'B':
             self.forward = WaitingReadyBuckets(version)
             self.backward = WaitingReadyBuckets(version)
-        else:  # self.data_struct == 'P'    
+        else:  # self.data_struct == 'P'
             self.forward = WaitingReadyPriorityQueue(version)
             self.backward = WaitingReadyPriorityQueue(version)
+        self.GLB = 0
+        self.forward_expandable_g = {}   # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        self.backward_expandable_g = {}  # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        self.expandable_edges = set()   # set of (gF, gB)
+        self.forward_smallest_expandable_bucket = [] # [f, g, count]
+        self.backward_smallest_expandable_bucket = [] # [f, g, count]
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -710,6 +728,7 @@ class LBPairs:
             #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
             if count_f == 0 or count_b == 0:
                 CLB = self.get_new_LB()
+                self.GLB = CLB
                 #print(f"NEW CLB: {CLB}")
         return found, CLB
 
@@ -725,6 +744,146 @@ class LBPairs:
         return (max(self.forward.max_bucket_size, self.backward.max_bucket_size), 
                 max(self.forward.max_distinct_f, self.backward.max_distinct_f), 
                 max(self.forward.max_distinct_g, self.backward.max_distinct_g) )
+
+    def calc_expandable(self):
+        """ Calculate expandable buckets (incl counts), edges in Forward.Ready and Backward.Ready """
+        self.forward_expandable_g = {}   # key:g val: (f, |f|, < count, = count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        self.backward_expandable_g = {}  # key:g val: (f, |f|, < count, = count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        self.expandable_edges = set()   # set of (gF, gB)
+        self.forward_smallest_expandable_bucket = [] # [f, g, count]
+        self.backward_smallest_expandable_bucket = [] # [f, g, count]
+        forward_smallest = float('inf')
+        backward_smallest = float('inf')
+
+        for gF in self.forward.ready:
+            if not self.forward.ready[gF]:
+                self.forward.ready.pop(gF)
+                continue
+            
+            for gB in self.backward.ready:
+                if not self.backward.ready[gB]:
+                    self.backward.ready.pop(gB)
+                    continue
+                new_forward = False
+
+                if gF + gB + self.min_edge_cost <= self.GLB:
+
+                    if not self.forward_expandable_g[gF]:
+                        new_forward = True
+                        f_smallest = None
+                        f_smallest_count = 0
+                        for f in self.forward.ready[gF]:
+                            f_len = len(self.forward.ready[gF][f])
+                            if f_len == 0:
+                                self.forward.ready[gF].pop(f)
+                                continue
+                            elif f_len > f_smallest_count:
+                                f_smallest_count = len(self.forward.ready[gF][f])
+                                f_smallest = f
+                        if f_smallest is None: 
+                            continue
+                        self.forward_expandable_g[gF] = {'f': f_smallest, 'f_count': f_smallest_count, 
+                                                         'under_glb':0, 'eq_glb':0, 'edge_count':0}
+
+                    if not self.backward_expandable_g[gB]:
+                        f_smallest = None
+                        f_smallest_count = 0
+                        for f in self.backward.ready[gB]:
+                            f_len = len(self.backward.ready[gB][f])
+                            if f_len == 0:
+                                self.backward.ready[gB].pop(f)
+                                continue
+                            elif f_len > f_smallest_count:
+                                f_smallest_count = len(self.backward.ready[gB][f])
+                                f_smallest = f
+                        if f_smallest is None:  # backward bucket empty
+                            if new_forward:     # if forward was created to join to this empty bucket, remove it also
+                                self.forward_expandable_g.pop(gF)
+                            continue
+                        self.backward_expandable_g[gB] = {'f': f_smallest, 'f_count': f_smallest_count, 
+                                                          'under_glb':0, 'eq_glb':0, 'edge_count':0}
+
+                    # if got here, both forward and backward buckets are non-empty
+                    if gF + gB + self.min_edge_cost < self.GLB:
+                        self.forward_expandable_g[gF]["under_glb"] += 1
+                        self.backward_expandable_g[gB]["under_glb"] += 1
+                    else:
+                        self.forward_expandable_g[gF]["eq_glb"] += 1
+                        self.backward_expandable_g[gB]["eq_glb"] += 1
+                    self.expandable_edges.add( (gF, gB) )
+                    self.forward_expandable_g[gF]["edge_count"] += 1
+                    self.backward_expandable_g[gB]["edge_count"] += 1
+                    if self.forward_expandable_g[gF]["f_smallest_count"] < forward_smallest:
+                        forward_smallest = self.forward_expandable_g[gF]["f_smallest_count"]
+                        self.forward_smallest_expandable_bucket = [self.forward_expandable_g[gF]["f_smallest"],
+                                                                   gF, forward_smallest] # [f, g, count]
+                    if self.backward_expandable_g[gB]["f_smallest_count"] < backward_smallest:
+                        backward_smallest = self.backward_expandable_g[gB]["f_smallest_count"]
+                        self.backward_smallest_expandable_bucket = [self.backward_expandable_g[gB]["f_smallest"],
+                                                                   gB, backward_smallest] # [f, g, count]
+        return
+
+
+    def calc_direction(self):
+        """ return direction(s) to expand in based on self.tb_dir
+            'NBS': Always expand in both directions, 
+            'F'/'B': Forward only, backward only
+            'A': expand in alternating direction to past time, 
+            'P': Pohl: expand based on smallest cardinality of open lists, 
+            'R': expand in a random direction, 
+            'G': expand based on lowest expandable g in open lists, 
+            'S': DVCBS-like: expand based on which READY_d has smallest expandable bucket, 
+            'EGBFHS': TBD 
+        """
+        fwd = False
+        bwd = False
+        if self.tb_dir == 'NBS':
+            fwd, bwd = True, True
+            self.last_direction = 'FB' 
+        elif self.tb_dir == 'F':
+            fwd, bwd = True, False
+            self.last_direction = 'F' 
+        elif self.tb_dir == 'B':
+            fwd, bwd = False, True
+            self.last_direction = 'B'
+        elif self.tb_dir == 'A': 
+            if self.last_direction == 'F':
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            else:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+        elif self.tb_dir == 'P':
+            if self.forward.curr_size() > self.backward.curr_size():
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            else:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+        elif self.tb_dir == 'R':
+            if random.choice(['F','B']) == 'F':
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+            else:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+        elif self.tb_dir == 'G':
+            if self.forward.peek_ready(priority_only=True) > self.backward.peek_ready(priority_only=True):
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            else:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+        elif self.tb_dir == 'S':
+            self.calc_expandable()
+            if self.forward_smallest_expandable_bucket[-1] > self.backward_smallest_expandable_bucket[-1]:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            else:    
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+
+        return fwd, bwd
 
 
 class StateInfo():

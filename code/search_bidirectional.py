@@ -440,7 +440,8 @@ class bd_lb_search:
                                                 "time": 0, "optimal": optimality_guaranteed, 'visual': 'no file', "max_heap_size": 0}
 
         frontiers = data_structures.LBPairs(version=self.version, min_edge_cost=self.min_edge_cost, 
-                                            data_struct=self.data_struct)
+                                            data_struct=self.data_struct, 
+                                            tb_dir=self.tb_dir, tb_select=self.tb_select, tb_order=self.tb_order)
         h_initial = problem.heuristic(start_node)
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
         came_from_fwd = {start_node: None}
@@ -506,8 +507,10 @@ class bd_lb_search:
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."
                 break
 
+            fwd, bwd = frontiers.calc_direction()
+
             # --- Forward Step ---
-            if not frontiers.forward.isEmpty():
+            if not frontiers.forward.isEmpty() and fwd:
                 g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
                 current_g_fwd = g_score_fwd.get(current_state_fwd)
                 current_h = problem.heuristic(current_state_fwd)
@@ -518,7 +521,6 @@ class bd_lb_search:
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_fwd + 1e-6 < g:
                     stale_count += 1
-                    #continue
 
                 #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
                 #closed_fwd.add(current_state_fwd) 
@@ -569,7 +571,7 @@ class bd_lb_search:
                                        prior_f, prior_g)  
            
             # --- Backward Step ---
-            if not frontiers.backward.isEmpty():
+            if not frontiers.backward.isEmpty() and bwd:
                 g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
                 current_g_bwd = g_score_bwd.get(current_state_bwd)
                 current_h = problem.heuristic(current_state_bwd, backward=True)
@@ -580,7 +582,6 @@ class bd_lb_search:
                 # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
                 if current_g_bwd + 1e-6 < g:
                     stale_count += 1
-                    #continue
 
                 #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
                 #closed_bwd.add(current_state_bwd) 
@@ -708,12 +709,12 @@ class bd_lb_search:
 
     def calc_ordering(self):
         """ Calculate fifo/lifo ordering """
-        if self.tb_order in ['FIFO', 'LIFO']:
+        if self.tb_order == 'NONE':
+            return 0
+        elif self.tb_order in ['FIFO', 'LIFO']:
             self.ordering += self.increment_tb1
         elif self.tb_order == 'R':
             self.ordering = random.randint(0, self.rand_upper_bound)
-        elif self.tb_order == 'NONE':
-            self.ordering = 0
         return self.ordering
 
     def __str__(self): # enable str(object) to return algo name
