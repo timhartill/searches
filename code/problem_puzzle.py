@@ -44,8 +44,10 @@ class SlidingTileProblem:
         else:
             sorted_list = list(range(0, self.max_rows * self.max_cols))# + [0]  Korf goal = [0,1,...,15]
             self.goal_state_tuple = tuple(sorted_list)
-        self.initial_state_bytes = bytes(self.initial_state_tuple)
-        self.goal_state_bytes = bytes(self.goal_state_tuple)            
+        self.bits_per_number, self.num_bytes = util.calc_bits_bytes(self.initial_state_tuple)
+        self.num_elements = len(self.initial_state_tuple)
+        self.initial_state_bytes = util.encode_numbers_bytes(self.initial_state_tuple, self.bits_per_number, self.num_bytes)
+        self.goal_state_bytes = util.encode_numbers_bytes(self.goal_state_tuple, self.bits_per_number, self.num_bytes)            
         self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
         self._start_positions = {tile: i for i, tile in enumerate(self.initial_state_tuple)}  # for bdhs
         self.use_variable_costs = use_variable_costs
@@ -70,15 +72,16 @@ class SlidingTileProblem:
     def goal_state(self): 
         return self.goal_state_bytes
         
-    def is_goal(self, state, backward=False): 
+    def is_goal(self, state_bytes, backward=False): 
         if backward:
-            return state == self.initial_state_bytes
-        return state == self.goal_state_bytes
+            return state_bytes == self.initial_state_bytes
+        return state_bytes == self.goal_state_bytes
 
-    def get_neighbors(self, state):
+    def get_neighbors(self, state_bytes):
         """Returns list of tuples: (neighbor_state, moved_tile_value) from state
         where moved_tile_value is the value (label) of the tile that was moved to the blank space.
         """
+        state = util.decode_numbers_bytes(state_bytes, self.num_elements, self.bits_per_number)
         neighbors = []
         blank_index = state.index(0)    # index of blank in state list 
         row, col = divmod(blank_index, self.max_cols)
@@ -90,7 +93,8 @@ class SlidingTileProblem:
                 moved_tile_value = new_state_list[new_blank_index] 
                 # swap blank with the tile in the new position:
                 new_state_list[blank_index], new_state_list[new_blank_index] = new_state_list[new_blank_index], new_state_list[blank_index]
-                neighbors.append( (bytes(new_state_list), moved_tile_value) ) 
+                neighbors.append( (util.encode_numbers_bytes(new_state_list, self.bits_per_number, self.num_bytes), 
+                                   moved_tile_value) ) 
         return neighbors 
 
     def get_cost(self, state1, state2, move_info=None):
@@ -100,33 +104,36 @@ class SlidingTileProblem:
         """
         if not self.use_variable_costs:
             return 1 
-            
+        
         if move_info is not None:
             moved_tile_value = move_info
             return max(1, moved_tile_value) 
         else: # Used when reconstructing path cost post-search without move_info
             blank1_idx, blank2_idx, moved_tile = -1, -1, -1
             # Ensure state1 and state2 are tuples/sequences before len()
-            if not hasattr(state1, '__len__') or not hasattr(state2, '__len__') or len(state1) != len(state2):
-                print(f"Warning: Invalid states for cost calculation fallback: {state1}, {state2}")
+            state1_tuple = util.decode_numbers_bytes(state1, self.num_elements, self.bits_per_number)
+            state2_tuple = util.decode_numbers_bytes(state2, self.num_elements, self.bits_per_number)
+            if not hasattr(state1_tuple, '__len__') or not hasattr(state2_tuple, '__len__') or len(state1_tuple) != len(state2_tuple):
+                print(f"Warning: Invalid states for cost calculation fallback: {state1_tuple}, {state2_tuple}")
                 return 1 # Fallback cost
-            for i in range(len(state1)):
-                if state1[i] == 0: blank1_idx = i
-                if state2[i] == 0: blank2_idx = i
+            for i in range(len(state1_tuple)):
+                if state1_tuple[i] == 0: blank1_idx = i
+                if state2_tuple[i] == 0: blank2_idx = i
             if blank1_idx != -1 and blank2_idx != -1:
-                 moved_tile = state2[blank1_idx] 
+                 moved_tile = state2_tuple[blank1_idx] 
                  return max(1, moved_tile)
             else:
-                 print(f"Warning: Could not determine moved tile between {state1} and {state2}")
+                 print(f"Warning: Could not determine moved tile between {state1_tuple} and {state2_tuple}")
                  return 1 
 
-    def heuristic(self, state, backward=False):
+    def heuristic(self, state_bytes, backward=False):
         """
         Calculates the Manhattan distance heuristic (number of steps).
         Note: Admissable and consistent with unit costs
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
         """
+        state_tuple = util.decode_numbers_bytes(state_bytes, self.num_elements, self.bits_per_number)
         if backward: # For bidirectional search
             target_positions = self._start_positions
         else:
@@ -134,7 +141,7 @@ class SlidingTileProblem:
         distance = 0
         multiplier = 1
         ignored_tiles = set(range(self.degradation + 1))
-        for i, tile in enumerate(state):
+        for i, tile in enumerate(state_tuple):
             if tile not in ignored_tiles:
                 current_pos = divmod(i, self.max_cols)
                 goal_idx = target_positions.get(tile)

@@ -186,6 +186,59 @@ def decode_numbers(bstr, tup=True):
         return struct.unpack('>HH', bstr)  # '>HH' means big-endian unsigned short (2 bytes) for each number
     return list(struct.unpack('>HH', bstr))  # Convert to list if not returning tuple
 
+def calc_bits_bytes(state):
+    """ Calculate the number of bits needed to store unsigned integer of max(state) size
+        and the number of bytes needed to pack len(state) such numbers into.
+        Call this with an example state of the right length containing the largest
+        number you'd ever need for this type of state... 
+    """
+    max_num = max(state)
+    bits_per_number = math.ceil(math.log2(max_num + 1))
+    num_bytes = math.ceil(len(state) * bits_per_number / 8)
+    return bits_per_number, num_bytes
+
+def encode_numbers_bytes(state, bits_per_number, num_bytes):
+    """ Encode list or tuple of numbers as a packed byte string
+        bits_per_number  = # bits needed to store largest number ever occuring in state
+        num_bytes = # bytes needed to store bits_per_number * len(state)   
+        Packs a list of 16 numbers (0-15 inclusive) into 8 bytes.
+        For 15 Puzzle, each number requires 4 bits (since 2^3=8, 2^4=16).
+        This function packs numbers contiguously into a bitstream, from left to right
+        (most significant bit first for the overall stream).
+    """
+    packed_integer_stream = 0
+    for num in state:
+        # Shift the existing packed_integer_stream left by BITS_PER_NUMBER to make space for the new number, then OR in the current number.
+        # The (num & ((1 << BITS_PER_NUMBER) - 1)) mask ensures only the relevant 4 bits of 'num' are used.
+        packed_integer_stream = (packed_integer_stream << bits_per_number) | (num & ((1 << bits_per_number) - 1))    
+    packed_bytes_list = []
+    for i in range(num_bytes - 1, -1, -1): # Extract bytes from the packed_integer_stream. We extract from MSB to LSB to match the typical byte order in a bytes object.
+        byte_value = (packed_integer_stream >> (i * 8)) & 0xFF  # Shift right to isolate the current 8-bit segment, then mask to ensure it's a byte.
+        packed_bytes_list.append(byte_value)        
+    return struct.pack('B' * len(packed_bytes_list), *packed_bytes_list)  # Use struct.pack to convert the list of byte integers into a bytes object. The format string 'B' means unsigned char (1 byte).
+
+def decode_numbers_bytes(bstr, num_elements, bits_per_number, tup=True):
+    """
+    Unpacks a bytes object containing numbers that were packed using encode_numbers_bytes.
+        bstr (bytes): The bytes object to unpack.
+        num_elements (int): The exact number of elements in bstr to unpack.
+        bits_per_number: number of bits used to store each original element
+
+    Returns: state[int]: The unpacked list of integers.
+    """        
+    unpacked_integer_stream = 0
+    for byte_val in bstr:
+        unpacked_integer_stream = (unpacked_integer_stream << 8) | byte_val    # Convert the bytes object back into a single large integer.
+    state = [0] * num_elements # Pre-allocate list for efficiency       
+    for i in range(num_elements):
+        shift_amount = (num_elements - 1 - i) * bits_per_number        
+        num = (unpacked_integer_stream >> shift_amount) & ((1 << bits_per_number) - 1)  # Extract the bits for the current number
+        state[i] = num
+    if tup:
+        return tuple(state)
+    return state
+
+
 def make_prob_serial(prob, prefix="__", suffix=""):
     """ Make filename-friendly key for a problem description eg initial state """
     prob_str = str(prob)

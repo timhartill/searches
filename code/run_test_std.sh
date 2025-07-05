@@ -265,7 +265,7 @@ python search_runner.py \
         --toh_heur pdb_4_10+2 pdb_4_6+6 \
         --toh_degs 50 \
         --algo_visualise \
-        --algo_timeout 120 \
+        --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
         --algo_heur astar astar_negg \
         --algo_mcts NONE

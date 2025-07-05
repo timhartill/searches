@@ -200,9 +200,9 @@ comment
 
 
 python search_runner.py \
-        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
+        --out_dir "../outputs" \
         --out_prefix "search-eval" \
-        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+        --in_dir "../problems" \
         --seed 42 \
         --grid mazetest daotest \
         --grid_max_per_scen 1 \
@@ -226,9 +226,9 @@ python search_runner.py \
         --toh_heur infinitepegrelaxation pdb_4_5+2 \
         --toh_degs 0 \
         --algo_visualise \
-        --algo_timeout 120 \
-        --algo_min_remaining_gb 5.0 \
-        --algo_heur astar_negg astar_negg_eps astar_fifo_eps astar_lifo_eps\
+        --algo_timeout 2880 \
+        --algo_min_remaining_gb 2.0 \
+        --algo_heur astar_negg lb_nbs_f_eps lb_nbb_f_eps\
         --algo_mcts NONE
 
 
