@@ -69,6 +69,14 @@ SEARCH_MAP = {
     "lb_nbs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
     "lb_nbb_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_nbb_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_fwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_bwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'B', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_alter_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_pohl_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_rand_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_lowg_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_smallg_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'S', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_smallgf_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'SB', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
     "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
@@ -246,7 +254,8 @@ if __name__ == "__main__":
 
     args.timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')
     #args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'_'.join(args.algo_heur)}_mcts-{'_'.join(args.algo_mcts)}_grid-{'_'.join(args.grid)}{args.grid_max_per_scen}_tiles-{args.tiles}{args.tiles_max}_pan-{args.pancakes}{args.pancakes_max}_toh-{args.toh}{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
-    args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'-'.join(args.algo_heur)}_mcts-{'-'.join(args.algo_mcts)}_grid-{'-'.join(args.grid)}{args.grid_max_per_scen}_tiles{args.tiles_max}_pan{args.pancakes_max}_toh{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
+    #args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{'-'.join(args.algo_heur)}_mcts-{'-'.join(args.algo_mcts)}_grid-{'-'.join(args.grid)}{args.grid_max_per_scen}_tiles{args.tiles_max}_pan{args.pancakes_max}_toh{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
+    args.out_file_base = f"{args.out_prefix}_{args.timestamp}_algo-{len(args.algo_heur)}_mcts-{len(args.algo_mcts)}_grid-{'-'.join(args.grid)}{args.grid_max_per_scen}_tiles{args.tiles_max}_pan{args.pancakes_max}_toh{args.toh_max}_seed{args.seed}_sample{args.sample_count}"
     log_filename = f"{args.out_file_base}.log"
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                     datefmt='%d/%m/%Y %H:%M:%S',

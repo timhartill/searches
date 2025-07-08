@@ -3,6 +3,7 @@ from sortedcontainers import SortedDict
 from sortedcontainers import SortedKeyList
 import time
 import timeit
+import random
 
 def make_skl(num=100000):
     skl = SortedKeyList(key=lambda x: x[-1])
@@ -137,8 +138,77 @@ def encdec(t, bits_per_number, num_bytes):
 # 0.0267
 timeit.timeit("for t in testlist: encdec(t, bits_per_number, num_bytes)", number=100000, globals=globals())
 
-import pickle
+
+def ifthen(action):
+    if action == 'NBS':
+        fwd, bwd = True, True
+    elif action == 'F':
+        fwd, bwd = True, False
+    elif action == 'B':
+        fwd, bwd = False, True
+    elif action == 'A': 
+        if action == 'F':
+            fwd, bwd = False, True
+        else:
+            fwd, bwd = True, False
+    elif action == 'P':
+        if False:
+            fwd, bwd = False, True
+        else:
+            fwd, bwd = True, False
+    elif action == 'R':
+        if random.choice(['F','B']) == 'F':
+            fwd, bwd = True, False
+        else:
+            fwd, bwd = False, True
+    elif action == 'G':
+        if True:
+            fwd, bwd = False, True
+        else:
+            fwd, bwd = True, False
+    elif action == 'S':
+        if False:
+            fwd, bwd = False, True
+        else:
+            fwd, bwd = True, False
+    return fwd, bwd
+
+def matchcase(action):
+    match action:
+        case 'NBS':
+            fwd, bwd = True, True
+        case'F':
+            fwd, bwd = True, False
+        case'B':
+            fwd, bwd = False, True
+        case'A': 
+            if action == 'F':
+                fwd, bwd = False, True
+            else:
+                fwd, bwd = True, False
+        case'P':
+            if False:
+                fwd, bwd = False, True
+            else:
+                fwd, bwd = True, False
+        case'R':
+            if random.choice(['F','B']) == 'F':
+                fwd, bwd = True, False
+            else:
+                fwd, bwd = False, True
+        case'G':
+            if True:
+                fwd, bwd = False, True
+            else:
+                fwd, bwd = True, False
+        case'S':
+            if False:
+                fwd, bwd = False, True
+            else:
+                fwd, bwd = True, False
+    return fwd, bwd
 
 
-
+timeit.timeit("for a in ['S','G','R','P','A','B','F','NBS']: ifthen(a)", number=1000000, globals=globals()) # 1.386614881004789
+timeit.timeit("for a in ['S','G','R','P','A','B','F','NBS']: matchcase(a)", number=1000000, globals=globals()) # 1.563161359008518
 

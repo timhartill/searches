@@ -348,9 +348,8 @@ class bd_lb_search:
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P'):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
-        tb_dir: Strategy for determining direction(s) to search in 
-        'NBS': Always Both directions, 'F','B': forward/backward only, 'A': alternating, 'P': Pohl, 'R': random, 'G': dir with lowest g 
-        tb_select: Strategy for determining node(s) to select for expansion
+        tb_dir: Strategy for determining direction(s) to search in. 
+        tb_select: Strategy for determining node(s) to select for expansion.
         tb_order: Strategy for determining order of expansion eg 'R', 'FIFO', 'LIFO', or 'NONE' = heap/bucket ordering.
         min_ram: Minimum RAM in GB to keep available during search. If RAM goes below this, the search will (sometimes) stop but in practice Python may sometimes grab all mem and the os will kill the process before this condition fires.
         timeout: Timeout in minutes for the search. If the search takes longer than this, it will stop.
@@ -360,28 +359,30 @@ class bd_lb_search:
         'NBS': Always expand in both directions, 
         'F'/'B': Forward only, backward only
         'A': expand in alternating direction to past time, 
-        'P': Pohl: expand based on smallest cardinality of open lists, 
+        'P': Pohl: expand direction based on smallest cardinality of open lists, 
         'R': expand in a random direction, 
-        'G': expand based on lowest expandable g in open lists, 
-        'S': DVCBS-like: expand based on which READY_d has smallest expandable bucket, 
+        'G': expand direction based on lowest expandable g in open lists, 
+        'S': DVCBS-like: expand direction based on which READY_d has smallest expandable glevel, 
+        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable g-f bucket, 
         'EGBFHS': TBD 
 
-        tb_selection - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
+        tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
 
         'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'G': all expandable buckets
         'SLG': smallest bucket in lowest g
-        'S': smallest bucket of any expandable bucket
-        'DVCBS': smallest bucket of any expandable bucket that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'SB': smallest bucket of any expandable bucket
         'EGBFHS' - need your help in specifying
+        One based on edge count - look Alcazar
 
         tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
 
         'R': random
         'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
-        NONE - no explicit ordering applied
+        'NONE' - no explicit ordering applied
         
         """
         self.timeout = timeout
@@ -395,16 +396,21 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
 
         self.tb_dir = tb_dir.upper()
-        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', or 'S'.")
+        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S' or 'SB'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', or 'S'.")
+        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S', 'SB']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', 'S' or 'SB'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
             raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
+
+        self.do_calc_expandable = False
+        if self.tb_dir in ['S', 'SB'] or self.tb_select in ['S', 'SB']:
+            self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run
+
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
         if self.data_struct not in ['P', 'B']:
@@ -425,6 +431,9 @@ class bd_lb_search:
             self.increment_tb1 = 0
         self.rand_upper_bound = 100000000000
         self.ordering = 0
+
+
+
         self._str_repr = f"BiDirLBPairs-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}"
 
 
@@ -478,8 +487,6 @@ class bd_lb_search:
         start_ram = util.get_available_ram()
         min_ram = start_ram
 
-        directions = ['F', 'B']
-
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
             if curr_heap_size > max_heap_size_combined:
@@ -507,6 +514,8 @@ class bd_lb_search:
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."
                 break
 
+            if self.do_calc_expandable:
+                frontiers.calc_expandable()
             fwd, bwd = frontiers.calc_direction()
 
             # --- Forward Step ---
@@ -656,8 +665,10 @@ class bd_lb_search:
         if meeting_node:
             if str(problem).startswith('GRID-'):
                 convert_func = util.decode_numbers
+                convert_func_back = util.encode_numbers
             else:
                 convert_func = tuple
+                convert_func_back = tuple
             path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node, convert_func=convert_func)
             if not path:
                 status += " Path too long to reconstruct."
@@ -672,7 +683,7 @@ class bd_lb_search:
             if path:  # check path reconstruction - NOT NEEDED post debugging!!
                 try:
                     for i in range(len(path) - 1):
-                        recalculated_cost += problem.get_cost(path[i], path[i+1]) # Use fallback cost
+                        recalculated_cost += problem.get_cost(convert_func_back(path[i]), convert_func_back(path[i+1])) # Use fallback cost
                     final_cost = recalculated_cost
                     if abs(final_cost - U) > 1e-6: 
                         cost_mismatch = True

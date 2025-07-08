@@ -7,6 +7,7 @@ import util
 
 from sortedcontainers import SortedDict
 from sortedcontainers import SortedKeyList
+from sortedcontainers import SortedSet
 
 REMOVED = '^'.encode('utf-8')  # Used to mark an entry as removed in the Ready and Wait structures
 
@@ -571,8 +572,9 @@ class WaitingReadyBuckets:
 
 
     def peek_ready(self, priority_only=True):
-        """View the lowest priority element on Ready (gmin) without popping it
+        """View the lowest priority element on Ready (gmin) (or at idx) without popping it
             after removing empty buckets up till the lowest g and lowest f within g that has entries
+            ie will either return the lowest g that has at least one non-empty f bucket or float('inf') if wait is empty
         """
         while self.ready:
             g = self.ready.peekitem(index=0)[0]  # Get the lowest g value
@@ -590,6 +592,34 @@ class WaitingReadyBuckets:
                     return (f, g, self.ready[g][f])
         return float('inf')
 
+    def get_bucket_stats(self, g):
+        """ Calculate stats over f buckets for ready[g]. Removes empty f buckets as it goes 
+            if invalid g or no non-empty f-buckets in g, stats['f_count'] = 0
+            stats:
+                f_count: total number of f buckets in this g level
+                f_smallest: f value of smallest f bucket in this g level
+                f_smallest_count: size (len) of smallest f bucket in this g level
+                g_total count: sum of sizes of f buckets in this g level = num states in this g level
+        """
+        stats = {'f_count': 0, 'f_smallest': -1, 'f_smallest_count': 0, 'g_total_count': 0}
+        if g in self.ready:
+            del_keys = []
+            f_smallest_count = float('inf')
+            for f, bucket in self.ready[g].items():
+                f_len = len(bucket)
+                if f_len == 0:
+                    del_keys.append(f)
+                    continue
+                stats['f_count'] += 1
+                stats['g_total_count'] += f_len
+                if f_len < f_smallest_count:
+                    stats['f_smallest'] = f
+                    stats['f_smallest_count'] = f_len
+            for f in del_keys:      # pop empty f buckets
+                self.ready[g].pop(f)
+            if not self.ready[g]:   # empty g SortedDict(), pop it
+                self.ready.pop(g)
+        return stats
 
 
 class LBPairs:
@@ -632,8 +662,11 @@ class LBPairs:
         self.forward_expandable_g = {}   # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
         self.backward_expandable_g = {}  # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
         self.expandable_edges = set()   # set of (gF, gB)
-        self.forward_smallest_expandable_bucket = [] # [f, g, count]
-        self.backward_smallest_expandable_bucket = [] # [f, g, count]
+        #self.expandable_edges_reversed = set()
+        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
+        self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
+        self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
+        self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -732,78 +765,56 @@ class LBPairs:
                 #print(f"NEW CLB: {CLB}")
         return found, CLB
 
-    def get_max_heap_size(self):
-        """ Get the total size over both forward and backward queues
-        """
-        return sum([self.forward.wait_max_size, self.forward.ready_max_size,
-                   self.backward.wait_max_size, self.backward.ready_max_size])
-    
-    def get_max_bucket_stats(self):
-        """ Get the maximum size of any bucket in either forward or backward queues + max distinct f and g values
-        """
-        return (max(self.forward.max_bucket_size, self.backward.max_bucket_size), 
-                max(self.forward.max_distinct_f, self.backward.max_distinct_f), 
-                max(self.forward.max_distinct_g, self.backward.max_distinct_g) )
-
     def calc_expandable(self):
-        """ Calculate expandable buckets (incl counts), edges in Forward.Ready and Backward.Ready """
-        self.forward_expandable_g = {}   # key:g val: (f, |f|, < count, = count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
-        self.backward_expandable_g = {}  # key:g val: (f, |f|, < count, = count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        """ Calculate which buckets in ReadyF, ReadyB are expandable. 
+            Returns nodes (g not g-f), edges in Forward.Ready and Backward.Ready without popping 
+            plus SortedSets of the smallest expandable g-f bucket(s) and smallest expandable glevel(s) (sets since > 1 can be equally small. Leave to tb_select to choose which one to expand)
+            Note: Once this is run, no empty expandable buckets or g-levels will be present so downstream code can omit empty checks
+        """
+        self.forward_expandable_g = {}   # key:g (sorted) val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB count, =GLB count, edge count) <- track <GLB, =GLB for DVCBS which uses <GLB
+        self.backward_expandable_g = {}  # key:g (sorted) val: as above
         self.expandable_edges = set()   # set of (gF, gB)
-        self.forward_smallest_expandable_bucket = [] # [f, g, count]
-        self.backward_smallest_expandable_bucket = [] # [f, g, count]
-        forward_smallest = float('inf')
-        backward_smallest = float('inf')
+        #self.expandable_edges_reversed = set()   # set of (gB, gF)
+        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) # set of (f, g, count) of smallest expandable buckets fwd (> 1 if smallest equal)
+        self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) # list of (f, g, count) of smallest expandable buckets bwd (> 1 if smallest equal)
+        self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
+        self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
+        forward_smallest_count = float('inf')
+        backward_smallest_count = float('inf')
+        forward_smallest_glevel_count = float('inf')
+        backward_smallest_glevel_count = float('inf')
+        forward_g_list = list(self.forward.ready.keys())  # iterate over copy of keys since get_bucket_stats can delete empty g or f buckets
+        backward_g_list = list(self.backward.ready.keys())
+        found_lowest_gB = False
+        smallest_gB = 0
 
-        for gF in self.forward.ready:
-            if not self.forward.ready[gF]:
-                self.forward.ready.pop(gF)
+        for gF in forward_g_list:       # loop through forward checking for edges between buckets in forward and backward
+            if gF + smallest_gB + self.min_edge_cost > self.GLB:
+                break  # if gF + smallest_gB + eps > GLB then no gF + gB + eps will work since gF & gB monotonically increase, so can terminate 
+
+            stats_forward = self.forward.get_bucket_stats(gF)  # {'f_count': ,'f_smallest': , 'f_smallest_count': , 'g_total_count': } 
+            if stats_forward['f_count'] == 0:  # gF key was empty and now popped
                 continue
-            
-            for gB in self.backward.ready:
-                if not self.backward.ready[gB]:
-                    self.backward.ready.pop(gB)
+            stats_forward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0} )
+
+            for gB in backward_g_list:
+                if gB not in self.backward.ready:
                     continue
-                new_forward = False
-
                 if gF + gB + self.min_edge_cost <= self.GLB:
-
-                    if not self.forward_expandable_g[gF]:
-                        new_forward = True
-                        f_smallest = None
-                        f_smallest_count = 0
-                        for f in self.forward.ready[gF]:
-                            f_len = len(self.forward.ready[gF][f])
-                            if f_len == 0:
-                                self.forward.ready[gF].pop(f)
-                                continue
-                            elif f_len > f_smallest_count:
-                                f_smallest_count = len(self.forward.ready[gF][f])
-                                f_smallest = f
-                        if f_smallest is None: 
+                    if gB not in self.backward_expandable_g:
+                        stats_backward = self.backward.get_bucket_stats(gB)  # {'f_count': ,'f_smallest': , 'f_smallest_count':, 'g_total_count': } 
+                        if stats_backward['f_count'] == 0:  # gB key was empty and now popped
                             continue
-                        self.forward_expandable_g[gF] = {'f': f_smallest, 'f_count': f_smallest_count, 
-                                                         'under_glb':0, 'eq_glb':0, 'edge_count':0}
-
-                    if not self.backward_expandable_g[gB]:
-                        f_smallest = None
-                        f_smallest_count = 0
-                        for f in self.backward.ready[gB]:
-                            f_len = len(self.backward.ready[gB][f])
-                            if f_len == 0:
-                                self.backward.ready[gB].pop(f)
-                                continue
-                            elif f_len > f_smallest_count:
-                                f_smallest_count = len(self.backward.ready[gB][f])
-                                f_smallest = f
-                        if f_smallest is None:  # backward bucket empty
-                            if new_forward:     # if forward was created to join to this empty bucket, remove it also
-                                self.forward_expandable_g.pop(gF)
-                            continue
-                        self.backward_expandable_g[gB] = {'f': f_smallest, 'f_count': f_smallest_count, 
-                                                          'under_glb':0, 'eq_glb':0, 'edge_count':0}
+                        stats_backward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0} )
+                    if not found_lowest_gB:
+                        smallest_gB = gB
+                        found_lowest_gB = True
 
                     # if got here, both forward and backward buckets are non-empty
+                    if gF not in self.forward_expandable_g:
+                        self.forward_expandable_g[gF] = stats_forward
+                    if gB not in self.backward_expandable_g:
+                        self.backward_expandable_g[gB] = stats_backward
                     if gF + gB + self.min_edge_cost < self.GLB:
                         self.forward_expandable_g[gF]["under_glb"] += 1
                         self.backward_expandable_g[gB]["under_glb"] += 1
@@ -811,29 +822,62 @@ class LBPairs:
                         self.forward_expandable_g[gF]["eq_glb"] += 1
                         self.backward_expandable_g[gB]["eq_glb"] += 1
                     self.expandable_edges.add( (gF, gB) )
+                    #self.expandable_edges_reversed.add( (gB, gF) )
                     self.forward_expandable_g[gF]["edge_count"] += 1
                     self.backward_expandable_g[gB]["edge_count"] += 1
-                    if self.forward_expandable_g[gF]["f_smallest_count"] < forward_smallest:
-                        forward_smallest = self.forward_expandable_g[gF]["f_smallest_count"]
-                        self.forward_smallest_expandable_bucket = [self.forward_expandable_g[gF]["f_smallest"],
-                                                                   gF, forward_smallest] # [f, g, count]
-                    if self.backward_expandable_g[gB]["f_smallest_count"] < backward_smallest:
-                        backward_smallest = self.backward_expandable_g[gB]["f_smallest_count"]
-                        self.backward_smallest_expandable_bucket = [self.backward_expandable_g[gB]["f_smallest"],
-                                                                   gB, backward_smallest] # [f, g, count]
+                    if self.forward_expandable_g[gF]["f_smallest_count"] < forward_smallest_count:  # Calc smallest overall expandable bucket fwd
+                        forward_smallest_count = self.forward_expandable_g[gF]["f_smallest_count"]
+                        self.forward_smallest_expandable_bucket = SortedSet( [(self.forward_expandable_g[gF]["f_smallest"], gF, forward_smallest_count)] ) # [f, g, count]
+                    elif self.forward_expandable_g[gF]["f_smallest_count"] == forward_smallest_count:
+                        self.forward_smallest_expandable_bucket.add( (self.forward_expandable_g[gF]["f_smallest"], gF, forward_smallest_count) ) # [f, g, count]
+
+                    if self.backward_expandable_g[gB]["f_smallest_count"] < backward_smallest_count:  # Calc smallest overall expandable bucket bwd
+                        backward_smallest_count = self.backward_expandable_g[gB]["f_smallest_count"]
+                        self.backward_smallest_expandable_bucket = SortedSet( [(self.backward_expandable_g[gB]["f_smallest"], gB, backward_smallest_count)] ) # [f, g, count]
+                    elif self.backward_expandable_g[gB]["f_smallest_count"] == backward_smallest_count:  
+                        self.backward_smallest_expandable_bucket.add( (self.backward_expandable_g[gB]["f_smallest"], gB, backward_smallest_count) ) # [f, g, count]
+
+                    if self.forward_expandable_g[gF]["g_total_count"] < forward_smallest_glevel_count:  # Calc smallest overall expandable glevel fwd
+                        forward_smallest_glevel_count = self.forward_expandable_g[gF]["g_total_count"]
+                        self.forward_smallest_expandable_glevel = SortedSet( [(gF, forward_smallest_glevel_count)] ) # [g, count]
+                    elif self.forward_expandable_g[gF]["g_total_count"] == forward_smallest_glevel_count:  
+                        self.forward_smallest_expandable_glevel.add( (gF, forward_smallest_glevel_count) ) # [g, count]
+
+                    if self.backward_expandable_g[gB]["g_total_count"] < backward_smallest_glevel_count:  # Calc smallest overall expandable glevel bwd
+                        backward_smallest_glevel_count = self.backward_expandable_g[gB]["g_total_count"]
+                        self.backward_smallest_expandable_glevel = SortedSet( [(gB, backward_smallest_glevel_count)] ) # [g, count]
+                    elif self.backward_expandable_g[gB]["g_total_count"] == backward_smallest_glevel_count:  
+                        self.backward_smallest_expandable_glevel.add( (gB, backward_smallest_glevel_count) ) # [g, count]
+                else:        # gF + gB + self.min_edge_cost <= self.GLB
+                    continue # stop inner loop when gF + gB + eps > GLB since gB increases monotonically
         return
 
+    def implicit_tb_dir(self):
+        """ Implicit tiebreaker on direction if Explicit tb results in a tie
+            Using Alter since its fast and always chooses a unique direction
+        """
+        if self.last_direction == 'F':
+            fwd, bwd = False, True
+            self.last_direction = 'B'
+        else:
+            fwd, bwd = True, False
+            self.last_direction = 'F'
+        return fwd, bwd
 
     def calc_direction(self):
-        """ return direction(s) to expand in based on self.tb_dir
+        """ Return direction(s) to expand in based on self.tb_dir
             'NBS': Always expand in both directions, 
             'F'/'B': Forward only, backward only
             'A': expand in alternating direction to past time, 
             'P': Pohl: expand based on smallest cardinality of open lists, 
             'R': expand in a random direction, 
             'G': expand based on lowest expandable g in open lists, 
-            'S': DVCBS-like: expand based on which READY_d has smallest expandable bucket, 
+            'S': DVCBS-like: expand based on which READY_d has smallest expandable glevel, 
+            'SB': DVCBS-like: expand based on which READY_d has smallest expandable g-f bucket, 
             'EGBFHS': TBD 
+
+            For S and SB calc_expandable() must have been run before calling calc_direction()
+
         """
         fwd = False
         bwd = False
@@ -854,12 +898,16 @@ class LBPairs:
                 fwd, bwd = True, False
                 self.last_direction = 'F'
         elif self.tb_dir == 'P':
-            if self.forward.curr_size() > self.backward.curr_size():
+            fval = self.forward.curr_size()
+            bval = self.backward.curr_size()
+            if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
-            else:
+            elif fval < bval:
                 fwd, bwd = True, False
                 self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'R':
             if random.choice(['F','B']) == 'F':
                 fwd, bwd = True, False
@@ -868,22 +916,53 @@ class LBPairs:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
         elif self.tb_dir == 'G':
-            if self.forward.peek_ready(priority_only=True) > self.backward.peek_ready(priority_only=True):
+            fval = self.forward.peek_ready(priority_only=True)
+            bval = self.backward.peek_ready(priority_only=True)
+            if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
+            elif fval < bval:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
             else:
-                fwd, bwd = True, False
-                self.last_direction = 'F'
+                fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'S':
-            self.calc_expandable()
-            if self.forward_smallest_expandable_bucket[-1] > self.backward_smallest_expandable_bucket[-1]:
+            fval = self.forward_smallest_expandable_glevel[0][-1]
+            bval = self.backward_smallest_expandable_glevel[0][-1]
+            if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
-            else:    
+            elif fval < bval:
                 fwd, bwd = True, False
                 self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
+        elif self.tb_dir == 'SB':
+            fval = self.forward_smallest_expandable_bucket[0][-1]
+            bval = self.backward_smallest_expandable_bucket[0][-1]
+            if fval > bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            elif fval < bval:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
 
         return fwd, bwd
+
+    def get_max_heap_size(self):
+        """ Get the total size over both forward and backward queues
+        """
+        return sum([self.forward.wait_max_size, self.forward.ready_max_size,
+                   self.backward.wait_max_size, self.backward.ready_max_size])
+    
+    def get_max_bucket_stats(self):
+        """ Get the maximum size of any bucket in either forward or backward queues + max distinct f and g values
+        """
+        return (max(self.forward.max_bucket_size, self.backward.max_bucket_size), 
+                max(self.forward.max_distinct_f, self.backward.max_distinct_f), 
+                max(self.forward.max_distinct_g, self.backward.max_distinct_g) )
 
 
 class StateInfo():
@@ -966,26 +1045,268 @@ fwd.isEmpty() # True
 fwd.move_to_ready(100, always_move_equal=True)  # removed final empty bucket in wait
 fwd.pop(item_only=False)  # removed final empty bucket in ready, returns None
 
-frontier = LBPairs('F', 1.0, 'B')
+frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
+                 tb_dir='NBS', tb_select='F', tb_order='NONE')
 frontier.data_struct
 frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
 frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
 
 print(f"##### FORWARD #####")
-print(f"WAIT max:{frontier.forward.wait_max_size} curr:{frontier.forward.wait_curr_size} READY max:{frontier.forward.ready_max_size} curr:{frontier.forward.ready_curr_size}")
-print(f"WAIT f keys:{list(frontier.forward.wait.keys())}")
+print(f"WAIT max:{frontier.forward.wait_max_size} READY max:{frontier.forward.ready_max_size}")
+if frontier.data_struct != 'P': print(f"WAIT f keys:{list(frontier.forward.wait.keys())}")
 print(f"WAIT:{frontier.forward.wait}")
-print(f"READY g keys:{list(frontier.forward.ready.keys())}")
+if frontier.data_struct != 'P': print(f"READY g keys:{list(frontier.forward.ready.keys())}")
 print(f"READY:{frontier.forward.ready}") 
+print(f"WAIT+READY CURR SIZE: {frontier.forward.curr_size()}")
 print(f"##### BACKWARD #####")
-print(f"WAIT max:{frontier.backward.wait_max_size} curr:{frontier.backward.wait_curr_size} READY max:{frontier.backward.ready_max_size} curr:{frontier.backward.ready_curr_size}")
-print(f"WAIT f keys:{list(frontier.backward.wait.keys())}")
+print(f"WAIT max:{frontier.backward.wait_max_size} READY max:{frontier.backward.ready_max_size}")
+if frontier.data_struct != 'P': print(f"WAIT f keys:{list(frontier.backward.wait.keys())}")
 print(f"WAIT:{frontier.backward.wait}")
-print(f"READY g keys:{list(frontier.backward.ready.keys())}")
+if frontier.data_struct != 'P': print(f"READY g keys:{list(frontier.backward.ready.keys())}")
 print(f"READY:{frontier.backward.ready}") 
+print(f"WAIT+READY CURR SIZE: {frontier.backward.curr_size()}")
+print("######## CALC EXPANDABLE #######")
+print(f"Fwd EXPANDABLE:{frontier.forward_expandable_g}")   # key:g (sorted) val: (f, |f|, <GLB count, =GLB count, edge count) <- track <GLB, =GLB for DVCBS which uses <GLB
+print(f"Bwd EXPANDABLE:{frontier.backward_expandable_g}")  # key:g (sorted) val: (f, |f|, <GLB count, =GLB count, edge count) 
+print(f"Edges:{frontier.expandable_edges}")   # set of (gF, gB)
+#print(f"Edges Reversed:{frontier.expandable_edges_reversed}")   # set of (gB, gF)
+print(f"Fwd Smallest exp bucket:{frontier.forward_smallest_expandable_bucket}")  # [f, g, count] of smallest expandable bucket fwd
+print(f"Bwd Smallest exp bucket:{frontier.backward_smallest_expandable_bucket}") # [f, g, count] of smallest expandable bucket bwd
+print(f"Fwd Smallest exp glevel:{frontier.forward_smallest_expandable_glevel}")  # [g, count] of smallest expandable glevel fwd
+print(f"Bwd Smallest exp glevel:{frontier.backward_smallest_expandable_glevel}") # [g, count] of smallest expandable glevel bwd
 
-frontier.prepare_expandable(0) # (True, 100)
 
+
+frontier.calc_direction()  # NBS: (fwd, bwd) (True, True)
+frontier.last_direction    # 'FB'
+
+frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
+                 tb_dir='F', tb_select='F', tb_order='NONE')
+frontier.data_struct
+frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
+frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
+print(frontier.calc_direction())  # F: (fwd, bwd) (True, False)
+print(frontier.last_direction)    # 'F'
+
+frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
+                 tb_dir='B', tb_select='F', tb_order='NONE')
+frontier.data_struct
+frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
+frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
+print(frontier.calc_direction())  # F: (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.tb_dir = 'A'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # 'F'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.push('F', [1, 0, 'f1'], 99, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b1'], 99, float('inf'), float('inf'))
+frontier.push('B', [2, 0, 'b1'], 98, prior_f=99, prior_g=1)
+frontier.push('B', [3, 0, 'b2'], 96, float('inf'), float('inf'))
+frontier.prepare_expandable(0)
+
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # 'F'
+
+frontier.prepare_expandable(0)    # (True, 99)
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.tb_dir = 'R'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # B
+
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+
+frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='B', 
+                 tb_dir='B', tb_select='F', tb_order='NONE')
+frontier.data_struct
+frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
+frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
+print(frontier.calc_direction())  # F: (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.tb_dir = 'A'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # 'F'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.push('F', [1, 0, 'f1'], 99, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b1'], 99, float('inf'), float('inf'))
+frontier.push('B', [2, 0, 'b1'], 98, prior_f=99, prior_g=1)
+frontier.push('B', [3, 0, 'b2'], 96, float('inf'), float('inf'))
+frontier.prepare_expandable(0)  # (True, 99)
+
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # 'F'
+
+#frontier.prepare_expandable(0)    # (True, 99)
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.tb_dir = 'R'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # B
+
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.push('F', [3, 0, 'f3'], 97, float('inf'), float('inf'))
+frontier.push('F', [3, 0, 'f4'], 97, float('inf'), float('inf'))
+
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.prepare_expandable(0)  # (True, 4.0)
+frontier.push('F', [0, 0, 'f5'], 100, float('inf'), float('inf'))
+frontier.prepare_expandable(0)  # (True, 4.0)
+frontier.push('F', [0, 0, 'f6'], 3, float('inf'), float('inf'))
+frontier.prepare_expandable(0)  # (True, 3)
+
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.pop('F', item_only=False) # (0, 3, 0, 'f6')
+frontier.push('B', [0, 0, 'b6'], 3, float('inf'), float('inf'))
+frontier.prepare_expandable(0)  # (True, 3)
+
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # B
+
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    # 'B'
+
+
+
+# TODO TEST S!
+frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='B', 
+                 tb_dir='S', tb_select='F', tb_order='NONE')
+frontier.tb_dir = 'S'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+frontier.push('F', [0, 0, 'f0'], 100, float('inf'), float('inf'))
+frontier.push('B', [0, 0, 'b0'], 100, float('inf'), float('inf'))
+frontier.push('F', [10, 0, 'f1'], 96, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b1'], 99, float('inf'), float('inf'))
+frontier.push('B', [12, 0, 'b1'], 96, prior_f=99, prior_g=1)
+frontier.push('B', [23, 0, 'b2'], 96, float('inf'), float('inf'))
+frontier.push('F', [10, 0, 'f3'], 96, float('inf'), float('inf'))
+frontier.push('B', [10, 0, 'b3'], 96, float('inf'), float('inf'))
+frontier.push('F', [11, 0, 'f4'], 96, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b4'], 99, float('inf'), float('inf'))
+frontier.push('B', [11, 0, 'b4'], 96, prior_f=99, prior_g=1)
+frontier.push('B', [13, 0, 'b5'], 96, float('inf'), float('inf'))
+frontier.push('F', [22, 0, 'f5'], 96, float('inf'), float('inf'))
+frontier.push('B', [14, 0, 'b5'], 96, float('inf'), float('inf'))
+frontier.push('F', [15, 0, 'f6'], 96, float('inf'), float('inf'))
+frontier.push('B', [31, 0, 'b6'], 96, float('inf'), float('inf'))
+frontier.push('B', [32, 0, 'b7'], 96, float('inf'), float('inf'))
+frontier.push('F', [16, 0, 'f7'], 96, float('inf'), float('inf'))
+
+frontier.push('F', [16, 0, 'f8'], 96, float('inf'), float('inf'))
+frontier.push('B', [12, 0, 'b7'], 96, float('inf'), float('inf'))
+frontier.push('F', [16, 0, 'f9'], 96, float('inf'), float('inf'))
+frontier.push('B', [12, 0, 'b8'], 96, float('inf'), float('inf'))
+frontier.push('B', [12, 0, 'b9'], 96, float('inf'), float('inf'))
+
+
+
+frontier.prepare_expandable(0) # (True, 96)
+
+frontier.GLB=1
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+frontier.GLB=21
+print(frontier.calc_direction())  # (fwd, bwd) (False, True)
+print(frontier.last_direction)    #  B
+
+frontier.GLB=22
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+frontier.GLB=42
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+
+
+frontier.GLB=42
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+
+
+frontier.forward.ready[10][96] = SortedKeyList()
+frontier.backward.ready[11][96] = SortedKeyList()
+frontier.backward.ready[13] = SortedDict()
+frontier.forward.ready[16] = SortedDict()
+
+frontier.GLB=42
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+
+frontier.GLB=21
+frontier.tb_dir = 'P'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+
+frontier.GLB=21
+frontier.tb_dir = 'G'
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    #  F
+
+
+
+
+frontier.prepare_expandable(0) # (True, 3)
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+
+frontier.prepare_expandable(0) # (True, 3)
+print(frontier.calc_direction())  # (fwd, bwd) (True, False)
+print(frontier.last_direction)    # F
+
+frontier.push('F', [2, 0, 'f8'], 1, float('inf'), float('inf'))
+frontier.push('B', [2, 0, 'b10'], 1, float('inf'), float('inf'))
+frontier.push('F', [1, 0, 'f9'], 1, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b11'], 99, float('inf'), float('inf'))
+frontier.push('B', [1, 0, 'b11'], 1, prior_f=99, prior_g=1)
+frontier.push('B', [1, 0, 'b13'], 1, float('inf'), float('inf'))
+
+################
 frontier.pop('F', item_only=False) # (0, 100, 0, 'hh')
 frontier.pop('B', item_only=False) # (0, 100, 0, 'hg')
 
