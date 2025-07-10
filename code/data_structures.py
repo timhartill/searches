@@ -342,6 +342,15 @@ class WaitingReadyPriorityQueue:
                 return self.ready[0]     # Return the whole entry
         return float('inf')
 
+    def select_and_order(self, tb_select, tb_order):
+        """ Select and return nodes to expand.
+            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest f level in the lowest g level
+        """
+        # entry format (fifo/lifo val, g, f, state)
+        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
+        g, f, ordering, current_state = self.pop(item_only=False)
+        expand_nodes.add( (ordering, g, f, current_state) )
+        return expand_nodes
 
 
 class WaitingReadyBuckets:
@@ -621,6 +630,20 @@ class WaitingReadyBuckets:
                 self.ready.pop(g)
         return stats
 
+    def select_and_order(self, tb_select, tb_order):
+        """ Select and return nodes to expand.
+            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest f level in the lowest g level
+            
+        """
+        # entry format (fifo/lifo val, g, f, state)
+        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
+        if tb_select == 'F':
+            g, f, ordering, current_state = self.pop(item_only=False)
+            expand_nodes.add( (ordering, g, f, current_state) )
+        else:
+            raise ValueError(f"WaitingReadyBuckets.select_and_order(): Invalid tb_select:{tb_select} tb_order:{tb_order}")
+        return expand_nodes
+
 
 class LBPairs:
     """ Two WaitingReadyPriorityQueue structures, one for forward, one for backward
@@ -659,14 +682,16 @@ class LBPairs:
             self.forward = WaitingReadyPriorityQueue(version)
             self.backward = WaitingReadyPriorityQueue(version)
         self.GLB = 0
-        self.forward_expandable_g = {}   # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
-        self.backward_expandable_g = {}  # key:g val: (f, |f|, < glb count, = glb count) <- id 2 sets, one < GLB, the other = GLB for DVCBS < GLB
+        self.forward_expandable_g = {}   # key:g val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD))
+        self.backward_expandable_g = {}  # key:g val: as prior
         self.expandable_edges = set()   # set of (gF, gB)
         #self.expandable_edges_reversed = set()
         self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
         self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
         self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
         self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
+        self.forward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
+        self.backward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}  # as prior
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -771,18 +796,25 @@ class LBPairs:
             plus SortedSets of the smallest expandable g-f bucket(s) and smallest expandable glevel(s) (sets since > 1 can be equally small. Leave to tb_select to choose which one to expand)
             Note: Once this is run, no empty expandable buckets or g-levels will be present so downstream code can omit empty checks
         """
-        self.forward_expandable_g = {}   # key:g (sorted) val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB count, =GLB count, edge count) <- track <GLB, =GLB for DVCBS which uses <GLB
+        self.forward_expandable_g = {}   # key:g (sorted) val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD)) 
         self.backward_expandable_g = {}  # key:g (sorted) val: as above
         self.expandable_edges = set()   # set of (gF, gB)
         #self.expandable_edges_reversed = set()   # set of (gB, gF)
-        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) # set of (f, g, count) of smallest expandable buckets fwd (> 1 if smallest equal)
-        self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) # list of (f, g, count) of smallest expandable buckets bwd (> 1 if smallest equal)
-        self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
-        self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
+        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )     # sorted set of (f, g, count) of smallest expandable buckets fwd (> 1 if smallest equal)
+        self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )    # as prior
+        self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )     # sorted set of (g, count) of smallest expandable glevels
+        self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )    # as prior
+        self.forward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
+        self.backward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}  # as prior
         forward_smallest_count = float('inf')
         backward_smallest_count = float('inf')
         forward_smallest_glevel_count = float('inf')
         backward_smallest_glevel_count = float('inf')
+        forward_most_edges = 0
+        backward_most_edges = 0
+        forward_most_nodes = 0
+        backward_most_nodes = 0
+
         forward_g_list = list(self.forward.ready.keys())  # iterate over copy of keys since get_bucket_stats can delete empty g or f buckets
         backward_g_list = list(self.backward.ready.keys())
         found_lowest_gB = False
@@ -795,7 +827,7 @@ class LBPairs:
             stats_forward = self.forward.get_bucket_stats(gF)  # {'f_count': ,'f_smallest': , 'f_smallest_count': , 'g_total_count': } 
             if stats_forward['f_count'] == 0:  # gF key was empty and now popped
                 continue
-            stats_forward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0} )
+            stats_forward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0, 'connected_total_count':0, 'connected_smallest_count': float('inf'), 'connected_smallest_count_gf':()} )
 
             for gB in backward_g_list:
                 if gB not in self.backward.ready:
@@ -805,7 +837,7 @@ class LBPairs:
                         stats_backward = self.backward.get_bucket_stats(gB)  # {'f_count': ,'f_smallest': , 'f_smallest_count':, 'g_total_count': } 
                         if stats_backward['f_count'] == 0:  # gB key was empty and now popped
                             continue
-                        stats_backward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0} )
+                        stats_backward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0, 'connected_total_count':0, 'connected_smallest_count': float('inf'), 'connected_smallest_count_gf':()} )
                     if not found_lowest_gB:
                         smallest_gB = gB
                         found_lowest_gB = True
@@ -825,6 +857,31 @@ class LBPairs:
                     #self.expandable_edges_reversed.add( (gB, gF) )
                     self.forward_expandable_g[gF]["edge_count"] += 1
                     self.backward_expandable_g[gB]["edge_count"] += 1
+                    self.forward_expandable_g[gF]["connected_total_count"] += self.backward_expandable_g[gB]["g_total_count"]  # total nodes in other direction connected to this glevel
+                    self.backward_expandable_g[gB]["connected_total_count"] += self.forward_expandable_g[gF]["g_total_count"]
+
+                    if forward_most_edges < self.forward_expandable_g[gF]["edge_count"]:
+                         forward_most_edges = self.forward_expandable_g[gF]["edge_count"]
+                         self.forward_most_connected_glevel["most_edges"] = gF
+                    if backward_most_edges < self.backward_expandable_g[gB]["edge_count"]:
+                         backward_most_edges = self.backward_expandable_g[gB]["edge_count"]
+                         self.backward_most_connected_glevel["most_edges"] = gB
+
+                    if forward_most_nodes < self.forward_expandable_g[gF]["connected_total_count"]:
+                         forward_most_nodes = self.forward_expandable_g[gF]["connected_total_count"]
+                         self.forward_most_connected_glevel["most_nodes"] = gF
+                    if backward_most_nodes < self.backward_expandable_g[gB]["connected_total_count"]:
+                         backward_most_nodes = self.backward_expandable_g[gB]["connected_total_count"]
+                         self.backward_most_connected_glevel["most_nodes"] = gB
+
+                    if self.forward_expandable_g[gF]["connected_smallest_count"] > self.backward_expandable_g[gB]["f_smallest_count"]: # smallest bucket in other direction connected to this glevel
+                        self.forward_expandable_g[gF]["connected_smallest_count"] = self.backward_expandable_g[gB]["f_smallest_count"]
+                        self.forward_expandable_g[gF]["connected_smallest_count_gf"] = (gB, self.backward_expandable_g[gB]["f_smallest"])
+
+                    if self.backward_expandable_g[gB]["connected_smallest_count"] > self.forward_expandable_g[gF]["f_smallest_count"]: # smallest bucket in other direction connected to this glevel
+                        self.backward_expandable_g[gB]["connected_smallest_count"] = self.forward_expandable_g[gF]["f_smallest_count"]
+                        self.backward_expandable_g[gB]["connected_smallest_count_gf"] = (gF, self.forward_expandable_g[gF]["f_smallest"])
+
                     if self.forward_expandable_g[gF]["f_smallest_count"] < forward_smallest_count:  # Calc smallest overall expandable bucket fwd
                         forward_smallest_count = self.forward_expandable_g[gF]["f_smallest_count"]
                         self.forward_smallest_expandable_bucket = SortedSet( [(self.forward_expandable_g[gF]["f_smallest"], gF, forward_smallest_count)] ) # [f, g, count]
@@ -852,6 +909,35 @@ class LBPairs:
                     continue # stop inner loop when gF + gB + eps > GLB since gB increases monotonically
         return
 
+    def select_and_order(self, direction, tb_select, tb_order):
+        """
+        tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
+
+        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
+        'B': entire first bucket i.e. bucket with lowest g and lowest f
+        'R': random node from all expandable nodes
+        'G': all expandable buckets
+        'SLG': smallest bucket in lowest g
+        'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'SB': smallest bucket of any expandable bucket
+        'EGBFHS' - need your help in specifying
+        One based on edge count - look Alcazar (pick bucket connected to largest total num of nodes (over connected buckets) in opp direction in belief that it might delay expanding these)
+        Another - just pick bucket with largest # edges
+
+        tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
+
+        'R': random
+        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
+        'NONE' - no explicit ordering applied
+
+        """
+        if direction == 'F':
+            expand_nodes = self.forward.select_and_order(tb_select, tb_order)
+        else:
+            expand_nodes = self.backward.select_and_order(tb_select, tb_order)
+        return expand_nodes
+
+
     def implicit_tb_dir(self):
         """ Implicit tiebreaker on direction if Explicit tb results in a tie
             Using Alter since its fast and always chooses a unique direction
@@ -866,17 +952,19 @@ class LBPairs:
 
     def calc_direction(self):
         """ Return direction(s) to expand in based on self.tb_dir
-            'NBS': Always expand in both directions, 
-            'F'/'B': Forward only, backward only
-            'A': expand in alternating direction to past time, 
-            'P': Pohl: expand based on smallest cardinality of open lists, 
-            'R': expand in a random direction, 
-            'G': expand based on lowest expandable g in open lists, 
-            'S': DVCBS-like: expand based on which READY_d has smallest expandable glevel, 
-            'SB': DVCBS-like: expand based on which READY_d has smallest expandable g-f bucket, 
-            'EGBFHS': TBD 
+        'NBS': Always expand in both directions, 
+        'F'/'B': Forward only, backward only
+        'A': expand in alternating direction to past time, 
+        'P': Pohl: expand direction based on smallest cardinality of open lists, 
+        'R': expand in a random direction, 
+        'G': expand direction based on lowest expandable g in open lists, 
+        'S': DVCBS-like: expand direction based on which READY_d has smallest expandable |glevel|, 
+        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket|, 
+        'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
+        'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
+        'EGBFHS': TBD 
 
-            For S and SB calc_expandable() must have been run before calling calc_direction()
+        For S,SB,EC,LN calc_expandable() must have been run before calling calc_direction()
 
         """
         fwd = False
@@ -940,6 +1028,28 @@ class LBPairs:
         elif self.tb_dir == 'SB':
             fval = self.forward_smallest_expandable_bucket[0][-1]
             bval = self.backward_smallest_expandable_bucket[0][-1]
+            if fval > bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            elif fval < bval:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
+        elif self.tb_dir == 'EC':
+            fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_edges'] ]['edge_count']
+            bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_edges'] ]['edge_count']
+            if fval > bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            elif fval < bval:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
+        elif self.tb_dir == 'LN':
+            fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_nodes'] ]['connected_total_count']
+            bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_nodes'] ]['connected_total_count']
             if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
@@ -1074,135 +1184,9 @@ print(f"Fwd Smallest exp bucket:{frontier.forward_smallest_expandable_bucket}") 
 print(f"Bwd Smallest exp bucket:{frontier.backward_smallest_expandable_bucket}") # [f, g, count] of smallest expandable bucket bwd
 print(f"Fwd Smallest exp glevel:{frontier.forward_smallest_expandable_glevel}")  # [g, count] of smallest expandable glevel fwd
 print(f"Bwd Smallest exp glevel:{frontier.backward_smallest_expandable_glevel}") # [g, count] of smallest expandable glevel bwd
+print(f"Fwd most connected g: {frontier.forward_most_connected_glevel}")         # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
+print(f"Bwd most connected g: {frontier.backward_most_connected_glevel}")
 
-
-
-frontier.calc_direction()  # NBS: (fwd, bwd) (True, True)
-frontier.last_direction    # 'FB'
-
-frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
-                 tb_dir='F', tb_select='F', tb_order='NONE')
-frontier.data_struct
-frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
-frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
-print(frontier.calc_direction())  # F: (fwd, bwd) (True, False)
-print(frontier.last_direction)    # 'F'
-
-frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
-                 tb_dir='B', tb_select='F', tb_order='NONE')
-frontier.data_struct
-frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
-frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
-print(frontier.calc_direction())  # F: (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.tb_dir = 'A'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # 'F'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.push('F', [1, 0, 'f1'], 99, float('inf'), float('inf'))
-frontier.push('B', [1, 0, 'b1'], 99, float('inf'), float('inf'))
-frontier.push('B', [2, 0, 'b1'], 98, prior_f=99, prior_g=1)
-frontier.push('B', [3, 0, 'b2'], 96, float('inf'), float('inf'))
-frontier.prepare_expandable(0)
-
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # 'F'
-
-frontier.prepare_expandable(0)    # (True, 99)
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-frontier.tb_dir = 'R'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # B
-
-frontier.tb_dir = 'G'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-
-frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='B', 
-                 tb_dir='B', tb_select='F', tb_order='NONE')
-frontier.data_struct
-frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
-frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
-print(frontier.calc_direction())  # F: (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.tb_dir = 'A'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # 'F'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.push('F', [1, 0, 'f1'], 99, float('inf'), float('inf'))
-frontier.push('B', [1, 0, 'b1'], 99, float('inf'), float('inf'))
-frontier.push('B', [2, 0, 'b1'], 98, prior_f=99, prior_g=1)
-frontier.push('B', [3, 0, 'b2'], 96, float('inf'), float('inf'))
-frontier.prepare_expandable(0)  # (True, 99)
-
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # 'F'
-
-#frontier.prepare_expandable(0)    # (True, 99)
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-frontier.tb_dir = 'R'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # B
-
-frontier.tb_dir = 'G'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-frontier.push('F', [3, 0, 'f3'], 97, float('inf'), float('inf'))
-frontier.push('F', [3, 0, 'f4'], 97, float('inf'), float('inf'))
-
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.tb_dir = 'G'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-frontier.prepare_expandable(0)  # (True, 4.0)
-frontier.push('F', [0, 0, 'f5'], 100, float('inf'), float('inf'))
-frontier.prepare_expandable(0)  # (True, 4.0)
-frontier.push('F', [0, 0, 'f6'], 3, float('inf'), float('inf'))
-frontier.prepare_expandable(0)  # (True, 3)
-
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
-
-frontier.tb_dir = 'G'
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    # F
-
-frontier.pop('F', item_only=False) # (0, 3, 0, 'f6')
-frontier.push('B', [0, 0, 'b6'], 3, float('inf'), float('inf'))
-frontier.prepare_expandable(0)  # (True, 3)
-
-frontier.tb_dir = 'G'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # B
-
-frontier.tb_dir = 'P'
-print(frontier.calc_direction())  # (fwd, bwd) (False, True)
-print(frontier.last_direction)    # 'B'
 
 
 
@@ -1210,6 +1194,7 @@ print(frontier.last_direction)    # 'B'
 frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='B', 
                  tb_dir='S', tb_select='F', tb_order='NONE')
 frontier.tb_dir = 'S'
+frontier.calc_expandable()
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
@@ -1231,38 +1216,39 @@ frontier.push('F', [15, 0, 'f6'], 96, float('inf'), float('inf'))
 frontier.push('B', [31, 0, 'b6'], 96, float('inf'), float('inf'))
 frontier.push('B', [32, 0, 'b7'], 96, float('inf'), float('inf'))
 frontier.push('F', [16, 0, 'f7'], 96, float('inf'), float('inf'))
-
 frontier.push('F', [16, 0, 'f8'], 96, float('inf'), float('inf'))
 frontier.push('B', [12, 0, 'b7'], 96, float('inf'), float('inf'))
 frontier.push('F', [16, 0, 'f9'], 96, float('inf'), float('inf'))
 frontier.push('B', [12, 0, 'b8'], 96, float('inf'), float('inf'))
 frontier.push('B', [12, 0, 'b9'], 96, float('inf'), float('inf'))
 
-
-
 frontier.prepare_expandable(0) # (True, 96)
 
 frontier.GLB=1
+frontier.calc_expandable()
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
 frontier.GLB=21
+frontier.calc_expandable()
 print(frontier.calc_direction())  # (fwd, bwd) (False, True)
 print(frontier.last_direction)    #  B
 
 frontier.GLB=22
+frontier.calc_expandable()
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
+
+frontier.GLB=23
+frontier.calc_expandable()
+
 
 frontier.GLB=42
+frontier.calc_expandable()
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
 
-
-frontier.GLB=42
-print(frontier.calc_direction())  # (fwd, bwd) (True, False)
-print(frontier.last_direction)    #  F
 
 
 

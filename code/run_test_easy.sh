@@ -190,7 +190,7 @@ comment
 #"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
 #--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs lb_nbs_a_eps lb_nbs_f_eps lb_nbs_a lb_nbs_f lb_nbb_a_eps lb_nbb_f_eps \
-# lb_fwd_first_none_f_eps lb_bwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps
+# lb_fwd_first_none_f_eps lb_bwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_mostedges_first_none_f_eps lb_mostconnectednodes_first_none_f_eps
 #--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
 
 #        --tiles_ignore_cstar \
@@ -229,7 +229,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg lb_nbs_f_eps lb_nbb_f_eps lb_fwd_first_none_f_eps lb_bwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps \
+        --algo_heur astar_negg lb_nbs_f_eps lb_nbb_f_eps lb_fwd_first_none_f_eps lb_bwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_mostedges_first_none_f_eps lb_mostconnectednodes_first_none_f_eps \
         --algo_mcts NONE
 
 

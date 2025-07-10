@@ -362,8 +362,10 @@ class bd_lb_search:
         'P': Pohl: expand direction based on smallest cardinality of open lists, 
         'R': expand in a random direction, 
         'G': expand direction based on lowest expandable g in open lists, 
-        'S': DVCBS-like: expand direction based on which READY_d has smallest expandable glevel, 
-        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable g-f bucket, 
+        'S': DVCBS-like: expand direction based on which READY_d has smallest expandable |glevel|, 
+        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket|, 
+        'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
+        'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
         'EGBFHS': TBD 
 
         tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
@@ -371,12 +373,13 @@ class bd_lb_search:
         'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
-        'G': all expandable buckets
+        'ALL': all expandable buckets
         'SLG': smallest bucket in lowest g
         'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
         'SB': smallest bucket of any expandable bucket
+        'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
+        'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction 
         'EGBFHS' - need your help in specifying
-        One based on edge count - look Alcazar
 
         tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
 
@@ -396,19 +399,19 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
 
         self.tb_dir = tb_dir.upper()
-        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S' or 'SB'.")
+        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC', 'LN']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC' or 'LN'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S', 'SB']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', 'S' or 'SB'.")
+        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S', 'SB', 'EC', 'LN']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', 'S' 'SB', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
             raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
 
         self.do_calc_expandable = False
-        if self.tb_dir in ['S', 'SB'] or self.tb_select in ['S', 'SB']:
+        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select in ['S', 'SB', 'EC', 'LN']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run
 
 
@@ -520,125 +523,129 @@ class bd_lb_search:
 
             # --- Forward Step ---
             if not frontiers.forward.isEmpty() and fwd:
-                g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
-                current_g_fwd = g_score_fwd.get(current_state_fwd)
-                current_h = problem.heuristic(current_state_fwd)
-                if h_admissable:
-                    if cstar and f > cstar + 1e-6:
-                        status += f" Inadmissable heuristic detected (Fwd) f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
-                        h_admissable = False
-                # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
-                if current_g_fwd + 1e-6 < g:
-                    stale_count += 1
+                #g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
+                expand_list = frontiers.select_and_order('F', self.tb_select, self.tb_order)
+                for (ordering, g, f, current_state_fwd) in expand_list:
+                    current_g_fwd = g_score_fwd.get(current_state_fwd)
+                    current_h = problem.heuristic(current_state_fwd)
+                    if h_admissable:
+                        if cstar and f > cstar + 1e-6:
+                            status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
+                            h_admissable = False
+                    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
+                    if current_g_fwd + 1e-6 < g:
+                        stale_count += 1
 
-                #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
-                #closed_fwd.add(current_state_fwd) 
+                    #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
+                    #closed_fwd.add(current_state_fwd) 
 
-                nodes_expanded += 1
-                if cstar and new_GLB < cstar:
-                    nodes_expanded_below_cstar += 1
-                if c_count_dict.get(new_GLB) is None:
-                    c_count_dict[new_GLB] = 0
-                c_count_dict[new_GLB] +=1
+                    nodes_expanded += 1
+                    if cstar and new_GLB < cstar:
+                        nodes_expanded_below_cstar += 1
+                    if c_count_dict.get(new_GLB) is None:
+                        c_count_dict[new_GLB] = 0
+                    c_count_dict[new_GLB] +=1
 
-                for neighbor_info in problem.get_neighbors(current_state_fwd):
-                    # Handle cases where get_neighbors might return just state or (state, move_info)
-                    if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
-                        neighbor_state = neighbor_info[0]
-                        move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
-                    else:
-                        neighbor_state = neighbor_info
-                        move_info = None
-                    #if neighbor_state in closed_fwd: continue
+                    for neighbor_info in problem.get_neighbors(current_state_fwd):
+                        # Handle cases where get_neighbors might return just state or (state, move_info)
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                            neighbor_state = neighbor_info[0]
+                            move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
+                        else:
+                            neighbor_state = neighbor_info
+                            move_info = None
+                        #if neighbor_state in closed_fwd: continue
 
-                    cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
-                    tentative_g_score = current_g_fwd + cost
+                        cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
+                        tentative_g_score = current_g_fwd + cost
 
-                    if neighbor_state in g_score_bwd: 
-                        current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
-                        found_goal_count += 1
-                        if current_path_cost < U:
-                            U = current_path_cost
-                            meeting_node = neighbor_state
-                            U_update_count += 1
+                        if neighbor_state in g_score_bwd: 
+                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
+                            found_goal_count += 1
+                            if current_path_cost < U:
+                                U = current_path_cost
+                                meeting_node = neighbor_state
+                                U_update_count += 1
 
-                    # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                    if h_consistent:
-                        h_score = problem.heuristic(neighbor_state)
-                        if current_h > cost + h_score + 1e-6:
-                            status += f" Inconsistent heuristic detected (fwd)."
-                            h_consistent = False
+                        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                        if h_consistent:
+                            h_score = problem.heuristic(neighbor_state)
+                            if current_h > cost + h_score + 1e-6:
+                                status += f" Inconsistent heuristic detected (fwd)."
+                                h_consistent = False
 
-                    prior_g = g_score_fwd.get(neighbor_state, float('inf'))
-                    if tentative_g_score < prior_g:
-                        came_from_fwd[neighbor_state] = current_state_fwd 
-                        g_score_fwd[neighbor_state] = tentative_g_score
-                        h_score = problem.heuristic(neighbor_state) 
-                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                        frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                       tentative_g_score+h_score, 
-                                       prior_f, prior_g)  
+                        prior_g = g_score_fwd.get(neighbor_state, float('inf'))
+                        if tentative_g_score < prior_g:
+                            came_from_fwd[neighbor_state] = current_state_fwd 
+                            g_score_fwd[neighbor_state] = tentative_g_score
+                            h_score = problem.heuristic(neighbor_state) 
+                            prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                            frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                        tentative_g_score+h_score, 
+                                        prior_f, prior_g)  
            
             # --- Backward Step ---
             if not frontiers.backward.isEmpty() and bwd:
-                g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
-                current_g_bwd = g_score_bwd.get(current_state_bwd)
-                current_h = problem.heuristic(current_state_bwd, backward=True)
-                if h_admissable:
-                    if cstar and f > cstar + 1e-6:
-                        status += f" Inadmissable heuristic detected (Bwd) f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_bwd}."
-                        h_admissable = False
-                # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
-                if current_g_bwd + 1e-6 < g:
-                    stale_count += 1
+                #g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
+                expand_list = frontiers.select_and_order('B', self.tb_select, self.tb_order)
+                for (ordering, g, f, current_state_bwd) in expand_list:
+                    current_g_bwd = g_score_bwd.get(current_state_bwd)
+                    current_h = problem.heuristic(current_state_bwd, backward=True)
+                    if h_admissable:
+                        if cstar and f > cstar + 1e-6:
+                            status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_bwd}."
+                            h_admissable = False
+                    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
+                    if current_g_bwd + 1e-6 < g:
+                        stale_count += 1
 
-                #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
-                #closed_bwd.add(current_state_bwd) 
+                    #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
+                    #closed_bwd.add(current_state_bwd) 
 
-                nodes_expanded += 1
-                if cstar and new_GLB < cstar:
-                    nodes_expanded_below_cstar += 1
-                if c_count_dict.get(new_GLB) is None:
-                    c_count_dict[new_GLB] = 0
-                c_count_dict[new_GLB] +=1
+                    nodes_expanded += 1
+                    if cstar and new_GLB < cstar:
+                        nodes_expanded_below_cstar += 1
+                    if c_count_dict.get(new_GLB) is None:
+                        c_count_dict[new_GLB] = 0
+                    c_count_dict[new_GLB] +=1
 
-                for neighbor_info in problem.get_neighbors(current_state_bwd):
-                    # Handle cases where get_neighbors might return just state or (state, move_info)
-                    if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
-                        neighbor_state = neighbor_info[0]
-                        move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
-                    else:
-                        neighbor_state = neighbor_info
-                        move_info = None
-                    #if neighbor_state in closed_bwd: continue
-                    
-                    cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
-                    tentative_g_score = current_g_bwd + cost 
+                    for neighbor_info in problem.get_neighbors(current_state_bwd):
+                        # Handle cases where get_neighbors might return just state or (state, move_info)
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                            neighbor_state = neighbor_info[0]
+                            move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
+                        else:
+                            neighbor_state = neighbor_info
+                            move_info = None
+                        #if neighbor_state in closed_bwd: continue
+                        
+                        cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
+                        tentative_g_score = current_g_bwd + cost 
 
-                    if neighbor_state in g_score_fwd: 
-                        current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
-                        found_goal_count += 1
-                        if current_path_cost < U:
-                            U = current_path_cost
-                            meeting_node = neighbor_state
-                            U_update_count += 1
+                        if neighbor_state in g_score_fwd: 
+                            current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
+                            found_goal_count += 1
+                            if current_path_cost < U:
+                                U = current_path_cost
+                                meeting_node = neighbor_state
+                                U_update_count += 1
 
-                    # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                    if h_consistent:
-                        h_score = problem.heuristic(neighbor_state, backward=True)
-                        if current_h > cost + h_score + 1e-6:
-                            status += f" Inconsistent heuristic detected (bwd)."
-                            h_consistent = False
+                        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                        if h_consistent:
+                            h_score = problem.heuristic(neighbor_state, backward=True)
+                            if current_h > cost + h_score + 1e-6:
+                                status += f" Inconsistent heuristic detected (bwd)."
+                                h_consistent = False
 
-                    prior_g = g_score_bwd.get(neighbor_state, float('inf'))
-                    if tentative_g_score < prior_g:
-                        came_from_bwd[neighbor_state] = current_state_bwd 
-                        g_score_bwd[neighbor_state] = tentative_g_score
-                        h_score = problem.heuristic(neighbor_state, backward=True)
-                        prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                        frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                       tentative_g_score+h_score,
-                                       prior_f, prior_g)
+                        prior_g = g_score_bwd.get(neighbor_state, float('inf'))
+                        if tentative_g_score < prior_g:
+                            came_from_bwd[neighbor_state] = current_state_bwd 
+                            g_score_bwd[neighbor_state] = tentative_g_score
+                            h_score = problem.heuristic(neighbor_state, backward=True)
+                            prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                            frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                        tentative_g_score+h_score,
+                                        prior_f, prior_g)
             
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
