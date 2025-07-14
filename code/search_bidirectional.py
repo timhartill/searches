@@ -375,6 +375,9 @@ class bd_lb_search:
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
         'SLG': smallest bucket in lowest g
+        'LG': lowest glevel
+        'HG': highest glevel
+        'SG': smallest glevel
         'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
         'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
         'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
@@ -404,8 +407,8 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC' or 'LN'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'B', 'R', 'ALL', 'SLG', 'S', 'SB', 'SBL', 'EC', 'LN']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'ALL', 'SLG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S', 'SB', 'SBL', 'EC', 'LN']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:

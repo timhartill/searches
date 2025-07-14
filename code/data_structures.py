@@ -709,6 +709,8 @@ class WaitingReadyBuckets:
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
         'SLG': smallest bucket in lowest g
+        'LG': lowest glevel
+        'HG': highest glevel
         'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
         'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
         'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
@@ -754,6 +756,27 @@ class WaitingReadyBuckets:
             g = list(expandable_g.keys())[0]  
             f = expandable_g[g]['f_smallest']
             self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
+        elif lb.tb_select == 'LG':  # lowest expandable g
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            g = list(expandable_g.keys())[0]  
+            self.pop_g_level(g)
+        elif lb.tb_select == 'HG':  # lowest expandable g
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            g = list(expandable_g.keys())[-1]  
+            self.pop_g_level(g)
+        elif lb.tb_select == 'SG':  # smallest expandable g
+            if direction == 'F':
+                expandable_g = lb.forward_smallest_expandable_glevel
+            else:
+                expandable_g = lb.backward_smallest_expandable_glevel
+            g, gcount = expandable_g[0]
+            self.pop_g_level(g)
         elif lb.tb_select == 'S':
             raise NotImplementedError(f"WaitreadyBuckets.select_and_order: tb_select '{lb.tb_select}' not yet implemented.")
         elif lb.tb_select == 'SB':  # smallest f bucket in any expandable g with tiebreak towards highest g
