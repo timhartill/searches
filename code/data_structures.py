@@ -342,7 +342,7 @@ class WaitingReadyPriorityQueue:
                 return self.ready[0]     # Return the whole entry
         return float('inf')
 
-    def select_and_order(self, tb_select, tb_order):
+    def select_and_order(self, direction, lb):
         """ Select and return nodes to expand.
             For heap-based queue only tb_select = "F" is supported which is the first node in the lowest f level in the lowest g level
         """
@@ -377,6 +377,8 @@ class WaitingReadyBuckets:
         self.max_distinct_f = 0  # Max number of distinct f values in wait at a time - approx as some buckets may be empty
         self.max_distinct_g = 0  # Max number of distinct g values in ready at a time - approx as some buckets may be empty
         self.max_f_in_ready_g = 0  # Max number of f buckets in any ready[g]
+        self.expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries (ordering, g, f, state) sorted by fifo/lifo/rand/0 value
+
         return
 
     def remove_task(self, state, f, g):
@@ -509,26 +511,59 @@ class WaitingReadyBuckets:
                 
         return 0  # No entries moved
 
-    def pop_g_level(self, item_only=True):
-        """ Pop SortedDict of f buckets in the lowest g from Ready excluding empty buckets. 
-            Entry Format: SortedDict[f]: SortedKeyList( [ [ordering, state] ])
+    def pop_g_level(self, g):
+        """ Pop all f buckets in the selected g from Ready ignoring empty buckets. 
+            Adds to self.expand_nodes and return True
+                self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering        
         """
-        out_dict = SortedDict()  # Create a new SortedDict[f] to hold the popped SortedKeyLists of entries
-        while self.ready:
-            g = self.ready.peekitem(index=0)[0]  # Get the lowest g value
+        if self.ready:
             f_buckets = self.ready.pop(g)  # Get the SortedDict of f buckets for this g 
-            for f, entries in f_buckets.items():   # implicitly removes ready[g] = empty SortedDict()
-                bucket_len = len(entries)
+            for f, bucket in f_buckets.items():   # implicitly removes ready[g] = empty SortedDict()
+                bucket_len = len(bucket)
                 if bucket_len == 0:    # skip empty f buckets - implicitly removes ready[g][f] = empty SKList()
                     continue
-                out_dict[f] = entries  # Add the f bucket (a SortedKeyList) to the output dict
                 self.ready_curr_size -= bucket_len
-            if out_dict:  # If we have any entries to return
-                return out_dict if item_only else (g, out_dict)
+                for (ordering, state) in bucket:
+                    self.expand_nodes.add( (ordering, g, f, state) )
+            return True
         return None  # No entries left in Ready
 
-    def pop(self, item_only=True):
-        """ Pop the lowest priority element from Ready[lowest g][lowest f]
+    def pop_node_or_bucket(self, g, f, bucket=False, idx = -1):
+        """ Pop an element or bucket from Ready[g][f] optionally [idx]
+            Adds to self.expand_nodes and returns True
+                self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
+        """
+        if self.ready:
+            if not self.ready[g]:  # self.ready[g] = empty SortedDict, remove and continue
+                self.ready.pop(g)
+                return None
+            elif not self.ready[g][f]:  # self.ready[g][f] = [] Skl is empty, remove and continue
+                self.ready[g].pop(f)
+                return None
+            if not bucket:
+                ordering, state  = self.ready[g][f].pop(idx)  # Pop the idx-th item in the SortedKeyList
+                self.ready_curr_size -= 1
+                if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is now empty, remove
+                    self.ready[g].pop(f)  
+                if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
+                    self.ready.pop(g)
+                self.expand_nodes.add( (ordering, g, f, state) )
+            else: # pop whole bucket
+                bucket = self.ready[g].pop(f)    # sklist [ [ordering, state], ...  ]
+                self.ready_curr_size -= len(bucket)
+                for (ordering, state) in bucket:
+                    self.expand_nodes.add( (ordering, g, f, state) )
+                if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
+                    self.ready.pop(g)
+            return True 
+        return None
+
+
+
+    def pop(self, item_only=True, bucket=False):
+        """ Pop the lowest priority element or bucket from Ready[lowest g][lowest f]
+            If bucket, will add to self.expand_nodes and return True
+                self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
         """
         while self.ready:
             g = self.ready.peekitem(index=0)[0]
@@ -539,16 +574,25 @@ class WaitingReadyBuckets:
             if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is empty, remove and continue
                 self.ready[g].pop(f)
                 continue
-            ordering, state  = self.ready[g][f].pop(0)  # Pop the first item in the SortedKeyList
-            self.ready_curr_size -= 1
-            if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is now empty, remove
-                self.ready[g].pop(f)  
-            if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
-                self.ready.pop(g)
-            if item_only:
-                return state
-            else:
-                return g, f, ordering, state
+            if not bucket:
+                ordering, state  = self.ready[g][f].pop(0)  # Pop the first item in the SortedKeyList
+                self.ready_curr_size -= 1
+                if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is now empty, remove
+                    self.ready[g].pop(f)  
+                if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
+                    self.ready.pop(g)
+                if item_only:
+                    return state
+                else:
+                    return g, f, ordering, state
+            else: # pop whole bucket
+                bucket = self.ready[g].pop(f)    # sklist [ [ordering, state], ...  ]
+                self.ready_curr_size -= len(bucket)
+                for (ordering, state) in bucket:
+                    self.expand_nodes.add( (ordering, g, f, state) )
+                if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
+                    self.ready.pop(g)
+                return True 
         return None
 
     def isEmpty(self):
@@ -630,19 +674,119 @@ class WaitingReadyBuckets:
                 self.ready.pop(g)
         return stats
 
-    def select_and_order(self, tb_select, tb_order):
-        """ Select and return nodes to expand.
-            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest f level in the lowest g level
-            
+    def select_and_order(self, direction, lb):
+        """ Select and return nodes to expand in direction this class was created for.
+            lb is the instance of the lb_pairs class calling this method which enable access to all the calculated values:
+
+        lb.forward_expandable_g: key:g (sorted) val dict: 
+            {'f_count':0 # f buckets in this glevel, 
+             'f_smallest':0 lowest cardinality f bucket in this glevel, 
+             'f_smallest_count': 0 # f buckets in this glevel, 
+             'g_total_count': 0 # nodes in this glevel over all f buckets, 
+             'under_glb':0 # edges under GLB, 
+             'eq_glb':0 # edges at GLB, 
+             'edge_count':0  # edges, 
+             'connected_total_count':0 total expandable nodes in opp direction with edge to this glevel, 
+             'connected_smallest_count': float('inf') lowest cardinality f bucket in opp direction with edge to this glevel, 
+             'connected_smallest_count_gf':(gD, fD) g and f of opp direction lowest cardinality f bucket
+             }        
+        lb.backward_expandable_g: as above
+        lb.expandable_edges = set()   # set of (gF, gB)
+        lb.forward_smallest_expandable_bucket: 
+          SortedSet( [(-1, 0, 0)] ) sorted set of (g, f, count) of smallest expandable buckets fwd (> 1 if smallest equal)
+        lb.backward_smallest_expandable_bucket:  as prior
+        lb.forward_smallest_expandable_glevel: 
+          SortedSet( [(0, 0)] ) sorted set of (g, count) of smallest expandable glevels (> 1 if multiple smallest equal)
+        lb.backward_smallest_expandable_glevel: as prior
+        lb.forward_most_connected_glevel: {'most_edges': -1, 'most_nodes': -1} g of fwd glevel with most edges to bwd and g fwd with edges to most nodes in bwd
+        lb.backward_most_connected_glevel: as prior
+
+        
+        lb.tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
+
+        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
+        'B': entire first bucket i.e. bucket with lowest g and lowest f
+        'R': random node from all expandable nodes
+        'ALL': all expandable buckets
+        'SLG': smallest bucket in lowest g
+        'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
+        'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
+        'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
+        'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction
+
+        lb.tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
+
+        'R': random
+        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
+        'NONE' - no explicit ordering applied
+
+        returns self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
         """
-        # entry format (fifo/lifo val, g, f, state)
-        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
-        if tb_select == 'F':
+        # entry format (ordering, g, f, state) 
+        self.expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
+        if lb.tb_select == 'F':
             g, f, ordering, current_state = self.pop(item_only=False)
-            expand_nodes.add( (ordering, g, f, current_state) )
+            self.expand_nodes.add( (ordering, g, f, current_state) )
+        elif lb.tb_select == 'B':
+            self.pop(item_only=False, bucket=True)  # puts entries into expand_nodes
+        elif lb.tb_select == 'R':
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            g = random.choice(list(expandable_g.keys()))
+            f = random.choice(list(self.ready[g].keys()))
+            idx = random.randint(0, len(self.ready[g][f])-1)
+            self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
+        elif lb.tb_select == 'ALL':
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            for g in expandable_g:
+                self.pop_g_level(g)
+        elif lb.tb_select == 'SLG':  # smallest f bucket in lowest expandable g
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            g = list(expandable_g.keys())[0]  
+            f = expandable_g[g]['f_smallest']
+            self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
+        elif lb.tb_select == 'S':
+            raise NotImplementedError(f"WaitreadyBuckets.select_and_order: tb_select '{lb.tb_select}' not yet implemented.")
+        elif lb.tb_select == 'SB':  # smallest f bucket in any expandable g with tiebreak towards highest g
+            if direction == 'F':
+                expandable_f = lb.forward_smallest_expandable_bucket
+            else:
+                expandable_f = lb.backward_smallest_expandable_bucket
+            g, f, fcount = expandable_f[-1]
+            self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
+        elif lb.tb_select == 'SBL':  # smallest f bucket in any expandable g with tiebreak towards lowest g
+            if direction == 'F':
+                expandable_f = lb.forward_smallest_expandable_bucket
+            else:
+                expandable_f = lb.backward_smallest_expandable_bucket
+            g, f, fcount = expandable_f[0]
+            self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
+        elif lb.tb_select == 'EC':  # expand glevel with highest edge count
+            if direction == 'F':
+                expandable_g = lb.forward_most_connected_glevel
+            else:
+                expandable_g = lb.backward_most_connected_glevel
+            g = expandable_g['most_edges']
+            self.pop_g_level(g)  # puts entries into expand_nodes
+        elif lb.tb_select == 'LN':  # expand glevel with highest connected node count
+            if direction == 'F':
+                expandable_g = lb.forward_most_connected_glevel
+            else:
+                expandable_g = lb.backward_most_connected_glevel
+            g = expandable_g['most_nodes']
+            self.pop_g_level(g)  # puts entries into expand_nodes
         else:
-            raise ValueError(f"WaitingReadyBuckets.select_and_order(): Invalid tb_select:{tb_select} tb_order:{tb_order}")
-        return expand_nodes
+            raise ValueError(f"WaitingReadyBuckets.select_and_order(): Invalid tb_select:{lb.tb_select} tb_order:{lb.tb_order}")
+        return self.expand_nodes
 
 
 class LBPairs:
@@ -794,13 +938,12 @@ class LBPairs:
         """ Calculate which buckets in ReadyF, ReadyB are expandable. 
             Returns nodes (g not g-f), edges in Forward.Ready and Backward.Ready without popping 
             plus SortedSets of the smallest expandable g-f bucket(s) and smallest expandable glevel(s) (sets since > 1 can be equally small. Leave to tb_select to choose which one to expand)
-            Note: Once this is run, no empty expandable buckets or g-levels will be present so downstream code can omit empty checks
+            Note: Once this is run, no empty expandable buckets or g-levels will be present so downstream select_and_order() code can omit empty checks
         """
         self.forward_expandable_g = {}   # key:g (sorted) val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD)) 
         self.backward_expandable_g = {}  # key:g (sorted) val: as above
         self.expandable_edges = set()   # set of (gF, gB)
-        #self.expandable_edges_reversed = set()   # set of (gB, gF)
-        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )     # sorted set of (f, g, count) of smallest expandable buckets fwd (> 1 if smallest equal)
+        self.forward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )     # sorted set of (g, f, count) of smallest expandable buckets fwd (> 1 if smallest equal)
         self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )    # as prior
         self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )     # sorted set of (g, count) of smallest expandable glevels
         self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )    # as prior
@@ -827,6 +970,7 @@ class LBPairs:
             stats_forward = self.forward.get_bucket_stats(gF)  # {'f_count': ,'f_smallest': , 'f_smallest_count': , 'g_total_count': } 
             if stats_forward['f_count'] == 0:  # gF key was empty and now popped
                 continue
+            # {'f_count':0 ,'f_smallest':0 , 'f_smallest_count': 0, 'g_total_count': 0, 'under_glb':0, 'eq_glb':0, 'edge_count':0, 'connected_total_count':0, 'connected_smallest_count': float('inf'), 'connected_smallest_count_gf':()}
             stats_forward.update( {'under_glb':0, 'eq_glb':0, 'edge_count':0, 'connected_total_count':0, 'connected_smallest_count': float('inf'), 'connected_smallest_count_gf':()} )
 
             for gB in backward_g_list:
@@ -884,15 +1028,15 @@ class LBPairs:
 
                     if self.forward_expandable_g[gF]["f_smallest_count"] < forward_smallest_count:  # Calc smallest overall expandable bucket fwd
                         forward_smallest_count = self.forward_expandable_g[gF]["f_smallest_count"]
-                        self.forward_smallest_expandable_bucket = SortedSet( [(self.forward_expandable_g[gF]["f_smallest"], gF, forward_smallest_count)] ) # [f, g, count]
+                        self.forward_smallest_expandable_bucket = SortedSet( [(gF, self.forward_expandable_g[gF]["f_smallest"], forward_smallest_count)] ) # [g,f, count]
                     elif self.forward_expandable_g[gF]["f_smallest_count"] == forward_smallest_count:
-                        self.forward_smallest_expandable_bucket.add( (self.forward_expandable_g[gF]["f_smallest"], gF, forward_smallest_count) ) # [f, g, count]
+                        self.forward_smallest_expandable_bucket.add( (gF, self.forward_expandable_g[gF]["f_smallest"], forward_smallest_count) ) # [g,f, count]
 
                     if self.backward_expandable_g[gB]["f_smallest_count"] < backward_smallest_count:  # Calc smallest overall expandable bucket bwd
                         backward_smallest_count = self.backward_expandable_g[gB]["f_smallest_count"]
-                        self.backward_smallest_expandable_bucket = SortedSet( [(self.backward_expandable_g[gB]["f_smallest"], gB, backward_smallest_count)] ) # [f, g, count]
+                        self.backward_smallest_expandable_bucket = SortedSet( [(gB, self.backward_expandable_g[gB]["f_smallest"], backward_smallest_count)] ) # [g,f, count]
                     elif self.backward_expandable_g[gB]["f_smallest_count"] == backward_smallest_count:  
-                        self.backward_smallest_expandable_bucket.add( (self.backward_expandable_g[gB]["f_smallest"], gB, backward_smallest_count) ) # [f, g, count]
+                        self.backward_smallest_expandable_bucket.add( (gB, self.backward_expandable_g[gB]["f_smallest"], backward_smallest_count) ) # [g,f, count]
 
                     if self.forward_expandable_g[gF]["g_total_count"] < forward_smallest_glevel_count:  # Calc smallest overall expandable glevel fwd
                         forward_smallest_glevel_count = self.forward_expandable_g[gF]["g_total_count"]
@@ -909,32 +1053,14 @@ class LBPairs:
                     continue # stop inner loop when gF + gB + eps > GLB since gB increases monotonically
         return
 
-    def select_and_order(self, direction, tb_select, tb_order):
+    def select_and_order(self, direction):
         """
-        tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
-
-        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
-        'B': entire first bucket i.e. bucket with lowest g and lowest f
-        'R': random node from all expandable nodes
-        'G': all expandable buckets
-        'SLG': smallest bucket in lowest g
-        'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
-        'SB': smallest bucket of any expandable bucket
-        'EGBFHS' - need your help in specifying
-        One based on edge count - look Alcazar (pick bucket connected to largest total num of nodes (over connected buckets) in opp direction in belief that it might delay expanding these)
-        Another - just pick bucket with largest # edges
-
-        tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
-
-        'R': random
-        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
-        'NONE' - no explicit ordering applied
-
+         select nodes for expansion in a direction
         """
         if direction == 'F':
-            expand_nodes = self.forward.select_and_order(tb_select, tb_order)
+            expand_nodes = self.forward.select_and_order(direction, self)
         else:
-            expand_nodes = self.backward.select_and_order(tb_select, tb_order)
+            expand_nodes = self.backward.select_and_order(direction, self)
         return expand_nodes
 
 
@@ -959,7 +1085,8 @@ class LBPairs:
         'R': expand in a random direction, 
         'G': expand direction based on lowest expandable g in open lists, 
         'S': DVCBS-like: expand direction based on which READY_d has smallest expandable |glevel|, 
-        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket|, 
+        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward higher g, 
+        'SBL': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward lower g, 
         'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
         'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
         'EGBFHS': TBD 
@@ -1026,7 +1153,7 @@ class LBPairs:
             else:
                 fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'SB':
-            fval = self.forward_smallest_expandable_bucket[0][-1]
+            fval = self.forward_smallest_expandable_bucket[0][-1]  # all counts in set will be the same
             bval = self.backward_smallest_expandable_bucket[0][-1]
             if fval > bval:
                 fwd, bwd = False, True

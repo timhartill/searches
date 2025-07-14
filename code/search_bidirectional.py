@@ -345,7 +345,7 @@ class bd_lb_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0,
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P'):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name=''):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tb_dir: Strategy for determining direction(s) to search in. 
@@ -376,7 +376,8 @@ class bd_lb_search:
         'ALL': all expandable buckets
         'SLG': smallest bucket in lowest g
         'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
-        'SB': smallest bucket of any expandable bucket
+        'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
+        'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
         'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction 
         'EGBFHS' - need your help in specifying
@@ -403,16 +404,16 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC' or 'LN'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'B', 'R', 'G', 'SLG', 'S', 'SB', 'EC', 'LN']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'G', 'SLG', 'S' 'SB', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'B', 'R', 'ALL', 'SLG', 'S', 'SB', 'SBL', 'EC', 'LN']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'ALL', 'SLG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
             raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
 
         self.do_calc_expandable = False
-        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select in ['S', 'SB', 'EC', 'LN']:
-            self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run
+        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select not in ['F', 'B']:
+            self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
 
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
@@ -435,9 +436,9 @@ class bd_lb_search:
         self.rand_upper_bound = 100000000000
         self.ordering = 0
 
+        self.algo = algo_name
 
-
-        self._str_repr = f"BiDirLBPairs-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}"
+        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}"
 
 
     def search(self, problem):
@@ -524,7 +525,7 @@ class bd_lb_search:
             # --- Forward Step ---
             if not frontiers.forward.isEmpty() and fwd:
                 #g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
-                expand_list = frontiers.select_and_order('F', self.tb_select, self.tb_order)
+                expand_list = frontiers.select_and_order('F')
                 for (ordering, g, f, current_state_fwd) in expand_list:
                     current_g_fwd = g_score_fwd.get(current_state_fwd)
                     current_h = problem.heuristic(current_state_fwd)
@@ -587,7 +588,7 @@ class bd_lb_search:
             # --- Backward Step ---
             if not frontiers.backward.isEmpty() and bwd:
                 #g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
-                expand_list = frontiers.select_and_order('B', self.tb_select, self.tb_order)
+                expand_list = frontiers.select_and_order('B')
                 for (ordering, g, f, current_state_bwd) in expand_list:
                     current_g_bwd = g_score_bwd.get(current_state_bwd)
                     current_h = problem.heuristic(current_state_bwd, backward=True)

@@ -79,6 +79,15 @@ SEARCH_MAP = {
     "lb_smallgf_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'SB', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_mostedges_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'EC', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_mostconnectednodes_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_1stbucket_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_1stbucket_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_all_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'ALL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallblowestg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SLG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallbhighg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SB', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallblowg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SBL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_connec_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'EC', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_connln_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
     "mcts_selectheur": {"class":heuristic_mcts_search, "heuristic_weight": 100.0, "heuristic_rollout": False},
@@ -289,7 +298,8 @@ if __name__ == "__main__":
                                            timeout = args.algo_timeout,
                                            version=SEARCH_MAP[algo]['version'],
                                            min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'],
-                                           data_struct=SEARCH_MAP[algo].get('data_struct', 'P') )
+                                           data_struct=SEARCH_MAP[algo].get('data_struct', 'P'),
+                                           algo_name=algo, )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
