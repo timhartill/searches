@@ -202,8 +202,8 @@ class WaitingReadyPriorityQueue:
     Used in LB Pairs family of Bidirectional search algorithms - two of these in each direction
     Wait priority is f and Ready priority is g, so expandable nodes are those in Ready which satisfy 
     g_forward + g_backward + epsilon <= GLB ("C" in A*/"naive BDHS") having already satisfied f_direction <= GLB to be moved from Wait to Ready
-    Wait priority queue entries are tuples of (f, [g, fifo/lifo_value, state])
-    Ready priority queue entries are tuples of (g, [f, fifo/lifo_value, state])
+    Wait priority queue entries are tuples of (f, [g, ordering, state]) where ordering is the tiebreak value
+    Ready priority queue entries are tuples of (g, [ordering, f, state])
     """
     def __init__(self, version='A'):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
@@ -223,7 +223,10 @@ class WaitingReadyPriorityQueue:
         return
 
     def remove_task(self, state):
-        """ Mark an existing entry as REMOVED. entry format: (f/g, [f/g, fifo/lifo_value, state])"""
+        """ Mark an existing entry as REMOVED. entry format: 
+        Wait: (f, [g, ordering, state])
+        ready: (g, [ordering, f, state])
+        """
         if state in self.wait_entry_finder:
             entry = self.wait_entry_finder.pop(state)
             entry[-1][-1] = REMOVED
@@ -232,14 +235,12 @@ class WaitingReadyPriorityQueue:
             entry[-1][-1] = REMOVED
 
     def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
-        """ Push item list of [g, fifo/lifovalue, state] onto Wait queue, 
+        """ Push item list of [g, ordering, state] onto Wait queue, 
             removing any existing item with matching state first.
-            Note: heapq will order by priority then by each element in the item list so order is: 
-                  priority, fifo/lifovalue, state
         """
         if prior_f != float('inf'):
             self.remove_task(item[-1])  # 'Remove' the state if it already exists in wait or ready
-        entry = (priority, item)  # entry is (f, [g, fifo/lifo_value, state]) and allowable to update state to 'R' as it's in a list even though nested in a tuple!
+        entry = (priority, item)  # entry is (f, [g, ordering, state]) and allowable to update state to REMOVED as it's in a list even though nested in a tuple
         heapq.heappush(self.wait, entry)
         self.wait_entry_finder[item[-1]] = entry
         if self.wait_max_size < len(self.wait):
@@ -256,7 +257,7 @@ class WaitingReadyPriorityQueue:
             f, (g, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:  # Only move if the state is not marked as REMOVED
                 del self.wait_entry_finder[state]
-                entry = (g, [f, ordering, state])
+                entry = (g, [ordering, f, state])       # ordering before f in ready
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 count += 1
@@ -266,7 +267,7 @@ class WaitingReadyPriorityQueue:
                 f, (g, ordering, state) = heapq.heappop(self.wait)
                 if state != REMOVED:
                     del self.wait_entry_finder[state]
-                    entry = (g, [f, ordering, state])
+                    entry = (g, [ordering, f, state])   # ordering before f in ready
                     heapq.heappush(self.ready, entry)
                     self.ready_entry_finder[state] = entry
                     count += 1
@@ -282,7 +283,7 @@ class WaitingReadyPriorityQueue:
             f, (g, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:
                 del self.wait_entry_finder[state]
-                entry = (g, [f, ordering, state])
+                entry = (g, [ordering, f, state])   # ordering before f in ready
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 if self.ready_max_size < len(self.ready):
@@ -295,7 +296,7 @@ class WaitingReadyPriorityQueue:
         """
         state = REMOVED
         while self.ready:
-            g, (f, ordering, state) = heapq.heappop(self.ready)   # Pop until we find a valid state that is not marked as REMOVED
+            g, (ordering, f, state) = heapq.heappop(self.ready)   # Pop until we find a valid state that is not marked as REMOVED
             if state != REMOVED:
                 del self.ready_entry_finder[state]
                 break
@@ -344,10 +345,12 @@ class WaitingReadyPriorityQueue:
 
     def select_and_order(self, direction, lb):
         """ Select and return nodes to expand.
-            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest f level in the lowest g level
+            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest ordering in the lowest g level
+            however tiebreaking can occur over all f values in a glevel unlike the bucket implementation.
+            Note: a tiebreak of NONE means all ordering values are 0, hence effective ordering is g, f
         """
-        # entry format (fifo/lifo val, g, f, state)
-        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
+        # expand_nodes entry format (ordering, g, f, state)
+        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by ordering
         g, f, ordering, current_state = self.pop(item_only=False)
         expand_nodes.add( (ordering, g, f, current_state) )
         return expand_nodes
@@ -358,8 +361,8 @@ class WaitingReadyBuckets:
     Used in LB Pairs family of Bidirectional search algorithms - one of these in each direction
     Wait priority is f and Ready priority is g, so expandable nodes are those in Ready which satisfy 
     g_forward + g_backward + epsilon <= GLB ("C" in A*/"naive BDHS") having already satisfied f_direction <= GLB to be moved from Wait to Ready
-    Wait format: wait[f][g]: SortedKeyList( [ [fifo/lifo_value, state], ... ] ) with SKL key=state
-    Ready formet: ready[g][f]: SortedKeyList( [ [fifo/lifo_value, state], ... ] ) with SKL key=state
+    Wait format: wait[f][g]: SortedKeyList( [ [ordering, state], ... ] ) with SKL key=state and ordering = tiebreak value (within bucket inlike the PQ implementation where ordering works over whole glevel)
+    Ready formet: ready[g][f]: SortedKeyList( [ [ordering, state], ... ] ) with SKL key=state
     """
     def __init__(self, version='A'):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
@@ -525,8 +528,8 @@ class WaitingReadyBuckets:
     def find_lowest_ordered_idx(self, g, f):
         """ Return the index of the state in Ready[g][f] that has the lowest ordering in that g-f bucket
         """
-        bucket = list(self.ready[g][f])  # fast copy of bucket [ [ordering, state], ... ] 
-        heapq.heapify(bucket)            # faster than full sorting and we only need to know the lowest, not the full order
+        bucket = list(self.ready[g][f])  # fast copy of g-f bucket [ [ordering, state], ... ] 
+        heapq.heapify(bucket)            # faster than full sorting and works since we only need to know the lowest, not the full order
         state = bucket[0][-1]
         return self.find_idx(g, f, state)
 
@@ -548,7 +551,7 @@ class WaitingReadyBuckets:
         return None  # No entries left in Ready
 
     def pop_node_or_bucket(self, g, f, bucket=False, idx = -1):
-        """ Pop an element or bucket from Ready[g][f] optionally [idx]
+        """ Pop an element or bucket from Ready[g][f] and [idx] if bucket = False
             Adds to self.expand_nodes and returns True
                 self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
         """
@@ -695,7 +698,7 @@ class WaitingReadyBuckets:
 
     def select_and_order(self, direction, lb):
         """ Select and return nodes to expand in direction this class was created for.
-            lb is the instance of the lb_pairs class calling this method which enable access to all the calculated values:
+            lb is the instance of the lb_pairs class calling this method which enable access to all the calculated values from lb.calc_expandable():
 
         lb.forward_expandable_g: key:g (sorted) val dict: 
             {'f_count':0 # f buckets in this glevel, 
@@ -710,7 +713,7 @@ class WaitingReadyBuckets:
              'connected_smallest_count_gf':(gD, fD) g and f of opp direction lowest cardinality f bucket
              }        
         lb.backward_expandable_g: as above
-        lb.expandable_edges = set()   # set of (gF, gB)
+        lb.expandable_edges = set( (gF, gB), .. )   # set of edges 
         lb.forward_smallest_expandable_bucket: 
           SortedSet( [(-1, 0, 0)] ) sorted set of (g, f, count) of smallest expandable buckets fwd (> 1 if smallest equal)
         lb.backward_smallest_expandable_bucket:  as prior
@@ -738,15 +741,15 @@ class WaitingReadyBuckets:
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
         'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction
 
-        lb.tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
+        lb.tb_order - determines the order for expanding selected nodes in selected direction if more than one node. 
+            Since expand_nodes is a SortedKeyList with key = ordering, simply adding to this list sets the expansion order.
 
         'R': random
-        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
+        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "select" nodes above
         'NONE' - no explicit ordering applied
 
         returns self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
         """
-        # entry format (ordering, g, f, state) 
         self.expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
         if lb.tb_select == 'F':   # select single node in lowest f in lowest g
             if lb.tb_order == 'NONE':
