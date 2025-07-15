@@ -370,7 +370,9 @@ class bd_lb_search:
 
         tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
 
-        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
+        'F': select single node in first bucket i.e. a node in bucket with lowest g and lowest f 
+        'FHF': select single node in highest f in lowest g
+        'FHG': select single node in lowest f in highest g
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
@@ -407,15 +409,15 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC' or 'LN'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S', 'SB', 'SBL', 'EC', 'LN']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S', 'SB', 'SBL', 'EC', 'LN']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
             raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
 
         self.do_calc_expandable = False
-        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select not in ['F', 'B']:
+        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select not in ['F', 'FHF', 'B']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
 
 

@@ -4,6 +4,7 @@ from sortedcontainers import SortedKeyList
 import time
 import timeit
 import random
+import heapq
 
 def make_skl(num=100000):
     skl = SortedKeyList(key=lambda x: x[-1])
@@ -211,4 +212,41 @@ def matchcase(action):
 
 timeit.timeit("for a in ['S','G','R','P','A','B','F','NBS']: ifthen(a)", number=1000000, globals=globals()) # 1.386614881004789
 timeit.timeit("for a in ['S','G','R','P','A','B','F','NBS']: matchcase(a)", number=1000000, globals=globals()) # 1.563161359008518
+
+
+tlist = [[i, i*-1] for i in range(1000000)]
+random.seed(42)
+random.shuffle(tlist)
+timeit.timeit("t2 = sorted(tlist)", number=10, globals=globals()) # 16.972086368001328
+
+tlist = [[i, i*-1] for i in range(1000000)]
+random.seed(42)
+random.shuffle(tlist)
+timeit.timeit("random.shuffle(tlist); tlist.sort()", number=10, globals=globals())  # 20.599905465998745
+
+tlist = [[i, i*-1] for i in range(1000000)]
+random.seed(42)
+random.shuffle(tlist)
+timeit.timeit("random.shuffle(tlist); heapq.heapify(tlist)", number=10, globals=globals()) #7.127369664998696
+
+random.seed(42)
+tlist = [[random.randint(0,1000000), random.randint(0,1000000)] for i in range(1000000)]
+skl = SortedKeyList(key = lambda x: x[-1])
+skl.update(tlist)
+skl2 = SortedKeyList(key = lambda x: x[0])
+timeit.timeit("skl2.clear(); skl2.update(skl)", number=10, globals=globals()) #11.268729454001004
+
+random.seed(42)
+tlist = [[random.randint(0,1000000), random.randint(0,1000000)] for i in range(1000000)]
+skl = SortedKeyList(key = lambda x: x[-1])
+skl.update(tlist)
+timeit.timeit("t2 = sorted(tlist)", number=10, globals=globals()) # 16.85926130000007
+
+random.seed(42)
+tlist = [[random.randint(0,1000000), random.randint(0,1000000)] for i in range(1000000)]
+skl = SortedKeyList(key = lambda x: x[-1])
+skl.update(tlist)
+timeit.timeit("t2 = list(skl); heapq.heapify(t2)", number=10, globals=globals()) #2.978387428000133
+
+
 

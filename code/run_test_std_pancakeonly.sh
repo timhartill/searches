@@ -234,6 +234,8 @@ comment
 
 #        --grid_max_per_scen 21 \
 #         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
+# lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_1stbucket_a_eps lb_nbb_rand_f_eps lb_nbb_all_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostedges_connec_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_alter_highestg_f_eps lb_alter_smallestg_f_eps lb_rand_rand_f_eps
+# removed: lb_bwd_first_none_f_eps lb_mostedges_first_none_f_eps lb_mostconnectednodes_first_none_f_eps lb_nbb_all_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_mostedges_connec_f_eps lb_alter_highestg_f_eps
 
 
 python search_runner.py \
@@ -264,7 +266,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
+        --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_1stbucket_a_eps lb_nbb_rand_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_alter_smallestg_f_eps lb_rand_rand_f_eps \
         --algo_mcts NONE
 
 

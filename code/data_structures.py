@@ -381,8 +381,9 @@ class WaitingReadyBuckets:
 
         return
 
+
     def remove_task(self, state, f, g):
-        """ Delete an existing entry. entry format: ([fifo/lifo_value, state], f, g)
+        """ Delete an existing entry. entry format: ([ordering, state], f, g)
         Note f,g must be the prior values of the entry to be removed not the current values..
         """
         if f in self.wait and g in self.wait[f]:
@@ -403,13 +404,13 @@ class WaitingReadyBuckets:
         return
 
     def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
-        """ Push item list of [g, fifo/lifovalue, state] onto Wait with priority f, 
+        """ Push item list of [g, ordering, state] onto Wait with priority f, 
             removing any existing item with matching state first.
         """
         g = item[0]
         if prior_f != float('inf'):
             self.remove_task(item[-1], prior_f, prior_g)  # Remove the state from the previous bucket
-        entry = [item[1], item[-1]]  # entry is [fifo/lifo_value, state]
+        entry = [item[1], item[-1]]  # entry is [ordering, state]
         if priority not in self.wait:
             self.wait[priority] = SortedDict()
         if g not in self.wait[priority]:
@@ -511,10 +512,28 @@ class WaitingReadyBuckets:
                 
         return 0  # No entries moved
 
+    def find_idx(self, g, f, state):
+        """ Returns the index of state in Ready[g][f] """
+        if g in self.ready and f in self.ready[g]:
+            curr_len = len(self.ready[g][f])
+            if curr_len:
+                idx = self.ready[g][f].bisect_key_left(state)
+                if idx < curr_len and self.ready[g][f][idx][-1] == state:
+                    return idx
+        return None
+    
+    def find_lowest_ordered_idx(self, g, f):
+        """ Return the index of the state in Ready[g][f] that has the lowest ordering in that g-f bucket
+        """
+        bucket = list(self.ready[g][f])  # fast copy of bucket [ [ordering, state], ... ] 
+        heapq.heapify(bucket)            # faster than full sorting and we only need to know the lowest, not the full order
+        state = bucket[0][-1]
+        return self.find_idx(g, f, state)
+
     def pop_g_level(self, g):
         """ Pop all f buckets in the selected g from Ready ignoring empty buckets. 
             Adds to self.expand_nodes and return True
-                self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering        
+                self.expand_nodes:  entry format (ordering, g, f, state) sorted by ordering
         """
         if self.ready:
             f_buckets = self.ready.pop(g)  # Get the SortedDict of f buckets for this g 
@@ -544,7 +563,7 @@ class WaitingReadyBuckets:
                 ordering, state  = self.ready[g][f].pop(idx)  # Pop the idx-th item in the SortedKeyList
                 self.ready_curr_size -= 1
                 if not self.ready[g][f]:  # self.ready[g][f] = [] Skl is now empty, remove
-                    self.ready[g].pop(f)  
+                    self.ready[g].pop(f)
                 if not self.ready[g]:  # self.ready[g] = empty SortedDict now, remove
                     self.ready.pop(g)
                 self.expand_nodes.add( (ordering, g, f, state) )
@@ -704,7 +723,9 @@ class WaitingReadyBuckets:
         
         lb.tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
 
-        'F': first node in first bucket i.e. first node in bucket with lowest g and lowest f 
+        'F':   select single node in first bucket i.e. a node in bucket with lowest g and lowest f 
+        'FHF': select single node in highest f in lowest g
+        'FHG': select single node in lowest f in highest g
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
@@ -727,9 +748,29 @@ class WaitingReadyBuckets:
         """
         # entry format (ordering, g, f, state) 
         self.expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by fifo/lifo/rand/0 value
-        if lb.tb_select == 'F':
-            g, f, ordering, current_state = self.pop(item_only=False)
-            self.expand_nodes.add( (ordering, g, f, current_state) )
+        if lb.tb_select == 'F':   # select single node in lowest f in lowest g
+            if lb.tb_order == 'NONE':
+                g, f, ordering, current_state = self.pop(item_only=False)
+                self.expand_nodes.add( (ordering, g, f, current_state) )
+            else: # select node based on ordering value
+                g = self.ready.peekitem(index=0)[0]
+                f = self.ready[g].peekitem(index=0)[0]
+                idx = self.find_lowest_ordered_idx(g, f)
+                self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
+        elif lb.tb_select == 'FHF':    # select single node in highest f in lowest g
+            g = self.ready.peekitem(index=0)[0]
+            f = self.ready[g].peekitem(index=-1)[0]
+            idx = self.find_lowest_ordered_idx(g, f)
+            self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
+        elif lb.tb_select == 'FHG':    # select single node in lowest f in highest g
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+            else:
+                expandable_g = lb.backward_expandable_g
+            g = list(expandable_g.keys())[-1]
+            f = self.ready[g].peekitem(index=0)[0]
+            idx = self.find_lowest_ordered_idx(g, f)
+            self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes            
         elif lb.tb_select == 'B':
             self.pop(item_only=False, bucket=True)  # puts entries into expand_nodes
         elif lb.tb_select == 'R':
@@ -1189,23 +1230,23 @@ class LBPairs:
         elif self.tb_dir == 'EC':
             fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_edges'] ]['edge_count']
             bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_edges'] ]['edge_count']
-            if fval > bval:
-                fwd, bwd = False, True
-                self.last_direction = 'B'
-            elif fval < bval:
+            if fval > bval:  # reversed from other tb_dir since we want to expand the side with the largest edge count
                 fwd, bwd = True, False
                 self.last_direction = 'F'
+            elif fval < bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
             else:
                 fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'LN':
             fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_nodes'] ]['connected_total_count']
             bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_nodes'] ]['connected_total_count']
-            if fval > bval:
-                fwd, bwd = False, True
-                self.last_direction = 'B'
-            elif fval < bval:
+            if fval > bval:  # reversed from other tb_dir since we want to expand the side with the largest # of connected nodes
                 fwd, bwd = True, False
                 self.last_direction = 'F'
+            elif fval < bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
             else:
                 fwd, bwd = self.implicit_tb_dir()
 
