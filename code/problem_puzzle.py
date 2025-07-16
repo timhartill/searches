@@ -279,7 +279,7 @@ class PancakeProblem:
             pancake_i = state_1[i]
             pancake_j = state_1[i + 1]
 
-            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:  # NOTE was or
+            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:  
                 continue
 
             goal_position_i = state_2.index(pancake_i)  # find index
@@ -294,13 +294,54 @@ class PancakeProblem:
 
         return heuristic_value
 
+    def gap_variable_goal(self, state_1, state_2):
+        """
+        Calculates a heuristic value based on the order of elements in two states,
+        ignoring the first 'degradation' elements except for the table gap.
+
+        Always provides same values as original Helmert gap heuristic (below) for gap_heuristic(current_state, goal) forward
+
+        Args:
+            state_1: A list of integers representing the first state.
+            state_2: A list of integers representing the second state (the goal state).
+            degradation: An integer representing the number of initial elements to ignore.
+
+        Returns:
+            An integer representing the heuristic value.
+        """
+
+        heuristic_value = 0
+        ignored_pancakes = set(range(1, self.degradation + 1))
+        h_inc = 1
+
+        for i in range(len(state_1) - 1):
+            pancake_i = state_1[i]
+            pancake_j = state_1[i + 1]
+
+            # if pancake_j = table always check gap irrespective of degradation
+            if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):  
+                continue
+
+            goal_position_i = state_2.index(pancake_i)  # find index
+            
+            if (goal_position_i != 0 and state_2[goal_position_i - 1] == pancake_j) or \
+                (goal_position_i != len(state_1) - 1 and state_2[goal_position_i + 1] == pancake_j):
+                continue
+            else:
+                if self.make_heuristic_inadmissable:
+                    h_inc = i
+                heuristic_value += h_inc
+
+        return heuristic_value
+
+
     def gap_helmert(self, state_1):
         """
         The GAP heuristic as originally described in Helmert 2010:
         hgap(s) := |{i | i ∈ {1, . . . , n} , |s_i - s_i+1| > 1}|.
 
         Calculates a heuristic value based on the order of elements,
-        ignoring the first 'degradation' elements.
+        ignoring the first 'degradation' elements except for the table gap.
 
         Args:
             state_1: A list of integers representing the state.
@@ -318,7 +359,7 @@ class PancakeProblem:
             pancake_i = state_1[i]
             pancake_j = state_1[i + 1]
 
-            # if pancake_j = table always check gap
+            # if pancake_j = table always check gap irrespective of degradation
             if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
                 continue
            
@@ -349,7 +390,8 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-            return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
+#            return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
+            return self.gap_variable_goal(state_tuple, target_tuple) * self.h_multiplier
         
     def __str__(self): 
         return self._str_repr

@@ -268,7 +268,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg lb_nbs_a_eps lb_nbs_fifo_a_eps lb_nbs_lifo_a_eps lb_nbs_rand_a_eps lb_nbs_f_eps lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_a_eps lb_nbb_fifo_a_eps lb_nbb_lifo_a_eps lb_nbb_rand_a_eps lb_nbb_f_eps lb_nbb_fifo_f_eps lb_nbb_lifo_f_eps lb_nbb_rand_f_eps lb_nbb_highg_a_eps lb_nbb_highg_fifo_a_eps lb_nbb_highg_lifo_a_eps lb_nbb_highg_rand_a_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_a_eps lb_nbb_highf_fifo_a_eps lb_nbb_highf_lifo_a_eps lb_nbb_highf_rand_a_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps \
+        --algo_heur lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
         --algo_mcts NONE
 
 
