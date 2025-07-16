@@ -63,12 +63,60 @@ SEARCH_MAP = {
     "bd_uc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "bd_huc": {"class":bd_generic_search, "priority_key": 'g', "tiebreaker1": 'f', "tiebreaker2": 'NONE'},
     "bd_bfs": {"class":bd_generic_search, "priority_key": 'h', "tiebreaker1": 'g', "tiebreaker2": 'NONE'},
+
     "lb_nbs_a": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 0.0},  
     "lb_nbs_f": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 0.0},  
+
     "lb_nbs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
+    "lb_nbs_fifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'FIFO', "version": 'A', "min_edge_cost": 1.0},  
+    "lb_nbs_lifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'LIFO', "version": 'A', "min_edge_cost": 1.0},  
+    "lb_nbs_rand_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'R', "version": 'A', "min_edge_cost": 1.0},  
+
     "lb_nbs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbs_fifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'FIFO', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbs_lifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'LIFO', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbs_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'R', "version": 'F', "min_edge_cost": 1.0},  
+
     "lb_nbb_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_fifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'FIFO', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_lifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'LIFO', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_rand_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'R', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
     "lb_nbb_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_fifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'FIFO', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_lifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'LIFO', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'R', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
+    "lb_nbb_highg_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_fifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'FIFO', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_lifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'LIFO', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_rand_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'R', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
+    "lb_nbb_highg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_fifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'FIFO', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_lifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'LIFO', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highg_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHG', "tb_order": 'R', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
+    "lb_nbb_highf_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_fifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'FIFO', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_lifo_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'LIFO', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_rand_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'R', "version": 'A', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
+    "lb_nbb_highf_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_fifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'FIFO', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_lifo_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'LIFO', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+    "lb_nbb_highf_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'FHF', "tb_order": 'R', "version": 'F', "min_edge_cost": 1.0 ,"data_struct": 'B'},  
+
+    "lb_nbb_1stbucket_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_1stbucket_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_all_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'ALL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallblowestg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SLG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallbhighg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SB', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_smallblowg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SBL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_connec_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'EC', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_connln_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+
     "lb_fwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_bwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'B', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_alter_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
@@ -79,15 +127,7 @@ SEARCH_MAP = {
     "lb_smallgf_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'SB', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_mostedges_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'EC', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_mostconnectednodes_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_1stbucket_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_1stbucket_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'B', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_all_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'ALL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_smallblowestg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SLG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_smallbhighg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SB', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_smallblowg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SBL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_connec_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'EC', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_nbb_connln_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+
     "lb_lowg_smallblowestg_f_eps": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'SLG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_smallgf_smallbhighg_f_eps": {"class": bd_lb_search, "tb_dir": 'SB', "tb_select": 'SB', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_smallgf_smallblowg_f_eps": {"class": bd_lb_search, "tb_dir": 'SB', "tb_select": 'SBL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
@@ -96,6 +136,7 @@ SEARCH_MAP = {
     "lb_lowg_lowestg_f_eps": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_alter_highestg_f_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'HG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_alter_smallestg_f_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'SG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},

@@ -530,8 +530,11 @@ class WaitingReadyBuckets:
         """
         bucket = list(self.ready[g][f])  # fast copy of g-f bucket [ [ordering, state], ... ] 
         heapq.heapify(bucket)            # faster than full sorting and works since we only need to know the lowest, not the full order
-        state = bucket[0][-1]
-        return self.find_idx(g, f, state)
+        if len(bucket) > 0 and len(bucket[0]) > 0:
+            state = bucket[0][-1]
+            return self.find_idx(g, f, state)
+        else:
+            raise ValueError(f"WaitingReadyBuckets.find_lowest_ordered_idx g:{g} f:{f} bucket:'{bucket}' self.ready[g][f]:{self.ready[g][f]}")
 
     def pop_g_level(self, g):
         """ Pop all f buckets in the selected g from Ready ignoring empty buckets. 
@@ -756,13 +759,16 @@ class WaitingReadyBuckets:
                 g, f, ordering, current_state = self.pop(item_only=False)
                 self.expand_nodes.add( (ordering, g, f, current_state) )
             else: # select node based on ordering value
-                g = self.ready.peekitem(index=0)[0]
+                g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f]
                 f = self.ready[g].peekitem(index=0)[0]
                 idx = self.find_lowest_ordered_idx(g, f)
                 self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
         elif lb.tb_select == 'FHF':    # select single node in highest f in lowest g
-            g = self.ready.peekitem(index=0)[0]
+            g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f]
             f = self.ready[g].peekitem(index=-1)[0]
+            while len(self.ready[g][f]) == 0:        # can be empty buckets in higher f than 1st f so pop until we have a non-empty highest f
+                self.ready[g].pop(f)
+                f = self.ready[g].peekitem(index=-1)[0]
             idx = self.find_lowest_ordered_idx(g, f)
             self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
         elif lb.tb_select == 'FHG':    # select single node in lowest f in highest g

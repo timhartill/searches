@@ -587,8 +587,8 @@ class bd_lb_search:
                             h_score = problem.heuristic(neighbor_state) 
                             prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
                             frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                        tentative_g_score+h_score, 
-                                        prior_f, prior_g)  
+                                            tentative_g_score+h_score, 
+                                            prior_f, prior_g)  
            
             # --- Backward Step ---
             if not frontiers.backward.isEmpty() and bwd:
@@ -650,8 +650,8 @@ class bd_lb_search:
                             h_score = problem.heuristic(neighbor_state, backward=True)
                             prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
                             frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                        tentative_g_score+h_score,
-                                        prior_f, prior_g)
+                                            tentative_g_score+h_score,
+                                            prior_f, prior_g)
             
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
