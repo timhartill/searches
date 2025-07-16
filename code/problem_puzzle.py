@@ -360,7 +360,8 @@ class PancakeProblem:
             pancake_j = state_1[i + 1]
 
             # if pancake_j = table always check gap irrespective of degradation
-            if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
+            #if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
+            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
                 continue
            
             if abs(pancake_i - pancake_j) == 1:  # adjacent pancakes
@@ -390,7 +391,8 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-#            return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
+            if not backward:
+                return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
             return self.gap_variable_goal(state_tuple, target_tuple) * self.h_multiplier
         
     def __str__(self): 
