@@ -360,8 +360,8 @@ class PancakeProblem:
             pancake_j = state_1[i + 1]
 
             # if pancake_j = table always check gap irrespective of degradation
-            #if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
-            if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
+            if pancake_j != len(state_1) and (pancake_i in ignored_pancakes or pancake_j in ignored_pancakes):
+            #if pancake_i in ignored_pancakes or pancake_j in ignored_pancakes:
                 continue
            
             if abs(pancake_i - pancake_j) == 1:  # adjacent pancakes
@@ -373,6 +373,57 @@ class PancakeProblem:
 
         return heuristic_value
 
+    def gap_hog(self, state, goal):
+        """
+        Calculates a heuristic estimate for the Pancake Puzzle.
+
+        p = PancakeProblem(initial_state=[8,6,7,5,4,3,2,1], degradation=0, heuristic="gap")
+        print(f"state:{p.initial_state_tuple}  goal:{p.goal_state_tuple}")
+        print(f"FWD  deg:{p.degradation} helmert:{p.gap_helmert(p.initial_state_tuple)}  hog:{p.gap_hog(p.initial_state_tuple, p.goal_state_tuple)} vargoal:{p.gap_variable_goal(p.initial_state_tuple, p.goal_state_tuple)}")
+        print(f"BWD  deg:{p.degradation} helmert:{p.gap_helmert(p.goal_state_tuple)}  hog:{p.gap_hog(p.goal_state_tuple, p.initial_state_tuple)} vargoal:{p.gap_variable_goal(p.goal_state_tuple, p.initial_state_tuple)}")
+        
+        Args:
+            state: The current state 
+            goal_locs: A list or array mapping pancake values to their goal locations.
+            N: The total number of pancakes.
+            gap: A threshold value used in the heuristic calculation.
+
+        Returns:
+            A double representing the heuristic estimate.
+        """
+        heuristic_value = 0
+        h_inc = 1
+        N = len(state) - 1
+        gap = self.degradation
+
+        # Iterate up to N-1 to check pairs of adjacent pancakes
+        for i in range(N - 1):
+            pancake_i = state[i]
+            pancake_j = state[i + 1]
+            goal_position_i = goal.index(pancake_i)  # find index
+            goal_position_j = goal.index(pancake_j)  # find index
+
+            # If either pancake's goal location is less than 'gap', skip this pair
+            if (goal_position_i < gap) or \
+               (goal_position_j < gap):
+                continue
+            
+            # Calculate the difference in goal locations for adjacent pancakes
+            diff = goal_position_i - goal_position_j #goal[pancake_i] - goal[pancake_j]
+            
+            # If the absolute difference is greater than 1, increment h_count
+            if abs(diff) > 1:
+                if self.make_heuristic_inadmissable:
+                    h_inc = i
+                heuristic_value += h_inc
+                
+        # After the loop, check the last pancake's goal location
+        if goal.index(state[N - 1]) != N - 1:   #goal[state[N - 1]] != N - 1:
+            if self.make_heuristic_inadmissable:
+                h_inc = i
+            heuristic_value += h_inc
+
+        return heuristic_value
 
     def heuristic(self, state, backward=False):
         """
@@ -391,9 +442,9 @@ class PancakeProblem:
             return max( self.gap_heuristic(state_tuple, target_tuple), 
                         self.gap_heuristic(target_tuple, state_tuple)) * self.h_multiplier
         else:  # gap
-            if not backward:
-                return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
-            return self.gap_variable_goal(state_tuple, target_tuple) * self.h_multiplier
+            #if not backward:
+            #    return self.gap_helmert(state_tuple) * self.h_multiplier # goal must be the sorted stack
+            return self.gap_hog(state_tuple, target_tuple) * self.h_multiplier
         
     def __str__(self): 
         return self._str_repr

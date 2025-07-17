@@ -611,7 +611,7 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
     if not out_file_base:    
         out_file_base = os.path.join(out_dir, f"search_eval_{time.strftime('%Y-%m-%d_%H-%M-%S')}")
     else:
-        out_file_base = os.path.join(out_dir, out_file_base)    
+        out_file_base = os.path.join(out_dir, out_file_base)
     json_file_path = f"{out_file_base}.json"
     csv_file_path = f"{out_file_base}.csv"
     total_experiments = len(problems) * len(algorithms)
@@ -650,16 +650,17 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
         problems[i] = None  # Clear problem in list to free up memory
 
     # Overall Summary
-    log(f"\n{'*'*15} Overall Summary {'*'*15}")
-    for res in all_results:
-        if res.get('path_length', -1) >= 0:
-            summary = f"Cost: {res.get('cost', 'N/A')} Length: {res['path_length']}"
-        else: 
-            summary = "No Path Found"
+    log(f"{len(all_results)} experiments run so far.")
+    #log(f"\n{'*'*15} Overall Summary {'*'*15}")
+    #for res in all_results:
+    #    if res.get('path_length', -1) >= 0:
+    #        summary = f"Cost: {res.get('cost', 'N/A')} Length: {res['path_length']}"
+    #    else: 
+    #        summary = "No Path Found"
         #log("Path:", res.get('path') ) # Uncomment to see the full path states if saved
-        optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
-        algo_name = res.get('algorithm','N/A') 
-        log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")
+    #    optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
+    #    algo_name = res.get('algorithm','N/A') 
+    #    log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")
 
     # --- Save Results ---
     with open(json_file_path, 'w') as json_file:
