@@ -761,7 +761,10 @@ class WaitingReadyBuckets:
             else: # select node based on ordering value
                 g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f]
                 f = self.ready[g].peekitem(index=0)[0]
-                idx = self.find_lowest_ordered_idx(g, f)
+                if self.tb_order == 'R':
+                    idx = random.randint(0, len(self.ready[g][f])-1)
+                else:
+                    idx = self.find_lowest_ordered_idx(g, f)
                 self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
         elif lb.tb_select == 'FHF':    # select single node in highest f in lowest g
             g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f]
@@ -769,7 +772,10 @@ class WaitingReadyBuckets:
             while len(self.ready[g][f]) == 0:        # can be empty buckets in higher f than 1st f so pop until we have a non-empty highest f
                 self.ready[g].pop(f)
                 f = self.ready[g].peekitem(index=-1)[0]
-            idx = self.find_lowest_ordered_idx(g, f)
+            if self.tb_order == 'R':
+                idx = random.randint(0, len(self.ready[g][f])-1)
+            else:
+                idx = self.find_lowest_ordered_idx(g, f)
             self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
         elif lb.tb_select == 'FHG':    # select single node in lowest f in highest g
             if direction == 'F':
@@ -778,7 +784,10 @@ class WaitingReadyBuckets:
                 expandable_g = lb.backward_expandable_g
             g = list(expandable_g.keys())[-1]
             f = self.ready[g].peekitem(index=0)[0]
-            idx = self.find_lowest_ordered_idx(g, f)
+            if self.tb_order == 'R':
+                idx = random.randint(0, len(self.ready[g][f])-1)
+            else:
+                idx = self.find_lowest_ordered_idx(g, f)
             self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes            
         elif lb.tb_select == 'B':
             self.pop(item_only=False, bucket=True)  # puts entries into expand_nodes
