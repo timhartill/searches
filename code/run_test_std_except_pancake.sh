@@ -254,7 +254,7 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "all_std" \
+        --out_prefix "lb_StdAllexPancake_setid20" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
