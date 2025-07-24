@@ -73,7 +73,7 @@ def find_minimal_vertex_cover():
             
             # Condition 3: A specific threshold check is met.
             # .first becomes [0] for Python tuples.
-            elif fgreater(backward_cluster[j + 1][0] + forward_cluster[i + 1][0] + epsilon, c_lower_bound):
+            elif (backward_cluster[j + 1][0] + forward_cluster[i + 1][0] + epsilon) > c_lower_bound:
                 should_break = True
                 current_sum = num_backward_in_vc + num_forward_in_vc
                 print(f"3. i={i}, j={j} num_backward_in_vc={num_backward_in_vc} num_forward_in_vc={num_forward_in_vc} (c_lower_bound={c_lower_bound})")
