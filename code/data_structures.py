@@ -3,6 +3,8 @@ Data Structures
 """
 import heapq
 import random
+
+from numpy import add
 import util
 
 from sortedcontainers import SortedDict
@@ -723,8 +725,8 @@ class WaitingReadyBuckets:
         lb.forward_smallest_expandable_glevel: 
           SortedSet( [(0, 0)] ) sorted set of (g, count) of smallest expandable glevels (> 1 if multiple smallest equal)
         lb.backward_smallest_expandable_glevel: as prior
-        lb.forward_most_connected_glevel: {'most_edges': -1, 'most_nodes': -1} g of fwd glevel with most edges to bwd and g fwd with edges to most nodes in bwd
-        lb.backward_most_connected_glevel: as prior
+        lb.forward_most_interesting_glevel: {'most_edges': -1, 'most_nodes': -1} g of fwd glevel with most edges to bwd and g fwd with edges to most nodes in bwd
+        lb.backward_most_interesting_glevel: as prior
 
         
         lb.tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
@@ -854,16 +856,16 @@ class WaitingReadyBuckets:
             self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
         elif lb.tb_select == 'EC':  # expand glevel with highest edge count
             if direction == 'F':
-                expandable_g = lb.forward_most_connected_glevel
+                expandable_g = lb.forward_most_interesting_glevel
             else:
-                expandable_g = lb.backward_most_connected_glevel
+                expandable_g = lb.backward_most_interesting_glevel
             g = expandable_g['most_edges']
             self.pop_g_level(g)  # puts entries into expand_nodes
         elif lb.tb_select == 'LN':  # expand glevel with highest connected node count
             if direction == 'F':
-                expandable_g = lb.forward_most_connected_glevel
+                expandable_g = lb.forward_most_interesting_glevel
             else:
-                expandable_g = lb.backward_most_connected_glevel
+                expandable_g = lb.backward_most_interesting_glevel
             g = expandable_g['most_nodes']
             self.pop_g_level(g)  # puts entries into expand_nodes
         else:
@@ -916,8 +918,10 @@ class LBPairs:
         self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
         self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
         self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
-        self.forward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
-        self.backward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}  # as prior
+        self.forward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd and corresponding for subset in MWVC
+        self.backward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }  # as prior
+        self.mvc_g = []  # List of tuples of glevels that are in a MWVC in fwd and bwd [ ( (gF, gF, ...), (gB, gB, ...) ), ... ] Unused downstream, just for debugging
+
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -1016,10 +1020,17 @@ class LBPairs:
                 #print(f"NEW CLB: {CLB}")
         return found, CLB
 
-    def calc_expandable(self):
-        """ Calculate which buckets in ReadyF, ReadyB are expandable. 
-            Returns nodes (g not g-f), edges in Forward.Ready and Backward.Ready without popping 
-            plus SortedSets of the smallest expandable g-f bucket(s) and smallest expandable glevel(s) (sets since > 1 can be equally small. Leave to tb_select to choose which one to expand)
+    def calc_expandable(self, add_mwvc=True):
+        """ Calculate which buckets in ReadyF, ReadyB are expandable without popping anything. 
+            Returns: 
+            - Statistics for glevels and gf buckets in Forward.Ready and Backward.Ready: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD)) 
+            - SortedSets of the smallest expandable g-f bucket(s) and smallest expandable glevel(s) (sets since > 1 can be equally small. Leave to tb_select to choose which one to expand)
+            - Most connected glevel(s) in Forward and Backward directions ie glvel with most edges and (better) most nodes connected to in other direction
+            - Set of expandable edges {(gF, gB), ...} where gF is from Forward and gB is from Backward 
+            Additionally, if add_mwvc:
+            - Sets of glevels that are in a Weighted Minimum Vertex Cover (WMVC) of the expandable edges in Forward and Backward directions
+            - Most connected glevel in a MWVC in Forward and Backward directions
+            - Smallest |glevel| in a MWVC in Forward and Backward directions
             Note: Once this is run, no empty expandable buckets or g-levels will be present so downstream select_and_order() code can omit empty checks
         """
         self.forward_expandable_g = {}   # key:g (sorted) val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD)) 
@@ -1029,8 +1040,9 @@ class LBPairs:
         self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] )    # as prior
         self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )     # sorted set of (g, count) of smallest expandable glevels
         self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )    # as prior
-        self.forward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
-        self.backward_most_connected_glevel = {'most_edges': -1, 'most_nodes': -1}  # as prior
+        self.forward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd and corresponding for subset in MWVC
+        self.backward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1}  # as prior
+
         forward_smallest_count = float('inf')
         backward_smallest_count = float('inf')
         forward_smallest_glevel_count = float('inf')
@@ -1047,7 +1059,7 @@ class LBPairs:
 
         for gF in forward_g_list:       # loop through forward checking for edges between buckets in forward and backward
             if gF + smallest_gB + self.min_edge_cost > self.GLB:
-                break  # if gF + smallest_gB + eps > GLB then no gF + gB + eps will work since gF & gB monotonically increase, so can terminate 
+                break  # if gF + smallest_gB + eps > GLB then no gF + gB + eps will work since gF monotonically increases, so can terminate 
 
             stats_forward = self.forward.get_bucket_stats(gF)  # {'f_count': ,'f_smallest': , 'f_smallest_count': , 'g_total_count': } 
             if stats_forward['f_count'] == 0:  # gF key was empty and now popped
@@ -1088,17 +1100,17 @@ class LBPairs:
 
                     if forward_most_edges < self.forward_expandable_g[gF]["edge_count"]:
                          forward_most_edges = self.forward_expandable_g[gF]["edge_count"]
-                         self.forward_most_connected_glevel["most_edges"] = gF
+                         self.forward_most_interesting_glevel["most_edges"] = gF
                     if backward_most_edges < self.backward_expandable_g[gB]["edge_count"]:
                          backward_most_edges = self.backward_expandable_g[gB]["edge_count"]
-                         self.backward_most_connected_glevel["most_edges"] = gB
+                         self.backward_most_interesting_glevel["most_edges"] = gB
 
                     if forward_most_nodes < self.forward_expandable_g[gF]["connected_total_count"]:
                          forward_most_nodes = self.forward_expandable_g[gF]["connected_total_count"]
-                         self.forward_most_connected_glevel["most_nodes"] = gF
+                         self.forward_most_interesting_glevel["most_nodes"] = gF
                     if backward_most_nodes < self.backward_expandable_g[gB]["connected_total_count"]:
                          backward_most_nodes = self.backward_expandable_g[gB]["connected_total_count"]
-                         self.backward_most_connected_glevel["most_nodes"] = gB
+                         self.backward_most_interesting_glevel["most_nodes"] = gB
 
                     if self.forward_expandable_g[gF]["connected_smallest_count"] > self.backward_expandable_g[gB]["f_smallest_count"]: # smallest bucket in other direction connected to this glevel
                         self.forward_expandable_g[gF]["connected_smallest_count"] = self.backward_expandable_g[gB]["f_smallest_count"]
@@ -1132,7 +1144,29 @@ class LBPairs:
                     elif self.backward_expandable_g[gB]["g_total_count"] == backward_smallest_glevel_count:  
                         self.backward_smallest_expandable_glevel.add( (gB, backward_smallest_glevel_count) ) # [g, count]
                 else:        # gF + gB + self.min_edge_cost <= self.GLB
-                    continue # stop inner loop when gF + gB + eps > GLB since gB increases monotonically
+                    break   #continue # stop inner loop when gF + gB + eps > GLB since gB increases monotonically
+
+        if add_mwvc: # Calc Minimum Weighted Vertex Cover (MWVC) of the expandable edges based on Shaham et al 2017, 2018
+            self.mvc_g = []  # List of tuples of glevels that are in a MWVC in fwd and bwd [ ( (gF, gF, ...), (gB, gB, ...) ), ... ] Unused downstream, just for debugging
+            #self.forward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd and corresponding for subset in MWVC
+            forward_g_list = list(self.forward_expandable_g.keys())  
+            backward_g_list = list(self.backward_expandable_g.keys())
+
+            mwvc = 0
+            for gB in self.backward_expandable_g:        # calc wvc for bwd only
+                mwvc += self.backward_expandable_g[gB]["g_total_count"]
+            min_mwvc = mwvc
+            gF = forward_g_list[0]  # start with lowest gF
+            gB = backward_g_list[-1]  # start with highest gB
+            while gF < self.GLB:  # iterate over all gF in forward direction
+                mwvc += self.forward_expandable_g[gF]["g_total_count"]
+                old_gB = gB
+                gB = (self.GLB - gF) - self.min_edge_cost
+                for gB in self.backward_expandable_g:
+                    if gF + gB + self.min_edge_cost > self.GLB:
+                        break
+
+
         return
 
     def select_and_order(self, direction):
@@ -1246,8 +1280,8 @@ class LBPairs:
             else:
                 fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'EC':
-            fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_edges'] ]['edge_count']
-            bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_edges'] ]['edge_count']
+            fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['most_edges'] ]['edge_count']
+            bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['most_edges'] ]['edge_count']
             if fval > bval:  # reversed from other tb_dir since we want to expand the side with the largest edge count
                 fwd, bwd = True, False
                 self.last_direction = 'F'
@@ -1257,8 +1291,8 @@ class LBPairs:
             else:
                 fwd, bwd = self.implicit_tb_dir()
         elif self.tb_dir == 'LN':
-            fval = self.forward_expandable_g[ self.forward_most_connected_glevel['most_nodes'] ]['connected_total_count']
-            bval = self.backward_expandable_g[ self.backward_most_connected_glevel['most_nodes'] ]['connected_total_count']
+            fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['most_nodes'] ]['connected_total_count']
+            bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['most_nodes'] ]['connected_total_count']
             if fval > bval:  # reversed from other tb_dir since we want to expand the side with the largest # of connected nodes
                 fwd, bwd = True, False
                 self.last_direction = 'F'
@@ -1393,8 +1427,8 @@ print(f"Fwd Smallest exp bucket:{frontier.forward_smallest_expandable_bucket}") 
 print(f"Bwd Smallest exp bucket:{frontier.backward_smallest_expandable_bucket}") # [f, g, count] of smallest expandable bucket bwd
 print(f"Fwd Smallest exp glevel:{frontier.forward_smallest_expandable_glevel}")  # [g, count] of smallest expandable glevel fwd
 print(f"Bwd Smallest exp glevel:{frontier.backward_smallest_expandable_glevel}") # [g, count] of smallest expandable glevel bwd
-print(f"Fwd most connected g: {frontier.forward_most_connected_glevel}")         # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
-print(f"Bwd most connected g: {frontier.backward_most_connected_glevel}")
+print(f"Fwd most connected g: {frontier.forward_most_interesting_glevel}")         # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
+print(f"Bwd most connected g: {frontier.backward_most_interesting_glevel}")
 
 
 
