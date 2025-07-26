@@ -362,35 +362,45 @@ class bd_lb_search:
         'P': Pohl: expand direction based on smallest cardinality of open lists, 
         'R': expand in a random direction, 
         'G': expand direction based on lowest expandable g in open lists, 
-        'S': DVCBS-like: expand direction based on which READY_d has smallest expandable |glevel|, 
-        'SB': DVCBS-like: expand direction based on which READY_d has smallest expandable |g-f bucket|, 
+        'S': expand direction based on which READY_d has smallest expandable |glevel| of any glevel, 
+        'S0': smallest |glevel| of the lowest glevel in Fwd and Bwd
+        'SM': smallest |glevel| of any glevel in MWVC in Fwd and Bwd
+        'SM0': DVCBS: smallest |glevel| of lowest glevel in MWVC in Fwd and Bwd,
+        'SB': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward higher g, 
+        'SBL': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward lower g, 
         'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
         'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
+        'LN0': Vidal-like: Expand direction based on which READY_d has lowest glevel connected with largest node count in other direction
+        'LM': Expand direction based on which READY_d has glevel in MWVC connected with largest node count in other direction 
+        'LM0': Expand direction based on which READY_d has lowest glevel in MWVC connected with largest node count in other direction
         'EGBFHS': TBD 
 
+        
         tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
 
-        'F': select single node in first bucket i.e. a node in bucket with lowest g and lowest f 
+        'F':   select single node in first bucket i.e. a node in bucket with lowest g and lowest f 
         'FHF': select single node in highest f in lowest g
         'FHG': select single node in lowest f in highest g
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
+        'SG': smallest expandable glevel
+        'SM': smallest expandable glevel in MWVC
         'SLG': smallest bucket in lowest g
-        'LG': lowest glevel
+        'LG': lowest glevel - frequently used in conjunction with tb_dir ending in 0
         'HG': highest glevel
-        'SG': smallest glevel
-        'S': DVCBS: smallest glevel of any expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'S': DVCBS: smallest glevel of the minimum expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
         'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
         'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
-        'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction 
-        'EGBFHS' - need your help in specifying
+        'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction
+        'LM': Vidal-like: Expand glevel in MWVC with largest node count over connected glevels in other direction
+
 
         tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
 
         'R': random
-        'FIFO' / 'LIFO' - this is different from using FIFO/LIFO to "selecting" nodes above which I think is what MEPS does (I'm not going to implement FIFO/LIFO for selection since it performs so poorly but also will be slow in the context of how my implementation works)
+        'FIFO' / 'LIFO' 
         'NONE' - no explicit ordering applied
         
         """
@@ -405,21 +415,23 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
 
         self.tb_dir = tb_dir.upper()
-        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC', 'LN']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'SB', 'EC' or 'LN'.")
+        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S', 'SB', 'SBL', 'EC', 'LN']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'S' 'SB', 'SBL', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
             raise ValueError(f"ERROR: Invalid tb_order: '{self.tb_order}'. Must be 'R', 'FIFO', 'LIFO', or 'NONE'.")
 
         self.do_calc_expandable = False
-        if self.tb_dir in ['S', 'SB', 'EC', 'LN'] or self.tb_select not in ['F', 'FHF', 'B']:
+        self.do_mwvc = False   # Flag for tiebreakers requiring Min Weighted Vertex Cover (MWVC) to be calculated. This incurs overhead so not doing it if unnecessary.
+        if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0'] or self.tb_select not in ['F', 'FHF', 'B']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
-
+        if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0'] or self.tb_select in ['LM', 'SM']:
+            self.do_mwvc = True
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
         if self.data_struct not in ['P', 'B']:
@@ -524,7 +536,7 @@ class bd_lb_search:
                 break
 
             if self.do_calc_expandable:
-                frontiers.calc_expandable()
+                frontiers.calc_expandable(self.do_mwvc)
             fwd, bwd = frontiers.calc_direction()
 
             # --- Forward Step ---

@@ -563,6 +563,73 @@ def load_from_json(filename, verbose=False):
     return None
 
 
+def find_minimum_weighted_vertex_cover(forward_expandable_g, backward_expandable_g, min_edge_cost, GLB, return_covers=False):
+    """
+    Finds all minimum weighted vertex covers (MWVC) based on weighted nodes where a node is a g-level and weight is the number of states in that g.
+    Returns the minimum value ie |MVC|, lists of ascending forward/backward g levels in any mvc 
+    and a list of tuples representing the minimal vertex covers. Each tuple contains the indices (i, j) of the forward and backward clusters.
+    Nodes in the MWVC for a given tuple (i,j) are forward_expandable_g.keys()[:i+1] and backward_expandable_g.keys()[:j+1].
+    An i or j value of -1 indicates no nodes in that direction are in the MWVC for that tuple.
+
+    Key Args: 2 dictionaries with keys as g levels and values as dictionaries with at least the key "g_total_count" (weight):
+    - forward_expandable_g: key: gF (sorted ascending), value: {"g_total_count": weight} <- there are other keys in the value if calling from calc_expandable() but "g_total_count" is the only required one here
+    - backward_expandable_g: key: gB (sorted ascending), value: {"g_total_count": weight}
+    """
+    forward_g_list = list(forward_expandable_g.keys())
+    backward_g_list = list(backward_expandable_g.keys())
+    forward_g_mwvc = []   # forward g levels in MWVC
+    backward_g_mwvc = []
+    min_value = float('inf') 
+    minimum_vertex_covers = []   # A list of tuples will store the (i, j) pairs
+    max_i = -1
+    max_j = -1
+    
+    num_forward_in_vc = 0
+    for i in range(-1, len(forward_g_list)):       # Iterates from -1 up to the number of forward g levels.
+        if i > -1:
+            num_forward_in_vc += forward_expandable_g[ forward_g_list[i] ]['g_total_count']  # Accumulate the count from the forward g level.
+
+        num_backward_in_vc = 0
+        for j in range(-1, len(backward_g_list)):  # Iterates from -1 up to the number of backward g levels.
+            if j > -1:
+                num_backward_in_vc += backward_expandable_g[ backward_g_list[j] ]['g_total_count']   # Accumulate the weight from the backward g level.
+            should_break = False
+            current_sum = 0
+            
+            if i == len(forward_g_list)-1:       # Condition 1: We are at the last element of the forward cluster.
+                current_sum = num_backward_in_vc + num_forward_in_vc
+                should_break = True
+                        
+            elif j == len(backward_g_list)-1:    # Condition 2: We are at the last element of the backward cluster.
+                current_sum = num_backward_in_vc + num_forward_in_vc
+                should_break = True
+                        
+            elif (backward_g_list[j+1] + forward_g_list[i+1] + min_edge_cost) > GLB:  # Condition 3: No more edges ie gF + gB + eps > GLB
+                current_sum = num_backward_in_vc + num_forward_in_vc
+                should_break = True
+
+            if should_break:
+                if current_sum < min_value:   # If we found a new absolute minimum, discard the old list of covers
+                    min_value = current_sum
+                    minimum_vertex_covers = [(i, j)]
+                    max_i = i
+                    max_j = j
+                elif current_sum == min_value:  # If we found a value equal to the current minimum, add it to the list.
+                    minimum_vertex_covers.append((i, j))
+                    max_i = max(max_i, i)
+                    max_j = max(max_j, j)
+                break       # Break the inner loop
+    
+    if max_i > -1:
+        forward_g_mwvc = forward_g_list[:max_i+1]
+    if max_j > -1:
+        backward_g_mwvc = backward_g_list[:max_j+1]
+
+    if not return_covers:  
+        return min_value, forward_g_mwvc, backward_g_mwvc
+    return min_value, minimum_vertex_covers, forward_g_mwvc, backward_g_mwvc, max_i, max_j
+
+
 def run_search(algorithm, problem, seed=None, logger=None, save_path=True):
     """ Run an algorithm on a problem and return results """
     if not logger: log = print
@@ -649,19 +716,7 @@ def run_experiments(problems, algorithms, out_dir='', out_file_base=None,
         #problem = None  
         problems[i] = None  # Clear problem in list to free up memory
 
-    # Overall Summary
-    log(f"{len(all_results)} experiments run so far.")
-    #log(f"\n{'*'*15} Overall Summary {'*'*15}")
-    #for res in all_results:
-    #    if res.get('path_length', -1) >= 0:
-    #        summary = f"Cost: {res.get('cost', 'N/A')} Length: {res['path_length']}"
-    #    else: 
-    #        summary = "No Path Found"
-        #log("Path:", res.get('path') ) # Uncomment to see the full path states if saved
-    #    optimal_note = f"(Optimal: {res['optimal']})" if 'optimal' in res else ""
-    #    algo_name = res.get('algorithm','N/A') 
-    #    log(f"- Problem: {res.get('problem','N/A')}, Algorithm: {algo_name}, Time: {res.get('time',-1):.4f}s, Nodes: {res.get('nodes_expanded',-1)}, {summary} {optimal_note} {res['status']}")
-
+    log(f"{len(all_results)} experiments run so far.")  # Overall Summary
     # --- Save Results ---
     with open(json_file_path, 'w') as json_file:
         json.dump(all_results, json_file, indent=4)
