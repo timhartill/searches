@@ -147,6 +147,13 @@ SEARCH_MAP = {
     "lb_mwvcmostconnectednodes_mwvcconnln_f_eps": {"class": bd_lb_search, "tb_dir": 'LM', "tb_select": 'LM', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_mwvcmostconnectednodes_lowg_f_eps": {"class": bd_lb_search, "tb_dir": 'LM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
 
+    "lb_mwvcsmallg_mwvcsmallg_none_a_eps": {"class": bd_lb_search, "tb_dir": 'SM', "tb_select": 'SM', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'FIFO', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_mostconnectednodes_connln_a_eps": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'LN', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_mwvcmostconnectednodes_mwvcconnln_a_eps": {"class": bd_lb_search, "tb_dir": 'LM', "tb_select": 'LM', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_mwvcmostconnectednodes_lowg_a_eps": {"class": bd_lb_search, "tb_dir": 'LM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+
+
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     # for MCTS "heuristic_weight" > 0 indicates heuristic weight in selection. The actual value will then come from args.algo_mcts_heur_weight 
     "mcts_noheur": {"class":heuristic_mcts_search, "heuristic_weight": 0.0, "heuristic_rollout": False},
