@@ -1326,11 +1326,11 @@ class LBPairs:
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['mwvc_smallest_count'] ]['g_total_count']
             else:
-                fval = -1  # no MWVC covering forward direction
+                fval = float('inf')  # no MWVC covering forward direction
             if self.backward_g_mwvc:
                 bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['mwvc_smallest_count'] ]['g_total_count']
             else:
-                bval = -1  # no MWVC covering backward direction
+                bval = float('inf')  # no MWVC covering backward direction
             if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
@@ -1343,11 +1343,11 @@ class LBPairs:
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['g_total_count']
             else:
-                fval = -1  # no MWVC covering forward direction
+                fval = float('inf')  # no MWVC covering forward direction
             if self.backward_g_mwvc:
                 bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['lowest'] ]['g_total_count']
             else:
-                bval = -1  # no MWVC covering backward direction
+                bval = float('inf')  # no MWVC covering backward direction
             if fval > bval:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
@@ -1421,7 +1421,7 @@ class LBPairs:
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['connected_total_count']
             else:
-                fval = -1  # no MWVC covering forward direction    
+                fval = -1  # no MWVC covering forward direction
             if self.backward_g_mwvc:
                 bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['lowest'] ]['connected_total_count']
             else:
@@ -1480,62 +1480,6 @@ class StateInfo():
 
 
 """
-fwd = WaitingReadyBuckets('F')
-
-print(f"WAIT max:{fwd.wait_max_size} curr:{fwd.wait_curr_size} READY max:{fwd.ready_max_size} curr:{fwd.ready_curr_size}")
-print(f"WAIT f keys:{list(fwd.wait.keys())}")
-print(f"WAIT:{fwd.wait}")
-print(f"READY g keys:{list(fwd.ready.keys())}")
-print(f"READY:{fwd.ready}") 
-
-fwd.push([0, 0, 'hh'], 100, float('inf'), float('inf'))
-fwd.push([10, 0, 'jj'], 90, float('inf'), float('inf'))
-fwd.push([9, 0, 'jj'], 88, 90, 10)
-fwd.push([9, 0, 'kk'], 70, float('inf'), float('inf'))  #same g as jj but lower f
-fwd.push([9, 0, 'll'], 70, float('inf'), float('inf'))  #same g as jj, kk same f as kk
-fwd.push([8, 0, 'll'], 69, 70, 9) # update ll with new f,g. bucket splits correctly
-fwd.push([8, 0, 'mm'], 69, float('inf'), float('inf')) # 2 items in same f,g bucket
-fwd.wait[68] = SortedDict()  # Add a new f bucket with no entries
-fwd.wait[67] = SortedDict()
-fwd.wait[67][667] = SortedKeyList(key=lambda e: e[-1])  # Add a new g bucket with no entries
-fwd.peek_wait(priority_only=False) # correct: (69, 8, SortedKeyList([[0, 'll'], [0, 'mm']]
-
-fwd.move_to_ready(70)  # 2 Move all entries with f < 70 to ready
-fwd.move_to_ready(70, always_move_equal=True) # 1
-fwd.peek_ready(priority_only=True) # 8
-fwd.peek_ready(priority_only=False) # ll mm
-fwd.ready[7] = SortedDict()  # Add a new f bucket with no entries
-fwd.ready[6] = SortedDict()
-fwd.ready[7][777] = SortedKeyList(key=lambda e: e[-1])  # Add a new g bucket with no entries
-fwd.peek_ready(priority_only=False) # 8: ll mm
-fwd.move_one_to_ready(88) # 66: jj
-fwd.move_one_to_ready(88) # correctly removes empty bucket, moves nothing
-fwd.move_one_to_ready(90) # correctly removes empty bucket, moves nothing
-
-fwd.move_to_ready(88, always_move_equal=True) # 0 correct and removes empty
-fwd.move_to_ready(90, always_move_equal=True) # 0 correct and removes empty
-
-fwd.pop(item_only=False) # correct: (8, 69, 0, 'll')
-fwd.pop(item_only=False) # correct (8, 69, 0, 'mm')
-fwd.pop(item_only=False) # correct, (9, 70, 0, 'kk') and removed empty [8][69] skl
-fwd.pop(item_only=False) # correct, (9, 88, 0, 'jj') and removed empty [9][70] skl
-fwd.pop(item_only=False) # correct, returns None and removed empty [9][88] skl
-
-
-fwd.move_to_ready(90, always_move_equal=True)
-fwd.move_one_to_ready(90)
-fwd.move_one_to_ready(100)  # correctly moves 1. wait now empty, ready has 1
-fwd.isEmpty() # False
-fwd.pop(item_only=False)    $ correct: (0, 100, 0, 'hh')
-fwd.isEmpty() # True
-fwd.move_to_ready(100, always_move_equal=True)  # removed final empty bucket in wait
-fwd.pop(item_only=False)  # removed final empty bucket in ready, returns None
-
-frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='P', 
-                 tb_dir='NBS', tb_select='F', tb_order='NONE')
-frontier.data_struct
-frontier.push('F', [0, 0, 'hh'], 100, float('inf'), float('inf'))
-frontier.push('B', [0, 0, 'hg'], 100, float('inf'), float('inf'))
 
 print(f"##### FORWARD #####")
 print(f"WAIT max:{frontier.forward.wait_max_size} READY max:{frontier.forward.ready_max_size}")
@@ -1554,6 +1498,8 @@ print(f"WAIT+READY CURR SIZE: {frontier.backward.curr_size()}")
 print("######## CALC EXPANDABLE #######")
 print(f"Fwd EXPANDABLE:{frontier.forward_expandable_g}")   # key:g (sorted) val: (f, |f|, <GLB count, =GLB count, edge count) <- track <GLB, =GLB for DVCBS which uses <GLB
 print(f"Bwd EXPANDABLE:{frontier.backward_expandable_g}")  # key:g (sorted) val: (f, |f|, <GLB count, =GLB count, edge count) 
+print(f"Fwd weights: {[(g, frontier.forward_expandable_g[g]['g_total_count']) for g in frontier.forward_expandable_g ]}")
+print(f"Bwd weights: {[(g, frontier.backward_expandable_g[g]['g_total_count']) for g in frontier.backward_expandable_g ]}")
 print(f"Edges:{frontier.expandable_edges}")   # set of (gF, gB)
 #print(f"Edges Reversed:{frontier.expandable_edges_reversed}")   # set of (gB, gF)
 print(f"Fwd Smallest exp bucket:{frontier.forward_smallest_expandable_bucket}")  # [f, g, count] of smallest expandable bucket fwd
@@ -1562,15 +1508,15 @@ print(f"Fwd Smallest exp glevel:{frontier.forward_smallest_expandable_glevel}") 
 print(f"Bwd Smallest exp glevel:{frontier.backward_smallest_expandable_glevel}") # [g, count] of smallest expandable glevel bwd
 print(f"Fwd most connected g: {frontier.forward_most_interesting_glevel}")         # fwd g of glevel with most edges to bwd and edges to most nodes in bwd
 print(f"Bwd most connected g: {frontier.backward_most_interesting_glevel}")
+print(f"Fwd MWVC: {frontier.forward_g_mwvc}")  # g values in MWVC covering forward direction
+print(f"Bwd MWVC: {frontier.backward_g_mwvc}") # g values in MWVC covering backward direction
 
 
 
 
-# TODO TEST S!
 frontier = LBPairs(version='A', min_edge_cost=1.0, data_struct='B', 
-                 tb_dir='S', tb_select='F', tb_order='NONE')
-frontier.tb_dir = 'S'
-frontier.calc_expandable()
+                 tb_dir='SM0', tb_select='LG', tb_order='NONE')
+frontier.calc_expandable(add_mwvc=True)
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
@@ -1601,31 +1547,34 @@ frontier.push('B', [12, 0, 'b9'], 96, float('inf'), float('inf'))
 frontier.prepare_expandable(0) # (True, 96)
 
 frontier.GLB=1
-frontier.calc_expandable()
+frontier.calc_expandable(True)
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
 frontier.GLB=21
-frontier.calc_expandable()
+frontier.calc_expandable(True)
 print(frontier.calc_direction())  # (fwd, bwd) (False, True)
 print(frontier.last_direction)    #  B
 
 frontier.GLB=22
-frontier.calc_expandable()
+frontier.calc_expandable(True)
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
 frontier.GLB=23
-frontier.calc_expandable()
+frontier.calc_expandable(True)
 
 
 frontier.GLB=42
-frontier.calc_expandable()
+frontier.calc_expandable(True)
 print(frontier.calc_direction())  # (fwd, bwd) (True, False)
 print(frontier.last_direction)    #  F
 
+frontier.GLB=24
+frontier.calc_expandable(True)
 
-
+frontier.GLB=26
+frontier.calc_expandable(True)
 
 
 frontier.forward.ready[10][96] = SortedKeyList()
