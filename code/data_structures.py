@@ -945,9 +945,12 @@ class LBPairs:
         self.backward_smallest_expandable_bucket = SortedSet( [(-1, 0, 0)] ) #  (f, g, count) 
         self.forward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
         self.backward_smallest_expandable_glevel = SortedSet( [(0, 0)] )  # (g, count)
-        self.forward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd and corresponding for subset in MWVC
-        self.backward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1 }  # as prior
+        self.forward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1, 'lowest': -1 }   # fwd g of glevel with most edges to bwd and edges to most nodes in bwd and corresponding for subset in MWVC
+        self.backward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1, 'lowest': -1 }  # as prior
         self.forward_g_mwvc, self.backward_g_mwvc = [], []  # List of tuples of glevels that are in any MWVC
+
+        self.forward_max_g_expanded = -1  # max g expanded in forward direction
+        self.backward_max_g_expanded = -1  # max g expanded in backward direction
  
         return
 

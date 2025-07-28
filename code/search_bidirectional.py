@@ -395,6 +395,7 @@ class bd_lb_search:
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
         'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction
         'LM': Vidal-like: Expand glevel in MWVC with largest node count over connected glevels in other direction
+        'EGBFHS': TBD 
 
 
         tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
@@ -454,6 +455,7 @@ class bd_lb_search:
         self.ordering = 0
 
         self.algo = algo_name
+
 
         self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}"
 
@@ -564,6 +566,9 @@ class bd_lb_search:
                         c_count_dict[new_GLB] = 0
                     c_count_dict[new_GLB] +=1
 
+                    if g > frontiers.forward_max_g_expanded:
+                        frontiers.forward_max_g_expanded = g
+
                     for neighbor_info in problem.get_neighbors(current_state_fwd):
                         # Handle cases where get_neighbors might return just state or (state, move_info)
                         if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
@@ -626,6 +631,9 @@ class bd_lb_search:
                     if c_count_dict.get(new_GLB) is None:
                         c_count_dict[new_GLB] = 0
                     c_count_dict[new_GLB] +=1
+
+                    if g > frontiers.backward_max_g_expanded:
+                        frontiers.backward_max_g_expanded = g
 
                     for neighbor_info in problem.get_neighbors(current_state_bwd):
                         # Handle cases where get_neighbors might return just state or (state, move_info)
