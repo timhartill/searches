@@ -68,6 +68,7 @@ class bd_generic_search:
         closed_bwd = set() 
 
         nodes_expanded = 0
+        C_nonmono = -1  # C forced monotonic for counting nodes_expanded_below_cstar correctly in the case of non-monotonic C
         C = -1.0        # Current lowest cost on either frontier
         U = float('inf') # Current lowest cost of path found in either direction
         if hasattr(problem, "cstar"):
@@ -107,8 +108,9 @@ class bd_generic_search:
             current_priority = min( frontier_fwd.peek(priority_only=True), 
                                     frontier_bwd.peek(priority_only=True) )
 
-            C = max(C, current_priority)
-            if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
+            C = current_priority  # C = max(C, current_priority) <- this 'max' works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
+            C_nonmono = max(C_nonmono, current_priority)
+            if current_priority + 1e-6 < C_nonmono:  # This can happen with inconsistent heuristic which causes a state to be re-visited with a smaller priority
                 #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
 
@@ -152,12 +154,12 @@ class bd_generic_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_priority < cstar:
+                if cstar and C_nonmono < cstar:
                     nodes_expanded_below_cstar += 1
                 if self.priority_key != 'h':
-                    if c_count_dict.get(current_priority) is None:
-                        c_count_dict[current_priority] = 0
-                    c_count_dict[current_priority] +=1
+                    if c_count_dict.get(C_nonmono) is None:
+                        c_count_dict[C_nonmono] = 0
+                    c_count_dict[C_nonmono] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_fwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -226,12 +228,12 @@ class bd_generic_search:
                     #    break    
 
                 nodes_expanded += 1
-                if cstar and current_priority < cstar:
+                if cstar and C_nonmono < cstar:
                     nodes_expanded_below_cstar += 1
                 if self.priority_key != 'h':
-                    if c_count_dict.get(current_priority) is None:
-                        c_count_dict[current_priority] = 0
-                    c_count_dict[current_priority] +=1
+                    if c_count_dict.get(C_nonmono) is None:
+                        c_count_dict[C_nonmono] = 0
+                    c_count_dict[C_nonmono] +=1
 
                 for neighbor_info in problem.get_neighbors(current_state_bwd):
                     # Handle cases where get_neighbors might return just state or (state, move_info)
@@ -464,7 +466,7 @@ class bd_lb_search:
         """ Run the search on a problem instance and return dict of results."""
         optimality_guaranteed = problem.optimality_guaranteed
 
-        self.ordering = 0   
+        self.ordering = 0
         start_time = time.time()
         start_node = problem.initial_state()
         goal_node = problem.goal_state()
@@ -487,6 +489,7 @@ class bd_lb_search:
         closed_bwd = set() # unused
 
         nodes_expanded = 0
+        GLB_forcemono = 0                                  # Force monotonicity of GLB for c_count_dict to count nodes expanded below cstar correctly
         GLB = 0   #min(h_initial, h_goal) #-1.0            # Current lowest cost on either frontier ie  min(fminF, fminB, gminF+gminb+eps)
         U = float('inf')    # Current lowest cost of path found in either direction
         if hasattr(problem, "cstar"):
@@ -494,8 +497,8 @@ class bd_lb_search:
         else:
             cstar = None
         nodes_expanded_below_cstar = 0
-        nodes_expanded_below_cstar_auto = 0
-        c_count_dict = {}
+        c_count_dict_nonmono = {}  # Non-monotonic c_count_dict for the current GLB
+        c_count_dict = {}   # count dict where copy of Glb/c forced monotonic to count nodes expanded below cstar correctly
         meeting_node = None
         max_heap_size_combined = 0
         i = 0
@@ -529,9 +532,10 @@ class bd_lb_search:
                 status += f"Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
                 break
 
-            if new_GLB + 1e-6 < GLB:  
+            if new_GLB + 1e-6 < GLB:
                 priority_diminished += 1
-            GLB = new_GLB    #max(GLB, new_GLB) <- this works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with GLB>=U
+            GLB = new_GLB    #max(GLB, new_GLB) <- max(GLB, new_GLB) works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with GLB>=U
+            GLB_forcemono = max(GLB_forcemono, GLB)  # Force monotonicity of "shadow GLB" for c_count_dict to count nodes expanded below cstar correctly
 
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -560,11 +564,14 @@ class bd_lb_search:
                     #closed_fwd.add(current_state_fwd) 
 
                     nodes_expanded += 1
-                    if cstar and new_GLB < cstar:
+                    if cstar and GLB_forcemono < cstar:
                         nodes_expanded_below_cstar += 1
-                    if c_count_dict.get(new_GLB) is None:
-                        c_count_dict[new_GLB] = 0
-                    c_count_dict[new_GLB] +=1
+                    if c_count_dict.get(GLB_forcemono) is None:
+                        c_count_dict[GLB_forcemono] = 0
+                    c_count_dict[GLB_forcemono] +=1
+                    if c_count_dict_nonmono.get(new_GLB) is None:
+                        c_count_dict_nonmono[new_GLB] = 0
+                    c_count_dict_nonmono[new_GLB] +=1
 
                     if g > frontiers.forward_max_g_expanded:
                         frontiers.forward_max_g_expanded = g
@@ -626,11 +633,14 @@ class bd_lb_search:
                     #closed_bwd.add(current_state_bwd) 
 
                     nodes_expanded += 1
-                    if cstar and new_GLB < cstar:
+                    if cstar and GLB_forcemono < cstar:
                         nodes_expanded_below_cstar += 1
-                    if c_count_dict.get(new_GLB) is None:
-                        c_count_dict[new_GLB] = 0
-                    c_count_dict[new_GLB] +=1
+                    if c_count_dict.get(GLB_forcemono) is None:
+                        c_count_dict[GLB_forcemono] = 0
+                    c_count_dict[GLB_forcemono] +=1
+                    if c_count_dict_nonmono.get(new_GLB) is None:
+                        c_count_dict_nonmono[new_GLB] = 0
+                    c_count_dict_nonmono[new_GLB] +=1
 
                     if g > frontiers.backward_max_g_expanded:
                         frontiers.backward_max_g_expanded = g
@@ -690,8 +700,10 @@ class bd_lb_search:
             status += f" Updated U {U_update_count} times."
         nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
-            #status += f" c_count_dict len:{len(c_count_dict)}"
             nodes_expanded_below_cstar_auto = sum(c_count_dict[glb] for glb in c_count_dict if glb < U)
+        nodes_expanded_below_cstar_nonmono = -1
+        if len(c_count_dict_nonmono) > 0:
+            nodes_expanded_below_cstar_nonmono = sum(c_count_dict_nonmono[glb] for glb in c_count_dict_nonmono if glb < U)
 
         print(status)
 
@@ -728,6 +740,7 @@ class bd_lb_search:
             final_reported_cost = U # Report cost found by search
             return {"path": path, "cost": final_reported_cost, "nodes_expanded": nodes_expanded,  
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
+                    "nodes_expanded_below_cstar_nonmono": nodes_expanded_below_cstar_nonmono,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
@@ -741,6 +754,7 @@ class bd_lb_search:
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
+                "nodes_expanded_below_cstar_nonmono": nodes_expanded_below_cstar_nonmono,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),

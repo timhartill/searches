@@ -277,7 +277,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+        --algo_heur astar_negg lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps \
         --algo_mcts NONE
 
 

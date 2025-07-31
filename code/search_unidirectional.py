@@ -59,6 +59,7 @@ class generic_search:
         closed_set = set() # Unused in this implementation
 
         nodes_expanded = 0
+        C_nonmono = -1
         C = -1.0         # Current lowest cost on frontier
         U = float('inf') # Current lowest cost found for start to goal
         if hasattr(problem, "cstar"):
@@ -99,7 +100,8 @@ class generic_search:
             if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic
                 #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
-            C = current_priority    # C = max(C, current_priority) <- this works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
+            C = current_priority    # C = max(C, current_priority) <- this 'max' works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
+            C_nonmono = max(C_nonmono, current_priority)  # C_nonmono is used for c_count_dict to count nodes expanded below cstar correctly in the case of inconsistent heuristics
 
             if C >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 found_path = True
@@ -157,12 +159,12 @@ class generic_search:
 #                break
 
             nodes_expanded += 1
-            if cstar and current_priority < cstar:
+            if cstar and C_nonmono < cstar:
                 nodes_expanded_below_cstar += 1
             if self.priority_key != 'h':
-                if c_count_dict.get(current_priority) is None:
-                    c_count_dict[current_priority] = 0
-                c_count_dict[current_priority] +=1
+                if c_count_dict.get(C_nonmono) is None:
+                    c_count_dict[C_nonmono] = 0
+                c_count_dict[C_nonmono] +=1
 
             for neighbor_info in problem.get_neighbors(current_state):
                 # Handle cases where get_neighbors might return just state or (state, move_info)

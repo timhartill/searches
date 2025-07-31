@@ -1,6 +1,6 @@
 #!/bin/bash
-# Test script for search runner options
 
+# Test script for search runner options
 <<comment
 search_runner.py usage:
 
@@ -172,112 +172,41 @@ options:
                         MCTS Exploration Weight
   --algo_mcts_heur_weight ALGO_MCTS_HEUR_WEIGHT
                         MCTS Heuristic Weight (if applicable)
-
-python search_runner.py \
-        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
-        --out_prefix "search-eval" \
-        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
-        --seed 42 \
-        --grid daostd \
-        --grid_max_per_scen 3150 \
-        --grid_heur octile \
-        --grid_degs 0 \
-        --grid_cost_multipier 1.0 \
-        --grid_allow_diag \
-        --grid_diag_cost 1.5 \
-        --grid_ignore_cstar \
-        --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 2 \
-        --tiles_heur manhattan \
-        --tiles_degs 0 \
-        --pancakes "14_pancake_probs50_std.csv" \
-        --pancakes_max 50 \
-        --pancakes_heur gap \
-        --pancakes_degs 0 1 2 \
-        --toh "12_toh_4_peg_probs50_std.csv" \
-        --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 \
-        --toh_degs 0 \
-        --algo_visualise \
-        --algo_timeout 120 \
-        --algo_min_remaining_gb 2.0 \
-        --algo_heur astar lb_nbs_f_eps lb_nbb_f_eps lb_nbb_a_eps \
-        --algo_mcts NONE
-
 comment
 
-#daotest mazetest
-#dao maze
-#"8_puzzle_probs2_easytest.csv"
-#"11_puzzle_probs1_easytest.csv"
-#11_puzzle_probs10_seed42_2025-05-20_17-08-21.csv
-#"15_puzzle_probs1_testcstar66.csv"
-#"15_puzzle_probs2_test.csv"
-#"15_puzzle_probs100_korf_std.csv"
-#"8_pancake_probs1_easytest.csv"
-#"14_pancake_probs2_test.csv"
-#"14_pancake_probs100_seed42_2025-05-20_17-21-23.csv"
-#"7_toh_3_peg_probs1_easytest.csv"
-#"7_toh_4_peg_probs2_easytest.csv"
-#"12_toh_4_peg_probs2_test.csv"
-#"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
 
-#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
-#--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
-#--toh_heur infinitepegrelaxation pdb_4_10+2 pdb_4_6+6 
-
-#        --tiles_ignore_cstar \
-#        --tiles_var_cost \
-#        --pancakes_ignore_cstar \
-#        --pancakes_var_cost \
-#        --toh_inadmiss \
-
-#        --grid_max_per_scen 21 \
-#         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
-# lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_1stbucket_a_eps lb_nbb_rand_f_eps lb_nbb_all_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostedges_connec_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_alter_highestg_f_eps lb_alter_smallestg_f_eps lb_rand_rand_f_eps
-# (1) removed due to oom on dl1: lb_bwd_first_none_f_eps lb_mostedges_first_none_f_eps lb_mostconnectednodes_first_none_f_eps lb_nbb_all_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_mostedges_connec_f_eps lb_alter_highestg_f_eps lb_alter_smallestg_f_eps lb_nbb_1stbucket_a_eps
-# (2) all that run std pancake probs on dl1 without OOM (1) except new nbb/nbs (3) below:   --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_rand_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_rand_rand_f_eps \
-# (3) all eps nbs, nbb a and f with all tb:   --algo_heur astar_negg lb_nbs_a_eps lb_nbs_fifo_a_eps lb_nbs_lifo_a_eps lb_nbs_rand_a_eps lb_nbs_f_eps lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_a_eps lb_nbb_fifo_a_eps lb_nbb_lifo_a_eps lb_nbb_rand_a_eps lb_nbb_f_eps lb_nbb_fifo_f_eps lb_nbb_lifo_f_eps lb_nbb_rand_f_eps lb_nbb_highg_a_eps lb_nbb_highg_fifo_a_eps lb_nbb_highg_lifo_a_eps lb_nbb_highg_rand_a_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_a_eps lb_nbb_highf_fifo_a_eps lb_nbb_highf_lifo_a_eps lb_nbb_highf_rand_a_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps \
-# (4) remove from (3) those that take too long, versions A, and/or we have results for: astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps lb_nbs_fifo_a_eps lb_nbs_lifo_a_eps lb_nbs_rand_a_eps lb_nbb_fifo_a_eps lb_nbb_lifo_a_eps lb_nbb_rand_a_eps lb_nbb_fifo_f_eps lb_nbb_lifo_f_eps lb_nbb_highg_a_eps lb_nbb_highg_fifo_a_eps lb_nbb_highg_lifo_a_eps lb_nbb_highg_rand_a_eps lb_nbb_highf_a_eps lb_nbb_highf_fifo_a_eps lb_nbb_highf_lifo_a_eps lb_nbb_highf_rand_a_eps 
-# (5) = (3) minus (4): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps \
-# (10) remove from (2) due to excessive expansions on std pancake: lb_lowg_first_none_f_eps lb_lowg_smallblowestg_f_eps lb_lowg_lowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallblowg_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps
-# (11) = (2) minus (10): --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
-# (20) = (5) + (11): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
-# (21) remove due to excessive time taken on 15 puzzle: lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps
-# (22) = (20) minus (21): --algo_heur --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
-# (23) Connected Smallg MWVC ver F: --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps \
-# (24) Connected Smallg MWVC ver A: --algo_heur lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
-# (25) = (23) + (24): --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lbpairs_mwvc_verFA_STD_PAN_TOH_ONLY_expansioncountfix_search-eval" \
+        --out_prefix "5_pancake_pat_prob-search-eval" \
         --in_dir "../problems" \
         --seed 42 \
-        --grid daostd \
+        --algo_save_path_in_json \
+        --grid mazetest daotest \
         --grid_max_per_scen 0 \
+        --grid_random_scen_order \
         --grid_heur octile \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --tiles "15_puzzle_probs100_korf_std.csv" \
+        --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 0 \
         --tiles_heur manhattan \
-        --tiles_degs 0 \
-        --pancakes "14_pancake_probs50_std.csv" \
-        --pancakes_max 50 \
-        --pancakes_heur gap \
-        --pancakes_degs 0 2 \
-        --toh "12_toh_4_peg_probs50_std.csv" \
-        --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 \
+        --tiles_degs 0 4\
+        --pancakes "5_pancake_probs1_pat.csv" \
+        --pancakes_max 100 \
+        --pancakes_heur symgap gap \
+        --pancakes_degs 0 6 \
+        --toh "7_toh_4_peg_probs2_easytest.csv" \
+        --toh_max 0 \
+        --toh_heur infinitepegrelaxation pdb_4_5+2 \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+        --algo_heur astar_negg lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps \
         --algo_mcts NONE
 
 

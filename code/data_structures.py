@@ -1016,7 +1016,8 @@ class LBPairs:
 
     def prepare_expandable(self, GLB):
         """ Prepare the expandable nodes for the next iteration
-            GLB is min(lb(u,v)). lb(u,v) = max(fmin_f, fmin_b, gmin_f + gmin_b + min_edge_cost)
+            GLB is min(lb(u,v)). 
+            lb(u,v) = max(fmin_f, fmin_b, gmin_f + gmin_b + min_edge_cost)
 
             Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
         """
