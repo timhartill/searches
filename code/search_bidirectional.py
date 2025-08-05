@@ -534,7 +534,7 @@ class bd_lb_search:
 
             if new_GLB + 1e-6 < GLB:
                 priority_diminished += 1
-            GLB = new_GLB    #max(GLB, new_GLB) <- max(GLB, new_GLB) works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with GLB>=U
+            GLB = new_GLB    #<- max(GLB, new_GLB) works but we do get priority_diminished so concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely with GLB>=U
             GLB_forcemono = max(GLB_forcemono, GLB)  # Force monotonicity of "shadow GLB" for c_count_dict to count nodes expanded below cstar correctly
 
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop

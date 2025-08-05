@@ -1021,10 +1021,17 @@ class LBPairs:
 
             Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
         """
-        CLB = 0  # CLB starts at 0 each time
+        #print(f"##### Start GLB/CLB: {GLB}: ####")
+        #print("FORMATS: WAIT: (f, [g, ordering, state]  READY: (g, [ordering, f, state]))")
+        #print(f"FWD WAIT:{self.forward.wait}  FWD READY:{self.forward.ready}")
+        #print(f"BWD WAIT:{self.backward.wait} BWD READY:{self.backward.ready}")
+
+        #CLB = 0  # CLB starts at 0 each time - always finds optimal soln but causes more examples of non-monotonic GLB
+        CLB = GLB  # CLB starts at old GLB each time. NBS and DVCBS style - still get non-monotonic GLB, just less often than starting at 0 each time
         found = False
+        #count_f, count_b = self.move_to_ready(CLB)  # NBS_f style - still get non-monotonic GLB if put move_to_ready() here but the "A" versions gets into infinite loop 
         while True:
-            count_f, count_b = self.move_to_ready(CLB)
+            count_f, count_b = self.move_to_ready(CLB)     # DVCBS style - both "f" and "a" versions always find optimal soln and both sometimes get non-monotonic GLB
             #print(f"After initial move to ready Moved:{count_f} {count_b}")
             #print(f"Fwd Ready:{self.forward.ready} Fwd Wait:{self.forward.wait}")
             #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
@@ -1035,6 +1042,12 @@ class LBPairs:
                 gmin += self.forward.peek_ready(priority_only=True)
                 gmin += self.backward.peek_ready(priority_only=True)
                 if gmin <= CLB: # This is the condition for expandable nodes
+                    #if CLB < GLB: #Check for non-monotonic GLB so can print diagnostics
+                    #    print(f"##### Non-monotonic GLB: {CLB} < {GLB} - found expandable nodes with gF+gB+eps = gmin:{gmin} ####")
+                    #    print("FORMATS: WAIT: (f, [g, ordering, state]  READY: (g, [ordering, f, state]))")
+                    #    print(f"FWD WAIT:{self.forward.wait}  FWD READY:{self.forward.ready}")
+                    #    print(f"BWD WAIT:{self.backward.wait} BWD READY:{self.backward.ready}")
+                    #    util.exit_now()
                     found = True
                     #print(f"Expandable nodes found with GLB:{CLB} g+g:{gmin}")
                     break
@@ -1045,7 +1058,8 @@ class LBPairs:
             #print(f"After move ONE to ready Moved:{count_f} {count_b}")
             #print(f"Fwd Ready:{self.forward.ready} Fwd Wait:{self.forward.wait}")
             #print(f"Bwd Ready:{self.backward.ready} Bwd Wait:{self.backward.wait}")
-            if count_f == 0 or count_b == 0:
+            #if count_f == 0 or count_b == 0:   # Per Chen pseudocode
+            if count_f == 0 and count_b == 0:   # Per Shperberg/Siag code for CLB increase!
                 CLB = self.get_new_LB()
                 self.GLB = CLB
                 #print(f"NEW CLB: {CLB}")

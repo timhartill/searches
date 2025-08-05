@@ -251,7 +251,7 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lbpairs_mwvc_verFA_STD_PAN_TOH_ONLY_expansioncountfix_search-eval" \
+        --out_prefix "lbpairs_mwvc_verFA_STD_PAN_TOH_ONLY_expansioncountfix_clbEQGLB_clbRECALCOnlyIfNeitherMoveOneToready_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -272,7 +272,7 @@ python search_runner.py \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 \
+        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \

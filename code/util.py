@@ -146,6 +146,10 @@ def make_random_substitutions(A, substitutions, num_samples, giveup = 10000000):
         curr_count = len(perturbations)
     return [list(p) for p in perturbations]
 
+def exit_now(exit_code=0):
+    """ Exit the program with the given exit code """
+    print(f"Exiting with code {exit_code}")
+    sys.exit(exit_code)
 
 
 def bytes_to_gb(bytes_value):
