@@ -98,8 +98,8 @@ class generic_search:
             current_priority = frontier.peek(priority_only=True) # Peek at the lowest priority element. 
 
             if current_priority + 1e-6 < C:  # This can happen with inconsistent heuristic
-                #print(f" Current priority {current_priority} is less than C {C}.")
                 priority_diminished += 1
+
             C = current_priority    # C = max(C, current_priority) <- this 'max' works empirically but concerned it *could* fail for inconsistent heuristic where priority diminishes
             C_nonmono = max(C_nonmono, current_priority)  # C_nonmono is used for c_count_dict to count nodes expanded below cstar correctly in the case of inconsistent heuristics
 
@@ -107,13 +107,6 @@ class generic_search:
                 found_path = True
                 status += f"Completed. Termination condition C ({C}) >= U ({U}) met."
                 break
-
-#            if g_count_dict:
-#                gmin = g_count_dict.peekitem(index=0)[0]
-#                if gmin + self.min_edge_cost >= U:
-#                    found_path = True
-#                    status += f"Completed. Termination condition Gmin+eps ({gmin + self.min_edge_cost}) >= U ({U}) met."
-#                    break
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_g_score = g_score[current_state]
@@ -129,34 +122,13 @@ class generic_search:
                         h_admissable = False
 
             g_from_frontier = round(current_priority - current_h, 2)
- #           if g_from_frontier not in g_count_dict:
- #               raise KeyError(f"g_from_frontier:{g_from_frontier} g_count_dict:{g_count_dict}")
-#            g_count_dict[g_from_frontier] -= 1
-#            if g_count_dict[g_from_frontier] <= 0:
-#                g_count_dict.pop(g_from_frontier)
 
             # left the check for stale entries, but PriorityQueue now removes duplicates internally s.t. only non-stale entries are popped..
-#            if current_g_score + 1e-6 < g_from_frontier:
             if current_g_score < g_from_frontier:
                 stale_count += 1
-                #continue
 
             #if current_state in closed_set: continue   # we don't need a closed set in this implementation
             #closed_set.add(current_state) 
-
-#            if problem.is_goal(current_state):  # Update "lowest known soln cost" U when hit the goal
-#                found_goal_count += 1
-#                if current_g_score < U:
-                    #U = current_g_score
-                    #found_path = True
-                    #U_update_count += 1
-                    #if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                    #    status += f"Terminating BFS in goal check as path found. U:{U}."
-                    #    break
-#                U = current_g_score
-#                found_path = True
-#                status += f"Completed. Found goal state C:{current_priority} U:{U}."
-#                break
 
             nodes_expanded += 1
             if cstar and C_nonmono < cstar:
@@ -205,11 +177,8 @@ class generic_search:
                     came_from[neighbor_state] = current_state 
                     g_score[neighbor_state] = tentative_g_score
                     h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
-                    if not at_goal:
+                    if not at_goal:  # by default min_edge_cost = 0 but can try this with min_edge_cost > 0 for "eps enhanced A*"
                         h_score = max(h_score, self.min_edge_cost)  # Don't use for h fns that always return in >=0 .. <=1 or this will push all h to 1.. if eg degradation pushes h to < eps or h naturually < eps then make h eps
-#                    if g_count_dict.get(tentative_g_score) is None:
-#                        g_count_dict[tentative_g_score] = 0
-#                    g_count_dict[tentative_g_score] +=1
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score),

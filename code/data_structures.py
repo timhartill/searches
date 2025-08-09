@@ -739,10 +739,10 @@ class WaitingReadyBuckets:
         'ALL': all expandable buckets
         'SG': smallest expandable glevel
         'SM': smallest expandable glevel in MWVC
-        'SLG': smallest bucket in lowest g
+        'SLG': smallest bucket in lowest g (eg use with tb_dir SBM0 that will select direction with smallest bucket in lowest g that is in a MWVC)
         'LG': lowest glevel - frequently used in conjunction with tb_dir ending in 0
         'HG': highest glevel
-        'S': DVCBS: smallest glevel of the minimum expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'S': DVCBS: smallest glevel of the minimum expandable glevel that is in any MVC of expandable_f X expandable_b 
         'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
         'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
@@ -764,7 +764,7 @@ class WaitingReadyBuckets:
                 g, f, ordering, current_state = self.pop(item_only=False)
                 self.expand_nodes.add( (ordering, g, f, current_state) )
             else: # select node based on ordering value
-                g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f]
+                g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f] since calc_expandable not run for this tb_select
                 f = self.ready[g].peekitem(index=0)[0]
                 if lb.tb_order == 'R':
                     idx = random.randint(0, len(self.ready[g][f])-1)
@@ -815,12 +815,20 @@ class WaitingReadyBuckets:
         elif lb.tb_select == 'SLG':  # smallest f bucket in lowest expandable g
             if direction == 'F':
                 expandable_g = lb.forward_expandable_g
+                g = lb.forward_most_interesting_glevel['lowest']   #list(expandable_g.keys())[0]
             else:
                 expandable_g = lb.backward_expandable_g
-            g = list(expandable_g.keys())[0]  
+                g = lb.backward_most_interesting_glevel['lowest']   #list(expandable_g.keys())[0]
             f = expandable_g[g]['f_smallest']
             self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
         elif lb.tb_select == 'LG':  # lowest expandable g: frequently used in conjunction with tb_dir ending in 0
+            if direction == 'F':
+                expandable_g = lb.forward_most_interesting_glevel
+            else:
+                expandable_g = lb.backward_most_interesting_glevel
+            g = expandable_g['lowest']   #list(expandable_g.keys())[0]
+            self.pop_g_level(g)
+        elif lb.tb_select == 'LGSB':  # smallest gf bucket in lowest expandable g: eg used in conjunction with tb_dir SBM0
             if direction == 'F':
                 expandable_g = lb.forward_most_interesting_glevel
             else:
@@ -1259,8 +1267,8 @@ class LBPairs:
         'S0': smallest |glevel| of the lowest glevel in Fwd and Bwd
         'SM': smallest |glevel| of any glevel in MWVC in Fwd and Bwd
         'SM0': DVCBS: smallest |glevel| of lowest glevel in MWVC in Fwd and Bwd,
-        'SB': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward higher g, 
-        'SBL': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward lower g, 
+        'SB': expand direction based on which READY_d has smallest expandable |g-f bucket| 
+        'SBM0': expand direction based on which READY_d has smallest expandable |g-f bucket| in lowest glevel in MWVC
         'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
         'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
         'LN0': Vidal-like: Expand direction based on which READY_d has lowest glevel connected with largest node count in other direction
@@ -1385,6 +1393,24 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
+        elif self.tb_dir == 'SBM0':   # smallest |gf bucket| of lowest glevel in MWVC in Fwd and Bwd 
+            if self.forward_g_mwvc:
+                fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['f_smallest_count']
+            else:
+                fval = float('inf')  # no MWVC covering forward direction
+            if self.backward_g_mwvc:
+                bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['lowest'] ]['f_smallest_count']
+            else:
+                bval = float('inf')  # no MWVC covering backward direction
+            if fval > bval:
+                fwd, bwd = False, True
+                self.last_direction = 'B'
+            elif fval < bval:
+                fwd, bwd = True, False
+                self.last_direction = 'F'
+            else:
+                fwd, bwd = self.implicit_tb_dir()
+
         elif self.tb_dir == 'EC':
             fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['most_edges'] ]['edge_count']
             bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['most_edges'] ]['edge_count']

@@ -368,14 +368,15 @@ class bd_lb_search:
         'S0': smallest |glevel| of the lowest glevel in Fwd and Bwd
         'SM': smallest |glevel| of any glevel in MWVC in Fwd and Bwd
         'SM0': DVCBS: smallest |glevel| of lowest glevel in MWVC in Fwd and Bwd,
-        'SB': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward higher g, 
-        'SBL': expand direction based on which READY_d has smallest expandable |g-f bucket| tb toward lower g, 
+        'SB': expand direction based on which READY_d has smallest expandable |g-f bucket| 
+        'SBM0': expand direction based on which READY_d has smallest expandable |g-f bucket| in lowest glevel in MWVC
         'EC': Expand direction based on which READY_d has glevel with largest edge count ie is connected with most glevels in other direction
         'LN': Vidal-like: Expand direction based on which READY_d has glevel connected with largest node count in other direction 
         'LN0': Vidal-like: Expand direction based on which READY_d has lowest glevel connected with largest node count in other direction
         'LM': Expand direction based on which READY_d has glevel in MWVC connected with largest node count in other direction 
         'LM0': Expand direction based on which READY_d has lowest glevel in MWVC connected with largest node count in other direction
         'EGBFHS': TBD 
+
 
         
         tb_select - strategy for selecting node(s) to expand in selected direction(s) from Ready_d:
@@ -388,16 +389,15 @@ class bd_lb_search:
         'ALL': all expandable buckets
         'SG': smallest expandable glevel
         'SM': smallest expandable glevel in MWVC
-        'SLG': smallest bucket in lowest g
+        'SLG': smallest bucket in lowest g (eg use with tb_dir SBM0 that will select direction with smallest bucket in lowest g that is in a MWVC)
         'LG': lowest glevel - frequently used in conjunction with tb_dir ending in 0
         'HG': highest glevel
-        'S': DVCBS: smallest glevel of the minimum expandable glevel that is in any MVC of expandable_f X expandable_b (I'm going to implement simpler strategies first and see whether its actually worth doing this or whether similar results obtainable from eg SLG)
+        'S': DVCBS: smallest glevel of the minimum expandable glevel that is in any MVC of expandable_f X expandable_b
         'SB': smallest bucket of any expandable bucket - with tiebreak towards highest g
         'SBL': smallest bucket of any expandable bucket - with tiebreak towards lowest g
         'EC': Expand glevel with largest edge count ie. is connected with most glevels in other direction
         'LN': Vidal-like: Expand glevel with largest node count over connected glevels in other direction
         'LM': Vidal-like: Expand glevel in MWVC with largest node count over connected glevels in other direction
-        'EGBFHS': TBD 
 
 
         tb_order - determines the order for expanding selected nodes in selected direction if more than one node:
@@ -418,8 +418,8 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
 
         self.tb_dir = tb_dir.upper()
-        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM'.")
+        if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM', 'LM0']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM'.")
 
         self.tb_select = tb_select.upper()
         if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
@@ -433,7 +433,7 @@ class bd_lb_search:
         self.do_mwvc = False   # Flag for tiebreakers requiring Min Weighted Vertex Cover (MWVC) to be calculated. This incurs overhead so not doing it if unnecessary.
         if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0'] or self.tb_select not in ['F', 'FHF', 'B']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
-        if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0'] or self.tb_select in ['LM', 'SM']:
+        if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0', 'SBM0'] or self.tb_select in ['LM', 'SM']:
             self.do_mwvc = True
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
@@ -497,7 +497,6 @@ class bd_lb_search:
         else:
             cstar = None
         nodes_expanded_below_cstar = 0
-        c_count_dict_nonmono = {}  # Non-monotonic c_count_dict for the current GLB
         c_count_dict = {}   # count dict where copy of Glb/c forced monotonic to count nodes expanded below cstar correctly
         meeting_node = None
         max_heap_size_combined = 0
@@ -528,7 +527,7 @@ class bd_lb_search:
             i += 1
 
             found, new_GLB = frontiers.prepare_expandable(GLB)
-            if not found:  # If no expandable nodes, we are done
+            if not found:  # If no expandable nodes, we are done - never happens in current test domains
                 status += f"Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
                 break
 
@@ -537,7 +536,7 @@ class bd_lb_search:
             GLB = new_GLB    #<- For inconsistent heuristics concerned there could a corner case where diminished_priority state led to better soln but we terminate prematurely so not forcing GLB to be monotonic (even though none of my tests with consistent/inconsistent heuristics actually cause non-monoticity...)
             GLB_forcemono = max(GLB_forcemono, GLB)  # Force monotonicity of "shadow GLB" for c_count_dict to guarantee count of nodes expanded below cstar is correct 
 
-            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            if GLB >= U: # If the estimated lowest cost path on frontier (lowest lb(u,v)) is greater or equal cost than the best path found, stop
                 status += f"Completed. Termination condition GLB ({GLB}) >= U ({U}) met."
                 break
 
@@ -549,6 +548,7 @@ class bd_lb_search:
             if not frontiers.forward.isEmpty() and fwd:
                 #g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
                 expand_list = frontiers.select_and_order('F')
+                # NOTE: DVCBS HOG2 code has optimization s.t if path found between any u in fwd expand_list and v in bwd expand list then terminate with optimal found. For algos expanding many nodes in both directions in same iter this will reduce the expansion count by len(fwd expand_list)+len(bwd expand list up to point path found) but at the cost of iterating through both expand_lists to do the check.
                 for (ordering, g, f, current_state_fwd) in expand_list:
                     current_g_fwd = g_score_fwd.get(current_state_fwd)
                     current_h = problem.heuristic(current_state_fwd)
@@ -572,16 +572,13 @@ class bd_lb_search:
                     if c_count_dict.get(GLB_forcemono) is None:
                         c_count_dict[GLB_forcemono] = 0
                     c_count_dict[GLB_forcemono] +=1
-                    if c_count_dict_nonmono.get(new_GLB) is None:
-                        c_count_dict_nonmono[new_GLB] = 0
-                    c_count_dict_nonmono[new_GLB] +=1
 
                     if g > frontiers.forward_max_g_expanded:
                         frontiers.forward_max_g_expanded = g
 
                     for neighbor_info in problem.get_neighbors(current_state_fwd):
-                        # Handle cases where get_neighbors might return just state or (state, move_info)
-                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                        
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
                             move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
                         else:
@@ -592,16 +589,10 @@ class bd_lb_search:
                         cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                         tentative_g_score = current_g_fwd + cost
 
-                        if neighbor_state in g_score_bwd: 
-                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
-                            found_goal_count += 1
-                            if current_path_cost < U:
-                                U = current_path_cost
-                                meeting_node = neighbor_state
-                                U_update_count += 1
-
-                        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                        if h_consistent:
+                        if tentative_g_score >= U:   # Optimisation in NBS and DVCHS HOG2 code
+                            continue
+                        
+                        if h_consistent:                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                             h_score = problem.heuristic(neighbor_state)
                             if current_h > cost + h_score + 1e-6:
                                 status += f" Inconsistent heuristic detected (fwd)."
@@ -612,11 +603,27 @@ class bd_lb_search:
                             came_from_fwd[neighbor_state] = current_state_fwd 
                             g_score_fwd[neighbor_state] = tentative_g_score
                             h_score = problem.heuristic(neighbor_state) 
-                            prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                            frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                            tentative_g_score+h_score, 
-                                            prior_f, prior_g)  
-           
+                            if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCHS HOG2 code
+                                prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                                frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                                tentative_g_score+h_score, 
+                                                prior_f, prior_g)  
+
+                        if neighbor_state in g_score_bwd: 
+                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
+                            found_goal_count += 1
+                            if current_path_cost < U:
+                                U = current_path_cost
+                                meeting_node = neighbor_state
+                                U_update_count += 1
+                    # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
+                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                        status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
+                        break  # break for state in expand_list
+            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                break # break main loop
+
+
             # --- Backward Step ---
             if not frontiers.backward.isEmpty() and bwd:
                 #g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
@@ -644,16 +651,13 @@ class bd_lb_search:
                     if c_count_dict.get(GLB_forcemono) is None:
                         c_count_dict[GLB_forcemono] = 0
                     c_count_dict[GLB_forcemono] +=1
-                    if c_count_dict_nonmono.get(new_GLB) is None:
-                        c_count_dict_nonmono[new_GLB] = 0
-                    c_count_dict_nonmono[new_GLB] +=1
 
                     if g > frontiers.backward_max_g_expanded:
                         frontiers.backward_max_g_expanded = g
 
                     for neighbor_info in problem.get_neighbors(current_state_bwd):
-                        # Handle cases where get_neighbors might return just state or (state, move_info)
-                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                        
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
                             move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
                         else:
@@ -664,16 +668,10 @@ class bd_lb_search:
                         cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
                         tentative_g_score = current_g_bwd + cost 
 
-                        if neighbor_state in g_score_fwd: 
-                            current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
-                            found_goal_count += 1
-                            if current_path_cost < U:
-                                U = current_path_cost
-                                meeting_node = neighbor_state
-                                U_update_count += 1
-
-                        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                        if h_consistent:
+                        if tentative_g_score >= U:   # Optimisation in NBS and DVCHS HOG2 code
+                            continue
+                        
+                        if h_consistent:                                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                             h_score = problem.heuristic(neighbor_state, backward=True)
                             if current_h > cost + h_score + 1e-6:
                                 status += f" Inconsistent heuristic detected (bwd)."
@@ -684,11 +682,27 @@ class bd_lb_search:
                             came_from_bwd[neighbor_state] = current_state_bwd 
                             g_score_bwd[neighbor_state] = tentative_g_score
                             h_score = problem.heuristic(neighbor_state, backward=True)
-                            prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                            frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
-                                            tentative_g_score+h_score,
-                                            prior_f, prior_g)
-            
+                            if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCHS HOG2 code
+                                prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                                frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                                tentative_g_score+h_score,
+                                                prior_f, prior_g)
+
+                        if neighbor_state in g_score_fwd: 
+                            current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
+                            found_goal_count += 1
+                            if current_path_cost < U:
+                                U = current_path_cost
+                                meeting_node = neighbor_state
+                                U_update_count += 1
+                    # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
+                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                        status += f"Completed in BWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
+                        break  # break for state in expand_list
+            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                break # break main loop
+
+
         end_time = time.time()
         max_ram = round(start_ram - min(min_ram, util.get_available_ram()), 2)
         max_bucket_size, distinct_f, distinct_g = frontiers.get_max_bucket_stats()
@@ -707,9 +721,6 @@ class bd_lb_search:
         nodes_expanded_below_cstar_auto = -1
         if len(c_count_dict) > 0:
             nodes_expanded_below_cstar_auto = sum(c_count_dict[glb] for glb in c_count_dict if glb < U)
-        nodes_expanded_below_cstar_nonmono = -1
-        if len(c_count_dict_nonmono) > 0:
-            nodes_expanded_below_cstar_nonmono = sum(c_count_dict_nonmono[glb] for glb in c_count_dict_nonmono if glb < U)
 
         print(status)
 
@@ -746,7 +757,6 @@ class bd_lb_search:
             final_reported_cost = U # Report cost found by search
             return {"path": path, "cost": final_reported_cost, "nodes_expanded": nodes_expanded,  
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
-                    "nodes_expanded_below_cstar_nonmono": nodes_expanded_below_cstar_nonmono,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
@@ -760,7 +770,6 @@ class bd_lb_search:
         status += " No path found."
         return {"path": None, "cost": -1, "nodes_expanded": nodes_expanded, 
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
-                "nodes_expanded_below_cstar_nonmono": nodes_expanded_below_cstar_nonmono,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),
