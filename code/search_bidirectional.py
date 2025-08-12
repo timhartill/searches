@@ -514,6 +514,7 @@ class bd_lb_search:
         min_ram = start_ram
         num_expansions_fwd = 0  # Num of expansions in fwd direction this iteration
         num_expansions_bwd = 0  # Num of expansions in bwd direction this iteration - if fwd+bwd = 0 then terminate with error as inf loop
+        num_iter_no_expansions = 0  # Number of iterations with no expansions in either direction - error if >= 2 meaning a potential fwd only iter + bwd only iter failed
         force_low_tiebreak = False  # only improves expansion count slightly (where expanding > 1 node in a direction) so disabling for now
         switch_after_U_set = False # change to tb_select='F' after U < inf: disabling due to this taking excessive time compared to not using it in some domains eg pancake
 
@@ -729,8 +730,12 @@ class bd_lb_search:
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
             if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction there is an error
-                status += f"ERROR: Terminating since no nodes expanded in either direction! GLB:{GLB} U:{U}."
+                num_iter_no_expansions += 1
+                if num_iter_no_expansions >= 2:  # If no nodes expanded in either direction for 2 iterations, terminate with error (2 iterations to allow for an attempt at each direction singley)
+                    status += f"ERROR: Terminating since no nodes expanded in either direction over 2 iterations! GLB:{GLB} U:{U}."
                 break
+            else:
+                num_iter_no_expansions = 0
 
 
         end_time = time.time()
