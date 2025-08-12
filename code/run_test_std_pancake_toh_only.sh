@@ -251,13 +251,13 @@ comment
 # (26) =  semi-random subset incl nbsnbb ver FA dvcbs ver FA, mostconnected, smallg smallgf: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps \
 # (27) = (26) + dvcbs verFA tb_order RAND & NONE: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_rand_a_eps  lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_lowg_a_eps \
 # (28) = (22) minus further excessive time or mem or expansions on sliding tile: lb_nbs_fifo_f_eps lb_nbs_rand_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_rand_rand_f_eps 
-# (29) = gbfhs versions: lb_nbb_gbfhs_f_eps lb_alter_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps
+# (29) = gbfhs versions: lb_nbb_gbfhs_f_eps lb_alter_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_gbfhs_lowg_f_eps_uf
 # (30) = UF versions: --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_gbfhs_a_eps_uf lb_mostconnectednodes_connln_a_eps_uf lb_mostconnectednodes_connln_f_eps_uf \
 
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lbpairs_gbfhstest3_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_search-eval" \
+        --out_prefix "lbpairs_gbfhstest4_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -283,7 +283,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_gbfhs_a_eps_uf lb_mostconnectednodes_connln_a_eps_uf lb_mostconnectednodes_connln_f_eps_uf \
+        --algo_heur lb_gbfhs_lowg_f_eps lb_gbfhs_lowg_f_eps_uf \
         --algo_mcts NONE
 
 
