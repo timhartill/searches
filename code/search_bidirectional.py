@@ -733,7 +733,7 @@ class bd_lb_search:
                 num_iter_no_expansions += 1
                 if num_iter_no_expansions >= 2:  # If no nodes expanded in either direction for 2 iterations, terminate with error (2 iterations to allow for an attempt at each direction singley)
                     status += f"ERROR: Terminating since no nodes expanded in either direction over 2 iterations! GLB:{GLB} U:{U}."
-                break
+                    break
             else:
                 num_iter_no_expansions = 0
 
