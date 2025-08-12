@@ -1287,7 +1287,7 @@ class LBPairs:
         'LN0': Vidal-like: Expand direction based on which READY_d has lowest glevel connected with largest node count in other direction
         'LM': Expand direction based on which READY_d has glevel in MWVC connected with largest node count in other direction 
         'LM0': Expand direction based on which READY_d has lowest glevel in MWVC connected with largest node count in other direction
-        'EGBFHS': TBD 
+        'GBF': Expand direction based on which READY_d lowest g + maxoppd_max_g_expanded + self.min_edge_cost <= GLB
 
         Note: For some tb_dir, calc_expandable() must have been run before calling calc_direction(). This is handled in the search loop
 
@@ -1491,7 +1491,20 @@ class LBPairs:
                 self.last_direction = 'B'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-
+        elif self.tb_dir == 'GBF':  # Expand direction based on which READY_d lowest g + self.maxoppd_max_g_expanded + self.min_edge_cost <= GLB
+            fwd_lowg = self.forward.peek_ready(priority_only=True)
+            bwd_lowg = self.backward.peek_ready(priority_only=True)
+            if fwd_lowg + self.backward_max_g_expanded + self.min_edge_cost <= self.GLB:
+                fwd = True
+            else:
+                fwd = False
+            if bwd_lowg + self.forward_max_g_expanded + self.min_edge_cost <= self.GLB:
+                bwd = True
+            else:
+                bwd = False
+            if fwd and bwd:
+                fwd, bwd = self.implicit_tb_dir()
+            
         return fwd, bwd
 
     def get_max_heap_size(self):

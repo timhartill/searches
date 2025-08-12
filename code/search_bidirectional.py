@@ -432,7 +432,7 @@ class bd_lb_search:
 
         self.do_calc_expandable = False
         self.do_mwvc = False   # Flag for tiebreakers requiring Min Weighted Vertex Cover (MWVC) to be calculated. This incurs overhead so not doing it if unnecessary.
-        if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0'] or self.tb_select not in ['F', 'FHF', 'B']:
+        if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0', 'GBF'] or self.tb_select not in ['F', 'FHF', 'B']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
         if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0', 'SBM0'] or self.tb_select in ['LM', 'SM']:
             self.do_mwvc = True
@@ -567,8 +567,9 @@ class bd_lb_search:
                             status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
                             h_admissable = False
                     
-                    if current_g_fwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
+                    if current_g_fwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
                         stale_count += 1
+                        continue
 
                     #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
                     #closed_fwd.add(current_state_fwd) 
@@ -656,8 +657,9 @@ class bd_lb_search:
                             status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_bwd}."
                             h_admissable = False
                     
-                    if current_g_bwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is a bug!
+                    if current_g_bwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
                         stale_count += 1
+                        continue
 
                     #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
                     #closed_bwd.add(current_state_bwd) 
@@ -729,9 +731,9 @@ class bd_lb_search:
                         break  # break for state in expand_list
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
-            if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction there is an error
+            if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction 
                 num_iter_no_expansions += 1
-                if num_iter_no_expansions >= 2:  # If no nodes expanded in either direction for 2 iterations, terminate with error (2 iterations to allow for an attempt at each direction singley)
+                if num_iter_no_expansions >= 2:  # If no nodes expanded in either direction for 2 iterations, terminate with error (2 iterations to allow for an attempt at each direction with eg alter)
                     status += f"ERROR: Terminating since no nodes expanded in either direction over 2 iterations! GLB:{GLB} U:{U}."
                     break
             else:

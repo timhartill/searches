@@ -256,7 +256,7 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lbpairs_gbfhstest2_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_search-eval" \
+        --out_prefix "lbpairs_gbfhstest3_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -282,7 +282,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbb_gbfhs_f_eps lb_alter_gbfhs_f_eps lb_mostconnectednodeslowg_gbfhs_f_eps \
+        --algo_heur lb_nbb_gbfhs_f_eps lb_alter_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps \
         --algo_mcts NONE
 
 

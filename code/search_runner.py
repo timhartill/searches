@@ -167,7 +167,7 @@ SEARCH_MAP = {
     "lb_nbb_gbfhs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_alter_gbfhs_f_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_alter_gbfhs_a_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
-    "lb_mostconnectednodeslowg_gbfhs_f_eps": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_gbfhs_gbfhs_f_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
 
 
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
