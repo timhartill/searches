@@ -346,7 +346,7 @@ class bd_lb_search:
     Handles variable costs.
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
-    def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0,
+    def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0, switch_after_U_set=False,
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name=''):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
@@ -412,6 +412,7 @@ class bd_lb_search:
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
         self.min_edge_cost = min_edge_cost  # Minimum edge cost to consider in the search
+        self.switch_after_U_set = switch_after_U_set
 
         self.version = version.upper()  # Per Shperberg 2019 Pseudocode 'A' for the "Return ALL paths" version (although we only return first path) or 'F' for the "Return first path version"
         if self.version not in ['A', 'F']:
@@ -515,7 +516,7 @@ class bd_lb_search:
         num_expansions_bwd = 0  # Num of expansions in bwd direction this iteration - if fwd+bwd = 0 then terminate with error as inf loop
         num_iter_no_expansions = 0  # Number of iterations with no expansions in either direction - error if >= 2 meaning a potential fwd only iter + bwd only iter failed
         force_low_tiebreak = False  # only improves expansion count slightly (where expanding > 1 node in a direction) so disabling for now
-        switch_after_U_set = False # change to tb_select='F' after U < inf: disabling due to this taking excessive time compared to not using it in some domains eg pancake
+        switch_after_U_set = self.switch_after_U_set # change to tb_select='F' after U < inf: disabling due to this taking excessive time compared to not using it in some domains eg pancake
 
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
@@ -634,7 +635,9 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
-                                
+                                    if self.tb_order in ['FIFO', 'LIFO']:
+                                        self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
+                                        frontiers.tb_order = 'NONE'
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -724,6 +727,10 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
+                                    if self.tb_order in ['FIFO', 'LIFO']:
+                                        self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
+                                        frontiers.tb_order = 'NONE'
+
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in BWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
