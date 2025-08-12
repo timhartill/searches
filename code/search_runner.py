@@ -116,6 +116,10 @@ SEARCH_MAP = {
     "lb_nbb_smallblowg_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'SBL', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_nbb_connec_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'EC', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_nbb_connln_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_gbfhs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_nbb_gbfhs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
+
+
 
     "lb_fwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_bwd_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'B', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  

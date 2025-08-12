@@ -737,6 +737,7 @@ class WaitingReadyBuckets:
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
+        'GBF': expand all glevels satisfying g_D + max_g_expanded_OppositeD + EPS <= GLB
         'SG': smallest expandable glevel
         'SM': smallest expandable glevel in MWVC
         'SLG': smallest bucket in lowest g (eg use with tb_dir SBM0 that will select direction with smallest bucket in lowest g that is in a MWVC)
@@ -812,6 +813,18 @@ class WaitingReadyBuckets:
                 expandable_g = lb.backward_expandable_g
             for g in expandable_g:
                 self.pop_g_level(g)
+        elif lb.tb_select == 'GBF': # expand all glevels satisfying g_D + max_g_expanded_OppositeD + EPS <= GLB
+            if direction == 'F':
+                expandable_g = lb.forward_expandable_g
+                max_g_expanded_OppDir = lb.backward_max_g_expanded
+            else:
+                expandable_g = lb.backward_expandable_g
+                max_g_expanded_OppDir = lb.forward_max_g_expanded
+            for g in expandable_g:
+                if g + max_g_expanded_OppDir + lb.min_edge_cost <= lb.GLB:
+                    self.pop_g_level(g)
+                else:
+                    break
         elif lb.tb_select == 'SLG':  # smallest f bucket in lowest expandable g
             if direction == 'F':
                 expandable_g = lb.forward_expandable_g
@@ -957,8 +970,8 @@ class LBPairs:
         self.backward_most_interesting_glevel = {'most_edges': -1, 'most_nodes': -1, 'mwvc_most_nodes': -1, 'mwvc_smallest_count': -1, 'lowest': -1 }  # as prior
         self.forward_g_mwvc, self.backward_g_mwvc = [], []  # List of tuples of glevels that are in any MWVC
 
-        self.forward_max_g_expanded = -1  # max g expanded in forward direction
-        self.backward_max_g_expanded = -1  # max g expanded in backward direction
+        self.forward_max_g_expanded = 0  # max g expanded in forward direction
+        self.backward_max_g_expanded = 0  # max g expanded in backward direction
  
         return
 
@@ -1281,23 +1294,23 @@ class LBPairs:
         """
         fwd = False
         bwd = False
-        if self.tb_dir == 'NBS':
+        if self.tb_dir == 'NBS':    # always expand in both directions
             fwd, bwd = True, True
             self.last_direction = 'FB' 
-        elif self.tb_dir == 'F':
+        elif self.tb_dir == 'F':    # forward only
             fwd, bwd = True, False
             self.last_direction = 'F' 
-        elif self.tb_dir == 'B':
+        elif self.tb_dir == 'B':    # backward only
             fwd, bwd = False, True
             self.last_direction = 'B'
-        elif self.tb_dir == 'A': 
+        elif self.tb_dir == 'A':    # alternating direction to prior step
             if self.last_direction == 'F':
                 fwd, bwd = False, True
                 self.last_direction = 'B'
             else:
                 fwd, bwd = True, False
                 self.last_direction = 'F'
-        elif self.tb_dir == 'P':
+        elif self.tb_dir == 'P':    # Pohl: expand direction based on smallest cardinality of open lists
             fval = self.forward.curr_size()
             bval = self.backward.curr_size()
             if fval > bval:
@@ -1308,14 +1321,14 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'R':
+        elif self.tb_dir == 'R':            # random direction
             if random.choice(['F','B']) == 'F':
                 fwd, bwd = True, False
                 self.last_direction = 'F'
             else:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
-        elif self.tb_dir == 'G':
+        elif self.tb_dir == 'G':            # expand direction based on lowest expandable g in fwd vs bwd
             fval = self.forward.peek_ready(priority_only=True)
             bval = self.backward.peek_ready(priority_only=True)
             if fval > bval:
@@ -1326,7 +1339,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'S':    # smallest |glevel| of any glevel in Fwd and Bwd
+        elif self.tb_dir == 'S':    # smallest |glevel| of any glevel 
             fval = self.forward_smallest_expandable_glevel[0][-1]  # sorted set of (g, count) of smallest expandable glevels - all counts the same
             bval = self.backward_smallest_expandable_glevel[0][-1]
             if fval > bval:
@@ -1337,7 +1350,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'S0':   # smallest |glevel| of the lowest glevel in Fwd and Bwd 
+        elif self.tb_dir == 'S0':   # smallest |glevel| of the lowest glevel  
             fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['g_total_count']
             bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['lowest'] ]['g_total_count']
             if fval > bval:
@@ -1348,7 +1361,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'SM':   # smallest |glevel| of any glevel in MWVC in Fwd and Bwd 
+        elif self.tb_dir == 'SM':   # smallest |glevel| of any glevel in MWVC 
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['mwvc_smallest_count'] ]['g_total_count']
             else:
@@ -1365,7 +1378,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'SM0':   # smallest |glevel| of lowest glevel in MWVC in Fwd and Bwd 
+        elif self.tb_dir == 'SM0':   # smallest |glevel| of lowest glevel in MWVC 
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['g_total_count']
             else:
@@ -1382,7 +1395,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'SB':
+        elif self.tb_dir == 'SB':   # smallest |gf bucket| of any expandable glevel in MWVC
             fval = self.forward_smallest_expandable_bucket[0][-1]  # all counts in set will be the same
             bval = self.backward_smallest_expandable_bucket[0][-1]
             if fval > bval:
@@ -1393,7 +1406,7 @@ class LBPairs:
                 self.last_direction = 'F'
             else:
                 fwd, bwd = self.implicit_tb_dir()
-        elif self.tb_dir == 'SBM0':   # smallest |gf bucket| of lowest glevel in MWVC in Fwd and Bwd 
+        elif self.tb_dir == 'SBM0':   # smallest |gf bucket| of lowest glevel in MWVC
             if self.forward_g_mwvc:
                 fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['lowest'] ]['f_smallest_count']
             else:
@@ -1411,7 +1424,7 @@ class LBPairs:
             else:
                 fwd, bwd = self.implicit_tb_dir()
 
-        elif self.tb_dir == 'EC':
+        elif self.tb_dir == 'EC':       # favour side with expandable glevel that has largest # edges
             fval = self.forward_expandable_g[ self.forward_most_interesting_glevel['most_edges'] ]['edge_count']
             bval = self.backward_expandable_g[ self.backward_most_interesting_glevel['most_edges'] ]['edge_count']
             if fval > bval:  # reversed from other tb_dir since we want to expand the side with the largest edge count

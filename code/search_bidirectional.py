@@ -387,6 +387,7 @@ class bd_lb_search:
         'B': entire first bucket i.e. bucket with lowest g and lowest f
         'R': random node from all expandable nodes
         'ALL': all expandable buckets
+        'GBF': expand all glevels satisfying g_D + max_g_expanded_OppositeD + EPS <= GLB
         'SG': smallest expandable glevel
         'SM': smallest expandable glevel in MWVC
         'SLG': smallest bucket in lowest g (eg use with tb_dir SBM0 that will select direction with smallest bucket in lowest g that is in a MWVC)
@@ -511,6 +512,10 @@ class bd_lb_search:
         priority_diminished = 0
         start_ram = util.get_available_ram()
         min_ram = start_ram
+        num_expansions_fwd = 0  # Num of expansions in fwd direction this iteration
+        num_expansions_bwd = 0  # Num of expansions in bwd direction this iteration - if fwd+bwd = 0 then terminate with error as inf loop
+        force_low_tiebreak = False  # only improves expansion count slightly (where expanding > 1 node in a direction) so disabling for now
+        switch_after_U_set = False # change to tb_select='F' after U < inf: disabling due to this taking excessive time compared to not using it in some domains eg pancake
 
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
@@ -543,11 +548,15 @@ class bd_lb_search:
             if self.do_calc_expandable:
                 frontiers.calc_expandable(self.do_mwvc)
             fwd, bwd = frontiers.calc_direction()
+            num_expansions_fwd = 0  # Num of expansions in fwd direction this iteration
+            num_expansions_bwd = 0  # Num of expansions in bwd direction this iteration - if fwd+bwd = 0 then terminate with error as inf loop
+
 
             # --- Forward Step ---
             if not frontiers.forward.isEmpty() and fwd:
                 #g, f, ordering, current_state_fwd = frontiers.pop('F', item_only=False)  # g, f, ordering, state
                 expand_list = frontiers.select_and_order('F')
+                num_expansions_fwd = len(expand_list)
                 # NOTE: DVCBS HOG2 code has optimization s.t if path found between any u in fwd expand_list and v in bwd expand list then terminate with optimal found. For algos expanding many nodes in both directions in same iter this will reduce the expansion count by len(fwd expand_list)+len(bwd expand list up to point path found) but at the cost of iterating through both expand_lists to do the check.
                 for (ordering, g, f, current_state_fwd) in expand_list:
                     current_g_fwd = g_score_fwd.get(current_state_fwd)
@@ -602,10 +611,15 @@ class bd_lb_search:
                         if tentative_g_score < prior_g:
                             came_from_fwd[neighbor_state] = current_state_fwd 
                             g_score_fwd[neighbor_state] = tentative_g_score
-                            h_score = problem.heuristic(neighbor_state) 
                             if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCHS HOG2 code
+                                h_score = problem.heuristic(neighbor_state) 
+                                #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
+                                #if neighbor_state in g_score_bwd: 
+                                #    current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
+                                #    if current_path_cost < U:
+                                #        force_low_tiebreak = True
                                 prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                                frontiers.push('F', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                frontiers.push('F', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
                                                 tentative_g_score+h_score, 
                                                 prior_f, prior_g)  
 
@@ -616,6 +630,10 @@ class bd_lb_search:
                                 U = current_path_cost
                                 meeting_node = neighbor_state
                                 U_update_count += 1
+                                if switch_after_U_set:
+                                    self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
+                                    frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
+                                
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -628,6 +646,7 @@ class bd_lb_search:
             if not frontiers.backward.isEmpty() and bwd:
                 #g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
                 expand_list = frontiers.select_and_order('B')
+                num_expansions_bwd = len(expand_list)
                 for (ordering, g, f, current_state_bwd) in expand_list:
                     current_g_bwd = g_score_bwd.get(current_state_bwd)
                     current_h = problem.heuristic(current_state_bwd, backward=True)
@@ -681,10 +700,15 @@ class bd_lb_search:
                         if tentative_g_score < prior_g:
                             came_from_bwd[neighbor_state] = current_state_bwd 
                             g_score_bwd[neighbor_state] = tentative_g_score
-                            h_score = problem.heuristic(neighbor_state, backward=True)
                             if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCHS HOG2 code
+                                h_score = problem.heuristic(neighbor_state, backward=True)
+                                #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code
+                                #if neighbor_state in g_score_fwd: 
+                                #    current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
+                                #    if current_path_cost < U:
+                                #        force_low_tiebreak = True
                                 prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
-                                frontiers.push('B', [tentative_g_score, self.calc_ordering(), neighbor_state], 
+                                frontiers.push('B', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
                                                 tentative_g_score+h_score,
                                                 prior_f, prior_g)
 
@@ -695,12 +719,18 @@ class bd_lb_search:
                                 U = current_path_cost
                                 meeting_node = neighbor_state
                                 U_update_count += 1
+                                if switch_after_U_set:
+                                    self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
+                                    frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in BWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
                         break  # break for state in expand_list
             if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
+            if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction there is an error
+                status += f"ERROR: Terminating since no nodes expanded in either direction! GLB:{GLB} U:{U}."
+                break
 
 
         end_time = time.time()
@@ -780,8 +810,10 @@ class bd_lb_search:
                 "max_bucket_size": max_bucket_size, "distinct_f": distinct_f, "distinct_g": distinct_g,}
 
 
-    def calc_ordering(self):
+    def calc_ordering(self, force_low_tiebreak=False):
         """ Calculate fifo/lifo ordering """
+        if force_low_tiebreak:  # Force node to be expanded first of nodes in expand_list eg if we know its a meeting_node
+            self.ordering = -1
         if self.tb_order == 'NONE':
             return 0
         elif self.tb_order in ['FIFO', 'LIFO']:

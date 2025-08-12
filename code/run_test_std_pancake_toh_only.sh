@@ -244,16 +244,19 @@ comment
 # (11) = (2) minus (10): --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
 # (20) = (5) + (11): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
 # (21) remove due to excessive time taken on 15 puzzle: lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps
-# (22) = (20) minus (21): --algo_heur --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
+# (22) = (20) minus (21): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
 # (23) Connected Smallg MWVC ver F: --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps \
 # (24) Connected Smallg MWVC ver A: --algo_heur lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
 # (25) = (23) + (24): --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
 # (26) =  semi-random subset incl nbsnbb ver FA dvcbs ver FA, mostconnected, smallg smallgf: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps \
 # (27) = (26) + dvcbs verFA tb_order RAND & NONE: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_rand_a_eps  lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+# (28) = (22) minus further excessive time or mem or expansions on sliding tile: lb_nbs_fifo_f_eps lb_nbs_rand_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_rand_rand_f_eps 
+# (29) = (27) U (22):
+
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lbpairs_setid27_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_PathMeetOpt_search-eval" \
+        --out_prefix "lbpairs_gbfhstest1_verFA_STD_PAN_TOH_ONLY_clbEQGLB_clbUpdFix_fGEQUopt_Neighopt2_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -279,7 +282,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_rand_a_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+        --algo_heur lb_nbb_gbfhs_f_eps lb_nbb_gbfhs_a_eps \
         --algo_mcts NONE
 
 
