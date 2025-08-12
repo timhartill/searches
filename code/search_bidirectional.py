@@ -423,8 +423,8 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
