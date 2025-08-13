@@ -148,9 +148,9 @@ tags
 /testdata
 README_files/libs
 README.html
-outputs
+outputs/
+!outputs/keep/
 !outputs/a_summary_comparison.xlsx
-!outputs/keep/*
 outputs_sample
 outputs_sample_orig
 assets
