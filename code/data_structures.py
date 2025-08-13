@@ -801,7 +801,7 @@ class WaitingReadyBuckets:
         elif lb.tb_select == 'R':
             g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f] since calc_expandable not run for this tb_select
             f = random.choice(list(self.ready[g].keys()))
-            if len(len(self.ready[g][f])) == 0:
+            if len(self.ready[g][f]) == 0:
                 f = self.ready[g].peekitem(index=0)[0]  # fallback: 1st f will always be non empty 
             idx = random.randint(0, len(self.ready[g][f])-1)
             self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
@@ -842,7 +842,7 @@ class WaitingReadyBuckets:
                 g = lb.backward_most_interesting_glevel['lowest']   #list(expandable_g.keys())[0]
             f = expandable_g[g]['f_smallest']
             self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
-        elif lb.tb_select == 'LG':  # lowest expandable g: frequently used in conjunction with tb_dir ending in 0
+        elif lb.tb_select == 'LG':  # lowest expandable g: frequently used in conjunction with tb_dir ending in 0 and others
             #if direction == 'F':
             #    expandable_g = lb.forward_most_interesting_glevel
             #else:
