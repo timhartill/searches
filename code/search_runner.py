@@ -169,6 +169,7 @@ SEARCH_MAP = {
     "lb_alter_gbfhs_a_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_gbfhs_gbfhs_f_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_gbfhs_lowg_f_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
+    "lb_gbfhs_lowg_a_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B'},  
 
     "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
     "lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
