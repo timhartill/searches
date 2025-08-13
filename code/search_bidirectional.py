@@ -447,7 +447,6 @@ class bd_lb_search:
             if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G']:
                 raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'NBS', 'F', 'B', 'A', 'P', 'R', or 'G'.")
 
-
         if self.tb_order == 'LIFO':
             self.increment_tb1 = -1
         elif self.tb_order == 'FIFO':
@@ -458,8 +457,6 @@ class bd_lb_search:
         self.ordering = 0
 
         self.algo = algo_name
-
-
         self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}"
 
 
