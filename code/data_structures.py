@@ -735,7 +735,8 @@ class WaitingReadyBuckets:
         'FHF': select single node in highest f in lowest g
         'FHG': select single node in lowest f in highest g
         'B': entire first bucket i.e. bucket with lowest g and lowest f
-        'R': random node from all expandable nodes
+        'R': random node from lowest g
+        'RA': random node from all expandable nodes
         'ALL': all expandable buckets
         'GBF': expand all glevels satisfying g_D + max_g_expanded_OppositeD + EPS <= GLB
         'SG': smallest expandable glevel
@@ -798,6 +799,13 @@ class WaitingReadyBuckets:
         elif lb.tb_select == 'B':
             self.pop(item_only=False, bucket=True)  # puts entries into expand_nodes
         elif lb.tb_select == 'R':
+            g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f] since calc_expandable not run for this tb_select
+            f = random.choice(list(self.ready[g].keys()))
+            if len(len(self.ready[g][f])) == 0:
+                f = self.ready[g].peekitem(index=0)[0]  # fallback: 1st f will always be non empty 
+            idx = random.randint(0, len(self.ready[g][f])-1)
+            self.pop_node_or_bucket(g, f, bucket=False, idx=idx)  # puts entries into expand_nodes
+        elif lb.tb_select == 'RA':
             if direction == 'F':
                 expandable_g = lb.forward_expandable_g
             else:
@@ -835,11 +843,12 @@ class WaitingReadyBuckets:
             f = expandable_g[g]['f_smallest']
             self.pop_node_or_bucket(g, f, bucket=True)  # puts entries into expand_nodes
         elif lb.tb_select == 'LG':  # lowest expandable g: frequently used in conjunction with tb_dir ending in 0
-            if direction == 'F':
-                expandable_g = lb.forward_most_interesting_glevel
-            else:
-                expandable_g = lb.backward_most_interesting_glevel
-            g = expandable_g['lowest']   #list(expandable_g.keys())[0]
+            #if direction == 'F':
+            #    expandable_g = lb.forward_most_interesting_glevel
+            #else:
+            #    expandable_g = lb.backward_most_interesting_glevel
+            #g = expandable_g['lowest']   #list(expandable_g.keys())[0]
+            g = self.peek_ready(priority_only=True)  # pops any empty buckets until get to a non-empty [g][f] since calc_expandable not run for this tb_select
             self.pop_g_level(g)
         elif lb.tb_select == 'LGSB':  # smallest gf bucket in lowest expandable g: eg used in conjunction with tb_dir SBM0
             if direction == 'F':

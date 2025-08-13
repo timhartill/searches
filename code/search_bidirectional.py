@@ -384,7 +384,8 @@ class bd_lb_search:
         'FHF': select single node in highest f in lowest g
         'FHG': select single node in lowest f in highest g
         'B': entire first bucket i.e. bucket with lowest g and lowest f
-        'R': random node from all expandable nodes
+        'R': random node from lowest g
+        'RA': random node from all expandable nodes
         'ALL': all expandable buckets
         'GBF': expand all glevels satisfying g_D + max_g_expanded_OppositeD + EPS <= GLB
         'SG': smallest expandable glevel
@@ -423,8 +424,8 @@ class bd_lb_search:
             raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_dir}'. Must be 'NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM', 'GBF'.")
 
         self.tb_select = tb_select.upper()
-        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
-            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC' or 'LN'.")
+        if self.tb_select not in ['F', 'FHF', 'FHG', 'B', 'R', 'RA', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC', 'LN', 'LM']:
+            raise ValueError(f"ERROR: Invalid tb_dir: '{self.tb_select}'. Must be 'F', 'FHF', 'FHG', 'B', 'R', 'RA', 'ALL', 'GBF', 'SLG', 'LG', 'HG', 'SG', 'SM', 'SB', 'SBL', 'EC' or 'LN'.")
 
         self.tb_order = tb_order.upper()
         if self.tb_order not in ['R', 'FIFO', 'LIFO', 'NONE']:
@@ -432,7 +433,7 @@ class bd_lb_search:
 
         self.do_calc_expandable = False
         self.do_mwvc = False   # Flag for tiebreakers requiring Min Weighted Vertex Cover (MWVC) to be calculated. This incurs overhead so not doing it if unnecessary.
-        if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'EC', 'LN', 'LN0', 'LM', 'LM0'] or self.tb_select not in ['F', 'FHF', 'B']:
+        if self.tb_dir in ['S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM', 'LM0'] or self.tb_select not in ['F', 'FHF', 'B', 'R', 'LG']:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
         if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0', 'SBM0'] or self.tb_select in ['LM', 'SM']:
             self.do_mwvc = True
