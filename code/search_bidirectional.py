@@ -598,7 +598,7 @@ class bd_lb_search:
                         cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                         tentative_g_score = current_g_fwd + cost
 
-                        if tentative_g_score >= U:   # Optimisation in NBS and DVCHS HOG2 code
+                        if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
                         
                         if h_consistent:                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
@@ -611,8 +611,8 @@ class bd_lb_search:
                         if tentative_g_score < prior_g:
                             came_from_fwd[neighbor_state] = current_state_fwd 
                             g_score_fwd[neighbor_state] = tentative_g_score
-                            if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCHS HOG2 code
-                                h_score = problem.heuristic(neighbor_state) 
+                            h_score = problem.heuristic(neighbor_state) 
+                            if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
                                 #if neighbor_state in g_score_bwd: 
                                 #    current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
@@ -690,7 +690,7 @@ class bd_lb_search:
                         cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
                         tentative_g_score = current_g_bwd + cost 
 
-                        if tentative_g_score >= U:   # Optimisation in NBS and DVCHS HOG2 code
+                        if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
                         
                         if h_consistent:                                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
@@ -703,8 +703,8 @@ class bd_lb_search:
                         if tentative_g_score < prior_g:
                             came_from_bwd[neighbor_state] = current_state_bwd 
                             g_score_bwd[neighbor_state] = tentative_g_score
-                            if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCHS HOG2 code
-                                h_score = problem.heuristic(neighbor_state, backward=True)
+                            h_score = problem.heuristic(neighbor_state, backward=True)
+                            if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code
                                 #if neighbor_state in g_score_fwd: 
                                 #    current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
