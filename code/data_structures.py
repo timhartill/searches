@@ -4,7 +4,6 @@ Data Structures
 import heapq
 import random
 
-from numpy import add
 import util
 
 from sortedcontainers import SortedDict
