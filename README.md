@@ -8,10 +8,10 @@ Here you can find Python-based versions of various unidirectional and bidirectio
 Tested under Python 3.12 on Ubuntu and CentOS. 
 
 1. Install Python into a virtual environment.
-2. Install numpy, sortedcontainers and maturin
-3. This project contains a few Rust utilities. To install Rust, go to https://www.rust-lang.org/tools/install and follow the simple installation instruction found there. 
-4. Clone this repository. The project structure is very simple: all code and run scripts are in _/code_, all problems are specified in text files in subdirectories off _/problems_, all outputs will appear in _/outputs_ which will be created dynamically.
-6. If running on a platform other than Ubuntu, compile the Rust utilies by running _maturin develop_ from the _/code_ subdirectory.
+2. Install _numpy_, _sortedcontainers_ and _maturin_.
+3. Clone this repository. The project structure is very simple: all code and run scripts are in _/code_, all problems are specified in text files in subdirectories off _/problems_, all outputs will appear in _/outputs_ which will be created dynamically.
+4. This project contains a few Rust utilities. To install Rust, go to https://www.rust-lang.org/tools/install and follow the simple installation instruction found there. 
+5. Compile the Rust utilies and set them up as a Python-importable package called _rust_utils_ by running _maturin develop_ from the _/code_ subdirectory.
 
 
 **Run a set of algorithms on a set of problems**
