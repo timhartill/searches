@@ -480,14 +480,10 @@ class bd_lb_search:
                                             tb_dir=self.tb_dir, tb_select=self.tb_select, tb_order=self.tb_order)
         h_initial = problem.heuristic(start_node)
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        #came_from_fwd = {start_node: None}
-        #g_score_fwd = {start_node: 0}
         nodes_fwd[start_node] = data_structures.NodeData(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
         h_goal = problem.heuristic(goal_node, backward=True)
         frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        #came_from_bwd = {goal_node: None}
-        #g_score_bwd = {goal_node: 0}
         nodes_bwd[goal_node] = data_structures.NodeData(0, h_goal, None)  # dict stores named tuple (g, h, parent) for each state
 
         nodes_expanded = 0
@@ -607,7 +603,6 @@ class bd_lb_search:
                         else:
                             prior_g = neighbor_node.g
 
-                        #prior_g = g_score_fwd.get(neighbor_state, float('inf'))
                         if tentative_g_score < prior_g:
                             if neighbor_node is None:
                                 h_score = problem.heuristic(neighbor_state)
@@ -619,9 +614,6 @@ class bd_lb_search:
                                 h_score = neighbor_node.h  # Use existing h_score if already in dict
                             neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
                             nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
-#                            came_from_fwd[neighbor_state] = current_state 
-#                            g_score_fwd[neighbor_state] = tentative_g_score
-#                            h_score = problem.heuristic(neighbor_state) 
                             if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
                                 #if neighbor_state in g_score_bwd: 
@@ -635,7 +627,6 @@ class bd_lb_search:
 
                         if neighbor_state in nodes_bwd: 
                             current_path_cost = nodes_bwd[neighbor_state].g + tentative_g_score
-#                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
                             found_goal_count += 1
                             if current_path_cost < U:
                                 U = current_path_cost
@@ -664,8 +655,6 @@ class bd_lb_search:
                     current_node = nodes_bwd[current_state] 
                     current_g = current_node.g
                     current_h = current_node.h
-#                    current_g_bwd = g_score_bwd.get(current_state)
-#                    current_h = problem.heuristic(current_state, backward=True)
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
                             status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
@@ -709,7 +698,6 @@ class bd_lb_search:
                         else:
                             prior_g = neighbor_node.g
 
-#                        prior_g = g_score_bwd.get(neighbor_state, float('inf'))
                         if tentative_g_score < prior_g:
                             if neighbor_node is None:
                                 h_score = problem.heuristic(neighbor_state, backward=True)
@@ -721,9 +709,6 @@ class bd_lb_search:
                                 h_score = neighbor_node.h  # Use existing h_score if already in dict
                             neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
                             nodes_bwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
-#                            came_from_bwd[neighbor_state] = current_state 
-#                            g_score_bwd[neighbor_state] = tentative_g_score
-#                            h_score = problem.heuristic(neighbor_state, backward=True)
                             if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code
                                 #if neighbor_state in g_score_fwd: 
