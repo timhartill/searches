@@ -249,4 +249,7 @@ skl.update(tlist)
 timeit.timeit("t2 = list(skl); heapq.heapify(t2)", number=10, globals=globals()) #2.978387428000133
 
 
+timeit.timeit("rust_utils.heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #1.4365476240054704
+timeit.timeit("heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #0.44085584103595465
+timeit.timeit("s.heuristic(state_bytes, backward=False)", number=100000, globals=globals()) #0.6074775469605811
 

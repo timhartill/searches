@@ -9,6 +9,7 @@ import random
 import util
 import data_structures
 
+
 algo_name_map = {'g': "BiDirUniformCost", 'h': "BiDirGreedyBestFirst", 'f': "BiDirAstar"} 
 
 
@@ -479,13 +480,11 @@ class bd_lb_search:
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
         came_from_fwd = {start_node: None}
         g_score_fwd = {start_node: 0}
-        closed_fwd = set() # unused
 
         h_goal = problem.heuristic(goal_node, backward=True)
         frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
         came_from_bwd = {goal_node: None}
         g_score_bwd = {goal_node: 0}
-        closed_bwd = set() # unused
 
         nodes_expanded = 0
         GLB_forcemono = 0                                  # Force monotonicity of GLB for c_count_dict to count nodes expanded below cstar correctly
@@ -565,12 +564,9 @@ class bd_lb_search:
                             status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
                             h_admissable = False
                     
-                    if current_g_fwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
+                    if current_g_fwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if an optimisation is applied that causes prior_g to be different from
                         stale_count += 1
                         continue
-
-                    #if current_state_fwd in closed_fwd: continue   # we don't need a closed set in this implementation
-                    #closed_fwd.add(current_state_fwd) 
 
                     if f >= U:      # optimisation from both NBS and DVCBS HOG2 code
                         continue
@@ -593,7 +589,6 @@ class bd_lb_search:
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
-                        #if neighbor_state in closed_fwd: continue
 
                         cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
                         tentative_g_score = current_g_fwd + cost

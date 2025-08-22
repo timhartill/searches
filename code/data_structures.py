@@ -3,6 +3,8 @@ Data Structures
 """
 import heapq
 import random
+from collections import namedtuple
+
 
 import util
 
@@ -11,6 +13,8 @@ from sortedcontainers import SortedKeyList
 from sortedcontainers import SortedSet
 
 REMOVED = '^'.encode('utf-8')  # Used to mark an entry as removed in the Ready and Wait structures
+
+NodeData = namedtuple('NodeData', ['g', 'h', 'parent'])
 
 class PriorityQueue:
     """ Priority Queue implementation optionally supporting 3 levels of priority: 
@@ -1529,31 +1533,7 @@ class LBPairs:
                 max(self.forward.max_distinct_g, self.backward.max_distinct_g) )
 
 
-class StateInfo():
-    """ Dict with state key to store g values and parent info for path reconstruction
-    This was supposed to save a few GB of RAM on big problems over having two dicts with key=state as the state isn't duplicated
-    but in reality took more RAM. So not used now! 
-    """
-    def __init__(self):
-        self.state_dict = {}
-        return
-    
-    def add(self, state, parent=None, g=0):
-        """ Always adding or updating both parent and g at once """
-        self.state_dict[state] = {'parent': parent, 'g': g}
-        return
 
-    def get_g(self, state, noval=float('inf')):
-        state_info = self.state_dict.get(state, None)
-        if state_info:
-            return state_info.get('g', noval)
-        return noval
-
-    def get_parent(self, state, noval=None):
-        state_info = self.state_dict.get(state, None)
-        if state_info:
-            return state_info.get('parent', noval)
-        return noval
 
 
 

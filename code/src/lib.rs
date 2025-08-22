@@ -1,12 +1,50 @@
 use pyo3::prelude::*;
-//use pyo3::types::{PyBytes, PyDict}; 
-use pyo3::types::PyDict; 
+use pyo3::types::{PyDict, PyList}; 
 use std::collections::HashMap;
 
-/// Formats the sum of two numbers as string.
+// Unused - using RustDict below resulted in only slightly less memory used but ran slower than the python namedtuple version.
+
+/// Manhattan heuristic - not used as the python version is slightly faster likely because of the calling overhead.
 #[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
+fn heuristic_manhattan(
+    state_bytes: Vec<u8>,
+    target_positions: HashMap<u8, u8>,
+    max_cols: Option<usize>,
+    degradation: Option<usize>,
+    make_heuristic_inadmissable: Option<bool>,
+) -> PyResult<usize> {
+    let max_cols = max_cols.unwrap_or(4);
+    let degradation = degradation.unwrap_or(0);
+    let make_heuristic_inadmissable = make_heuristic_inadmissable.unwrap_or(false);
+    let mut distance = 0;
+    let mut multiplier = 1;
+
+    let mut ignored_tiles: Vec<u8> = Vec::new();
+    for i in 0..=degradation {
+        ignored_tiles.push(i as u8);
+    }
+    
+    for (i, &tile) in state_bytes.iter().enumerate() {
+        if !ignored_tiles.contains(&tile) {
+            let current_pos_row = i / max_cols;
+            let current_pos_col = i % max_cols;
+
+            if let Some(&goal_idx) = target_positions.get(&tile) {
+                let goal_pos_row = goal_idx as usize / max_cols;
+                let goal_pos_col = goal_idx as usize % max_cols;
+
+                if make_heuristic_inadmissable {
+                    multiplier = i + 1;
+                }
+
+                let manhattan_dist = (current_pos_row as isize - goal_pos_row as isize).abs()
+                    + (current_pos_col as isize - goal_pos_col as isize).abs();
+                
+                distance += multiplier * (manhattan_dist as usize);
+            }
+        }
+    }
+    Ok(distance)
 }
 
 
@@ -108,6 +146,15 @@ impl RustDict {
         self.data.contains_key(&key) 
     }
 
+    /// Returns a new Python list containing all the keys in the dictionary.
+    fn keys<'py>(&'py self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
+        let list = PyList::empty(py);
+        for key in self.data.keys() {
+            list.append(key.clone())?;
+        }
+        Ok(list)
+    }
+
 }
 
 
@@ -116,8 +163,8 @@ impl RustDict {
 /// import the module.
 #[pymodule]
 fn rust_utils(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Add the `sum_as_string` function
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+    // Add the `heuristic_manhattan` function
+    m.add_function(wrap_pyfunction!(heuristic_manhattan, m)?)?;
     // Add the `NodeData` class
     m.add_class::<NodeData>()?;
     // Add the `RustDict` class

@@ -17,8 +17,32 @@ import os
 import math
 import random
 import collections
+from turtle import distance
 
 import util
+
+
+def heuristic_manhattan(state_bytes, target_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False):
+    """
+    Calculates the Manhattan distance heuristic (number of steps).
+    Note: Admissable and consistent with unit costs
+    NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
+    its effectiveness will decrease but still admissable since var costs >= unit costs.
+    NOTE 2: There is a Rust version but we use the python version since it is faster per timeit likely due to the overhead of calling it.
+    """
+    distance = 0
+    multiplier = 1
+    ignored_tiles = set(range(degradation + 1))
+    for i, tile in enumerate(state_bytes):
+        if tile not in ignored_tiles:
+            current_pos = divmod(i, max_cols)
+            goal_idx = target_positions.get(tile)
+            if goal_idx is None: continue 
+            goal_pos = divmod(goal_idx, max_cols)
+            if make_heuristic_inadmissable:
+                multiplier = i
+            distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
+    return distance
 
 
 # --- SlidingTileProblem (Corrected Formatting & use_variable_costs flag) ---
@@ -45,8 +69,8 @@ class SlidingTileProblem:
             sorted_list = list(range(0, self.max_rows * self.max_cols))# + [0]  Korf goal = [0,1,...,15]
             self.goal_state_tuple = tuple(sorted_list)
         self.initial_state_bytes = bytes(self.initial_state_tuple)
-        self.goal_state_bytes = bytes(self.goal_state_tuple)
-        self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)}
+        self.goal_state_bytes = bytes(self.goal_state_tuple) # b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
+        self._goal_positions = {tile: i for i, tile in enumerate(self.goal_state_tuple)} # {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14, 15: 15}
         self._start_positions = {tile: i for i, tile in enumerate(self.initial_state_tuple)}  # for bdhs
         self.use_variable_costs = use_variable_costs
         self.optimality_guaranteed = True
@@ -128,6 +152,7 @@ class SlidingTileProblem:
         Note: Admissable and consistent with unit costs
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
+        NOTE 2: There is a Rust version but we use the python version since it is faster per timeit likely due to the overhead of calling it.
         """
         if backward: # For bidirectional search
             target_positions = self._start_positions
