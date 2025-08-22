@@ -467,6 +467,8 @@ class bd_lb_search:
         optimality_guaranteed = problem.optimality_guaranteed
 
         self.ordering = 0
+        nodes_fwd = {} # dictionary key state to store named tuple of (g, h, parent)
+        nodes_bwd = {}
         start_time = time.time()
         start_node = problem.initial_state()
         goal_node = problem.goal_state()
@@ -478,13 +480,15 @@ class bd_lb_search:
                                             tb_dir=self.tb_dir, tb_select=self.tb_select, tb_order=self.tb_order)
         h_initial = problem.heuristic(start_node)
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        came_from_fwd = {start_node: None}
-        g_score_fwd = {start_node: 0}
+        #came_from_fwd = {start_node: None}
+        #g_score_fwd = {start_node: 0}
+        nodes_fwd[start_node] = data_structures.NodeData(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
         h_goal = problem.heuristic(goal_node, backward=True)
         frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        came_from_bwd = {goal_node: None}
-        g_score_bwd = {goal_node: 0}
+        #came_from_bwd = {goal_node: None}
+        #g_score_bwd = {goal_node: 0}
+        nodes_bwd[goal_node] = data_structures.NodeData(0, h_goal, None)  # dict stores named tuple (g, h, parent) for each state
 
         nodes_expanded = 0
         GLB_forcemono = 0                                  # Force monotonicity of GLB for c_count_dict to count nodes expanded below cstar correctly
@@ -556,15 +560,16 @@ class bd_lb_search:
                 expand_list = frontiers.select_and_order('F')
                 num_expansions_fwd = len(expand_list)
                 # NOTE: DVCBS HOG2 code has optimization s.t if path found between any u in fwd expand_list and v in bwd expand list then terminate with optimal found. For algos expanding many nodes in both directions in same iter this will reduce the expansion count by len(fwd expand_list)+len(bwd expand list up to point path found) but at the cost of iterating through both expand_lists to do the check.
-                for (ordering, g, f, current_state_fwd) in expand_list:
-                    current_g_fwd = g_score_fwd.get(current_state_fwd)
-                    current_h = problem.heuristic(current_state_fwd)
+                for (ordering, g, f, current_state) in expand_list:
+                    current_node = nodes_fwd[current_state] 
+                    current_g = current_node.g
+                    current_h = current_node.h
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
-                            status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_fwd}."
+                            status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
                     
-                    if current_g_fwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if an optimisation is applied that causes prior_g to be different from
+                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the g on the frontier doesn't match prior_g
                         stale_count += 1
                         continue
 
@@ -581,7 +586,7 @@ class bd_lb_search:
                     if g > frontiers.forward_max_g_expanded:
                         frontiers.forward_max_g_expanded = g
 
-                    for neighbor_info in problem.get_neighbors(current_state_fwd):
+                    for neighbor_info in problem.get_neighbors(current_state):
                         
                         if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
@@ -590,36 +595,47 @@ class bd_lb_search:
                             neighbor_state = neighbor_info
                             move_info = None
 
-                        cost = problem.get_cost(current_state_fwd, neighbor_state, move_info) 
-                        tentative_g_score = current_g_fwd + cost
+                        cost = problem.get_cost(current_state, neighbor_state, move_info) 
+                        tentative_g_score = current_g + cost
 
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
-                        
-                        if h_consistent:                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                            h_score = problem.heuristic(neighbor_state)
-                            if current_h > cost + h_score + 1e-6:
-                                status += f" Inconsistent heuristic detected (fwd)."
-                                h_consistent = False
 
-                        prior_g = g_score_fwd.get(neighbor_state, float('inf'))
+                        neighbor_node = nodes_fwd.get(neighbor_state)
+                        if neighbor_node is None:
+                            prior_g = float('inf')
+                        else:
+                            prior_g = neighbor_node.g
+
+                        #prior_g = g_score_fwd.get(neighbor_state, float('inf'))
                         if tentative_g_score < prior_g:
-                            came_from_fwd[neighbor_state] = current_state_fwd 
-                            g_score_fwd[neighbor_state] = tentative_g_score
-                            h_score = problem.heuristic(neighbor_state) 
+                            if neighbor_node is None:
+                                h_score = problem.heuristic(neighbor_state)
+                                if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                                    if current_h > cost + h_score + 1e-6:
+                                        status += f" Inconsistent heuristic detected (fwd)."
+                                        h_consistent = False
+                            else:
+                                h_score = neighbor_node.h  # Use existing h_score if already in dict
+                            neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                            nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
+#                            came_from_fwd[neighbor_state] = current_state 
+#                            g_score_fwd[neighbor_state] = tentative_g_score
+#                            h_score = problem.heuristic(neighbor_state) 
                             if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
                                 #if neighbor_state in g_score_bwd: 
                                 #    current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
-                                prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                                prior_f = prior_g + h_score
                                 frontiers.push('F', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
                                                 tentative_g_score+h_score, 
                                                 prior_f, prior_g)  
 
-                        if neighbor_state in g_score_bwd: 
-                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
+                        if neighbor_state in nodes_bwd: 
+                            current_path_cost = nodes_bwd[neighbor_state].g + tentative_g_score
+#                            current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
                             found_goal_count += 1
                             if current_path_cost < U:
                                 U = current_path_cost
@@ -644,21 +660,21 @@ class bd_lb_search:
                 #g, f, ordering, current_state_bwd = frontiers.pop('B', item_only=False)
                 expand_list = frontiers.select_and_order('B')
                 num_expansions_bwd = len(expand_list)
-                for (ordering, g, f, current_state_bwd) in expand_list:
-                    current_g_bwd = g_score_bwd.get(current_state_bwd)
-                    current_h = problem.heuristic(current_state_bwd, backward=True)
+                for (ordering, g, f, current_state) in expand_list:
+                    current_node = nodes_bwd[current_state] 
+                    current_g = current_node.g
+                    current_h = current_node.h
+#                    current_g_bwd = g_score_bwd.get(current_state)
+#                    current_h = problem.heuristic(current_state, backward=True)
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
-                            status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state_bwd}."
+                            status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
                     
-                    if current_g_bwd + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
+                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
                         stale_count += 1
                         continue
 
-                    #if current_state_bwd in closed_bwd: continue   # we don't need a closed set in this implementation
-                    #closed_bwd.add(current_state_bwd) 
-                    
                     if f >= U:      # optimisation from both NBS and DVCBS HOG2 code
                         continue
 
@@ -672,7 +688,7 @@ class bd_lb_search:
                     if g > frontiers.backward_max_g_expanded:
                         frontiers.backward_max_g_expanded = g
 
-                    for neighbor_info in problem.get_neighbors(current_state_bwd):
+                    for neighbor_info in problem.get_neighbors(current_state):
                         
                         if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
@@ -680,25 +696,34 @@ class bd_lb_search:
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
-                        #if neighbor_state in closed_bwd: continue
                         
-                        cost = problem.get_cost(current_state_bwd, neighbor_state, move_info) 
-                        tentative_g_score = current_g_bwd + cost 
+                        cost = problem.get_cost(current_state, neighbor_state, move_info) 
+                        tentative_g_score = current_g + cost 
 
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
                         
-                        if h_consistent:                                                # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                            h_score = problem.heuristic(neighbor_state, backward=True)
-                            if current_h > cost + h_score + 1e-6:
-                                status += f" Inconsistent heuristic detected (bwd)."
-                                h_consistent = False
+                        neighbor_node = nodes_bwd.get(neighbor_state)
+                        if neighbor_node is None:
+                            prior_g = float('inf')
+                        else:
+                            prior_g = neighbor_node.g
 
-                        prior_g = g_score_bwd.get(neighbor_state, float('inf'))
+#                        prior_g = g_score_bwd.get(neighbor_state, float('inf'))
                         if tentative_g_score < prior_g:
-                            came_from_bwd[neighbor_state] = current_state_bwd 
-                            g_score_bwd[neighbor_state] = tentative_g_score
-                            h_score = problem.heuristic(neighbor_state, backward=True)
+                            if neighbor_node is None:
+                                h_score = problem.heuristic(neighbor_state, backward=True)
+                                if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                                    if current_h > cost + h_score + 1e-6:
+                                        status += f" Inconsistent heuristic detected (bwd)."
+                                        h_consistent = False
+                            else:
+                                h_score = neighbor_node.h  # Use existing h_score if already in dict
+                            neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                            nodes_bwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
+#                            came_from_bwd[neighbor_state] = current_state 
+#                            g_score_bwd[neighbor_state] = tentative_g_score
+#                            h_score = problem.heuristic(neighbor_state, backward=True)
                             if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code
                                 #if neighbor_state in g_score_fwd: 
@@ -710,8 +735,8 @@ class bd_lb_search:
                                                 tentative_g_score+h_score,
                                                 prior_f, prior_g)
 
-                        if neighbor_state in g_score_fwd: 
-                            current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
+                        if neighbor_state in nodes_fwd: 
+                            current_path_cost = nodes_fwd[neighbor_state].g + tentative_g_score
                             found_goal_count += 1
                             if current_path_cost < U:
                                 U = current_path_cost
@@ -767,12 +792,12 @@ class bd_lb_search:
             else:
                 convert_func = tuple
                 convert_func_back = tuple
-            path = reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_node, goal_node, meeting_node, convert_func=convert_func)
+            path = reconstruct_bidirectional_path(nodes_fwd, nodes_bwd, start_node, goal_node, meeting_node, convert_func=convert_func)
             if not path:
                 status += " Path too long to reconstruct."
             if self.visualise and hasattr(problem, 'visualise'):
                 image_file = problem.visualise(path=path, path_type=self._str_repr, 
-                                            meeting_node=meeting_node, visited_fwd=set(g_score_fwd.keys()), visited_bwd=set(g_score_bwd.keys()), 
+                                            meeting_node=meeting_node, visited_fwd=set(nodes_fwd.keys()), visited_bwd=set(nodes_bwd.keys()), 
                                             visualise_dirname=self.visualise_dirname)
                 if not image_file: image_file = 'no file'
             final_cost = -1
@@ -795,7 +820,7 @@ class bd_lb_search:
                     "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                     "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                     "max_heap_len": max_heap_size_combined, 
-                    "g_score_len": len(g_score_fwd)+len(g_score_bwd),
+                    "g_score_len": len(nodes_fwd)+len(nodes_bwd),
                     "max_ram_taken": max_ram,
                     "status": status, 
                     "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
@@ -808,7 +833,7 @@ class bd_lb_search:
                 "nodes_expanded_below_cstar": nodes_expanded_below_cstar, "nodes_expanded_below_cstar_auto": nodes_expanded_below_cstar_auto,
                 "time": end_time - start_time, "optimal": optimality_guaranteed, "visual": image_file,
                 "max_heap_len": max_heap_size_combined, 
-                "g_score_len": len(g_score_fwd)+len(g_score_bwd),
+                "g_score_len": len(nodes_fwd)+len(nodes_bwd),
                 "max_ram_taken": max_ram,
                 "status": status,
                 "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
@@ -833,7 +858,7 @@ class bd_lb_search:
 
 
 
-def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, goal_state, meeting_node, convert_func=tuple):
+def reconstruct_bidirectional_path(nodes_fwd, nodes_bwd, start_state, goal_state, meeting_node, convert_func=tuple):
     """Reconstructs path for bidirectional search."""
     path1 = []
     curr = meeting_node
@@ -841,19 +866,23 @@ def reconstruct_bidirectional_path(came_from_fwd, came_from_bwd, start_state, go
     count = 0
     while curr is not None: 
         path1.append(convert_func(curr))
-        curr = came_from_fwd.get(curr)
+        curr = nodes_fwd[curr].parent
+        #curr = came_from_fwd.get(curr)
         count += 1
         if count > limit: print("Error: Path fwd reconstruction exceeded limit."); return None
     path1.reverse() 
     
     path2 = []
-    curr = came_from_bwd.get(meeting_node) 
+
+    curr = nodes_bwd[meeting_node].parent 
+    #curr = came_from_bwd.get(meeting_node) 
     count = 0
     while curr is not None: 
-         path2.append(convert_func(curr))
-         curr = came_from_bwd.get(curr)
-         count += 1
-         if count > limit: print("Error: Path bwd reconstruction exceeded limit."); return None
+        path2.append(convert_func(curr))
+        curr = nodes_bwd[curr].parent
+#         curr = came_from_bwd.get(curr)
+        count += 1
+        if count > limit: print("Error: Path bwd reconstruction exceeded limit."); return None
          
     return path1 + path2
 

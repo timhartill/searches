@@ -230,7 +230,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg \
+        --algo_heur lb_nbs_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps \
         --algo_mcts NONE
 
 
