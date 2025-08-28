@@ -2,9 +2,9 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList}; 
 use std::collections::HashMap;
 
-// Unused - using RustDict below resulted in only slightly less memory used but ran slower than the python namedtuple version.
+// Note: Using RustDict below (--rust flag in run script) resulted in slightly less memory used but ran slower than the python namedtuple version due to the calling overhead.
 
-/// Manhattan heuristic - not used as the python version is slightly faster likely because of the calling overhead.
+/// Manhattan heuristic - used in preference to the python version if --rust_heur flag added to the run script.
 #[pyfunction]
 fn heuristic_manhattan(
     state_bytes: Vec<u8>,
@@ -34,7 +34,7 @@ fn heuristic_manhattan(
                 let goal_pos_col = goal_idx as usize % max_cols;
 
                 if make_heuristic_inadmissable {
-                    multiplier = i + 1;
+                    multiplier = i;
                 }
 
                 let manhattan_dist = (current_pos_row as isize - goal_pos_row as isize).abs()
@@ -62,7 +62,7 @@ struct NodeData {
 
 #[pymethods]
 impl NodeData {
-    /// A constructor for creating NodeData objects directly from Python if needed.
+    /// A constructor for creating NodeData objects directly from Python.
     #[new]
     fn new(g: f64, h: f64, parent: Option<Vec<u8>>) -> Self {
         NodeData { g, h, parent } 
@@ -79,7 +79,7 @@ impl NodeData {
 }
 
 
-/// The main dictionary-like class that stores keys and NodeData values.
+/// The main dictionary-like class that stores keys (states as byte strings), and NodeData values.
 #[pyclass]
 struct RustDict {
     data: HashMap<Vec<u8>, NodeData>, // Changed HashMap key from String to Vec<u8>

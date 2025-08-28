@@ -156,7 +156,7 @@ class SlidingTileProblem:
         Note: Admissable and consistent with unit costs
         NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
         its effectiveness will decrease but still admissable since var costs >= unit costs.
-        NOTE 2: There is a Rust version but we use the python version since it is faster per timeit likely due to the overhead of calling it.
+        NOTE 2: Rust version is faster per timeit.
         """
         if backward: # For bidirectional search
             target_positions = self._start_positions
