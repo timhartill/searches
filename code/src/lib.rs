@@ -54,8 +54,8 @@ fn heuristic_manhattan(
 #[pyclass(get_all, set_all)]
 #[derive(Clone, Debug)] 
 struct NodeData {
-    g: f32,
-    h: f32,
+    g: f64,
+    h: f64,
     parent: Option<Vec<u8>>, // Changed to Option<Vec<u8>> for nullable parent
 }
 
@@ -64,7 +64,7 @@ struct NodeData {
 impl NodeData {
     /// A constructor for creating NodeData objects directly from Python if needed.
     #[new]
-    fn new(g: f32, h: f32, parent: Option<Vec<u8>>) -> Self {
+    fn new(g: f64, h: f64, parent: Option<Vec<u8>>) -> Self {
         NodeData { g, h, parent } 
     }
     
@@ -112,11 +112,11 @@ impl RustDict {
 
     /// Takes a Python dictionary as input and converts it into a Rust NodeData struct for storage.
     fn add_or_update(&mut self, key: Vec<u8>, value: &Bound<'_, PyDict>) -> PyResult<()> { 
-        let g: f32 = value
+        let g: f64 = value
             .get_item("g")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Value dict must contain 'g'"))?
             .extract()?;
-        let h: f32 = value
+        let h: f64 = value
             .get_item("h")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Value dict must contain 'h'"))?
             .extract()?;

@@ -220,6 +220,10 @@ if __name__ == "__main__":
                         help="random seed. Used to set problem order and also to create random probs. If sample_count=0 then reset to this seed before each algo/problem run.")
     parser.add_argument('--sample_count', default=0, type=int,
                         help="Number of samples to run if > 0. random seed. If > 0, runs each algo on each problem sample_count times with seed=incrementing number from 0 to sample_count-1.")
+    parser.add_argument('--rust', action='store_true',
+                        help="By default Python is used to store the nodes dictionary. Specifying --rust uses Rust for this instead. This uses less memory but runs slightly slower dues to the calling overhead")
+    parser.add_argument('--rust_heur', action='store_true',
+                        help="By default Python is used run the manhattan heuristic. Specifying --rust_heur uses Rust for this instead.")
     
     # Matrices / Grids params
     parser.add_argument("--grid_dir", default='matrices', type=str,
@@ -387,6 +391,14 @@ if __name__ == "__main__":
     logger.info(f"Running search comparison at {args.timestamp}")
     logger.info(args)
 
+    if args.rust or args.rust_heur:
+        # Check Rust module is built and can be imported
+        try:
+            import rust_utils
+            logger.info(f"Rust module rust_utils successfully imported.")
+        except ImportError as e:
+            logger.error(f"Error importing Rust module rust_utils. Have you built it using 'maturin develop --release'? Error = {e}")
+            sys.exit(1)
 
     random.seed(args.seed)
 
@@ -410,7 +422,8 @@ if __name__ == "__main__":
                                            min_edge_cost=SEARCH_MAP[algo]['min_edge_cost'],
                                            data_struct=SEARCH_MAP[algo].get('data_struct', 'P'),
                                            switch_after_U_set=SEARCH_MAP[algo].get('switch_after_U_set', False),
-                                           algo_name=algo, )
+                                           algo_name=algo, 
+                                           rust= args.rust, )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
@@ -419,7 +432,8 @@ if __name__ == "__main__":
                                         visualise_dirname = args.visualise_dir,
                                         min_ram = args.algo_min_remaining_gb,
                                         timeout = args.algo_timeout,
-                                        min_edge_cost=SEARCH_MAP[algo].get('min_edge_cost', 0.0) )
+                                        min_edge_cost=SEARCH_MAP[algo].get('min_edge_cost', 0.0), 
+                                        rust= args.rust, )
 
             algorithms.append(algo_instance)
     else:

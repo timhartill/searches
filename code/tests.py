@@ -249,7 +249,16 @@ skl.update(tlist)
 timeit.timeit("t2 = list(skl); heapq.heapify(t2)", number=10, globals=globals()) #2.978387428000133
 
 
-timeit.timeit("rust_utils.heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #1.4365476240054704
-timeit.timeit("heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #0.44085584103595465
+import rust_utils
+import timeit
+state = [15, 14, 0, 4, 11, 1, 6, 13, 7, 5, 8, 9, 3, 2, 10, 12]
+s = SlidingTileProblem(initial_state=state)
+_goal_positions = s._goal_positions
+state_bytes = bytes(state)
 timeit.timeit("s.heuristic(state_bytes, backward=False)", number=100000, globals=globals()) #0.6074775469605811
+# maturin develop:
+timeit.timeit("rust_utils.heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #1.4365476240054704
+# maturin develop --release:
+timeit.timeit("rust_utils.heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #0.13909521396271884
+timeit.timeit("heuristic_manhattan(state_bytes, _goal_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False)", number=100000, globals=globals()) #0.44085584103595465
 

@@ -6,6 +6,7 @@ Greedy Best First Search        (h only)
 A* Search                    (f = g + h)    
 """
 import time
+#import rust_utils
 from sortedcontainers import SortedDict
 import util
 import data_structures
@@ -21,7 +22,7 @@ class generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
-                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=0.0):
+                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=0.0, rust=True):
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
@@ -38,6 +39,7 @@ class generic_search:
         self.tiebreaker1 = tiebreaker1  # see calc_tiebreak_val for options
         self.tiebreaker2 = tiebreaker2
         self.min_edge_cost = min_edge_cost  # used for making h = max(h, eps): On std tests using eps=1 decreases expansions below C* but expansions <= C* can actually increase so use with caution
+        self.rust = rust
         self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}-eps{min_edge_cost}"
 
 
@@ -45,7 +47,14 @@ class generic_search:
         """ Run the search on a problem instance and return dict of results."""
         optimality_guaranteed = (self.priority_key == 'g') or (self.priority_key=='f' and problem.optimality_guaranteed)
 
-        nodes_fwd = {} # dictionary key state to store named tuple of (g, h, parent)
+        if self.rust:
+            import rust_utils
+            nodes_fwd = rust_utils.RustDict()   # dictionary key state to store named tuple of (g, h, parent)
+            Node = rust_utils.NodeData
+        else:
+            nodes_fwd = {}
+            Node = data_structures.NodeData
+
         start_time = time.time() 
         start_node = problem.initial_state()
         h_initial = problem.heuristic(start_node) if self.priority_key in ['h', 'f'] else 0
@@ -56,7 +65,7 @@ class generic_search:
         frontier.push(start_node, 
                       frontier.calc_priority(g=g_initial, h=h_initial), 0) # Push with priority and tiebreaker1
 
-        nodes_fwd[start_node] = data_structures.NodeData(g_initial, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
+        nodes_fwd[start_node] = Node(g_initial, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
         nodes_expanded = 0
         C_nonmono = -1
@@ -108,6 +117,7 @@ class generic_search:
 
             current_state = frontier.pop(item_only=True) # Pop the state with the lowest priority
             current_node = nodes_fwd[current_state]
+            current_g = round(current_node.g, 2)
             if self.priority_key == 'g': 
                 current_h = 0
             else: 
@@ -115,14 +125,14 @@ class generic_search:
                 if not problem.is_goal(current_state):
                     current_h = max(current_h, self.min_edge_cost)  
                 if self.priority_key == 'f' and h_admissable:
-                    if cstar and current_node.g + current_h > cstar + 1e-6:
+                    if cstar and current_g + current_h > cstar + 1e-6:
                         status += f" Inadmissable heuristic detected."
                         h_admissable = False
 
             g_from_frontier = round(current_priority - current_h, 2)
 
             # left the check for stale entries, but PriorityQueue now removes duplicates internally..
-            if current_node.g < g_from_frontier:
+            if current_g < g_from_frontier:
                 stale_count += 1
 
             nodes_expanded += 1
@@ -143,13 +153,13 @@ class generic_search:
                     move_info = None
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
-                tentative_g_score = current_node.g + cost
+                tentative_g_score = round(current_g + cost, 2)
 
                 neighbor_node = nodes_fwd.get(neighbor_state)
                 if neighbor_node is None:
                     prior_g = float('inf')
                 else:
-                    prior_g = neighbor_node.g
+                    prior_g = round(neighbor_node.g,2)
 
                 at_goal = False
                 if problem.is_goal(neighbor_state):  # Works when here
@@ -160,7 +170,7 @@ class generic_search:
                         found_path = True
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
-                            neighbor_node = data_structures.NodeData(tentative_g_score, 0, current_state)
+                            neighbor_node = Node(tentative_g_score, 0, current_state)
                             nodes_fwd[neighbor_state] = neighbor_node  # Update the node in the Rust dict  
                             status += f"Terminating BFS as path found. U:{U}."
                             break
@@ -173,14 +183,14 @@ class generic_search:
                             h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
                             if not at_goal:  # by default min_edge_cost = 0 but can try this with min_edge_cost > 0 for "eps enhanced A*"
                                 h_score = max(h_score, self.min_edge_cost)  # Don't use eps > 0 for h fns that always return >=0 .. <=1 or this will push all h to 1.. if eg degradation pushes h to < eps or h naturually < eps then make h eps
-                        neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                        neighbor_node = Node(tentative_g_score, h_score, current_state)
                         if self.priority_key == 'f' and h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                             if current_h > cost + h_score + 1e-6:
                                 status += f" Inconsistent heuristic detected."
                                 h_consistent = False
                     else:
                         h_score = neighbor_node.h
-                        neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                        neighbor_node = Node(tentative_g_score, h_score, current_state)
                     nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict      
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 

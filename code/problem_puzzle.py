@@ -17,7 +17,8 @@ import os
 import math
 import random
 import collections
-from turtle import distance
+
+import rust_utils
 
 import util
 
@@ -25,10 +26,8 @@ import util
 def heuristic_manhattan(state_bytes, target_positions, max_cols=4, degradation=0, make_heuristic_inadmissable=False):
     """
     Calculates the Manhattan distance heuristic (number of steps).
-    Note: Admissable and consistent with unit costs
-    NOTE: This heuristic counts steps (cost=1). If variable (positive) costs are used,
-    its effectiveness will decrease but still admissable since var costs >= unit costs.
-    NOTE 2: There is a Rust version but we use the python version since it is faster per timeit likely due to the overhead of calling it.
+    Admissable and consistent with unit costs
+    NOTE: This is a test version - the one actually used is in the slidingTileProblem.heuristic(...) method.
     """
     distance = 0
     multiplier = 1
@@ -57,7 +56,7 @@ class SlidingTileProblem:
     """
     def __init__(self, initial_state, goal_state=None, 
                  use_variable_costs=False, make_heuristic_inadmissable=False,
-                 degradation=0, heuristic="manhattan", cstar=None, file=None):
+                 degradation=0, heuristic="manhattan", cstar=None, file=None, rust=True):
         self.file = file  # Input csv: Not used here, but provided for compatibility with eg ToH and Spatial which do use this for differing purposes 
         self.initial_state_tuple = tuple(initial_state)
         self.max_rows, self.max_cols = util.get_puzzle_size(initial_state)
@@ -85,7 +84,12 @@ class SlidingTileProblem:
         self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = heuristic  #"Manhattan" # Manhattan distance heuristic is the only one implemented
         self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
-        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
+        self.rust = rust
+        try:
+            import rust_utils
+        except:
+            pass
+        self._str_repr = f"SlidingTile-{self.max_rows}x{self.max_cols}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}-rs{self.rust}"
         self.prob_str = f"SlidingTile-{self.max_rows}x{self.max_cols}-{self.cost_type}"
 
     def initial_state(self): 
@@ -158,18 +162,21 @@ class SlidingTileProblem:
             target_positions = self._start_positions
         else:
             target_positions = self._goal_positions
-        distance = 0
-        multiplier = 1
-        ignored_tiles = set(range(self.degradation + 1))
-        for i, tile in enumerate(state_bytes):
-            if tile not in ignored_tiles:
-                current_pos = divmod(i, self.max_cols)
-                goal_idx = target_positions.get(tile)
-                if goal_idx is None: continue 
-                goal_pos = divmod(goal_idx, self.max_cols)
-                if self.make_heuristic_inadmissable:
-                    multiplier = i
-                distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
+        if self.rust:
+            distance = rust_utils.heuristic_manhattan(state_bytes, target_positions, self.max_cols, self.degradation, self.make_heuristic_inadmissable)
+        else:  # not rust
+            distance = 0
+            multiplier = 1
+            ignored_tiles = set(range(self.degradation + 1))
+            for i, tile in enumerate(state_bytes):
+                if tile not in ignored_tiles:
+                    current_pos = divmod(i, self.max_cols)
+                    goal_idx = target_positions.get(tile)
+                    if goal_idx is None: continue 
+                    goal_pos = divmod(goal_idx, self.max_cols)
+                    if self.make_heuristic_inadmissable:
+                        multiplier = i
+                    distance += multiplier * (abs(current_pos[0] - goal_pos[0]) + abs(current_pos[1] - goal_pos[1]))
         return distance * self.h_multiplier
 
     def __str__(self): 
@@ -760,7 +767,8 @@ def create_tile_probs(args):
                                             degradation=degradation,
                                             heuristic=heuristic,
                                             cstar=cstar, 
-                                            file=args.tiles_file_full)
+                                            file=args.tiles_file_full,
+                                            rust = args.rust_heur,)
                 problems.append(problem)
     return problems
 

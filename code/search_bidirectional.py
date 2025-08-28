@@ -21,7 +21,7 @@ class bd_generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', 
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, rust=False):
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
@@ -30,6 +30,8 @@ class bd_generic_search:
         min_ram: Minimum RAM in GB to keep available during search. If RAM goes below this, the search will (sometimes) stop but in practice Python may sometimes grab all mem and the os will kill the process before this condition fires.
         timeout: Timeout in minutes for the search. If the search takes longer than this, it will stop.
         """
+        if rust:
+            print(f"Rust usage is not implemented for bd_generic_search so using Python. To disable this message add --no_rust to the calling script but note that rust will then be disabled for everything.")
         self.timeout = timeout
         self.min_ram = min_ram
         self.visualise = visualise
@@ -348,7 +350,7 @@ class bd_lb_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0, switch_after_U_set=False,
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name=''):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name='', rust=True):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tb_dir: Strategy for determining direction(s) to search in. 
@@ -458,6 +460,8 @@ class bd_lb_search:
         self.rand_upper_bound = 100000000000
         self.ordering = 0
 
+        self.rust = rust
+
         self.algo = algo_name
         self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}"
 
@@ -467,8 +471,17 @@ class bd_lb_search:
         optimality_guaranteed = problem.optimality_guaranteed
 
         self.ordering = 0
-        nodes_fwd = {} # dictionary key state to store named tuple of (g, h, parent)
-        nodes_bwd = {}
+        if self.rust:
+            import rust_utils
+            nodes_fwd = rust_utils.RustDict()   # dictionary key state to store named tuple of (g, h, parent)
+            nodes_bwd = rust_utils.RustDict()   # dictionary key state to store named tuple of (g, h, parent)
+            Node = rust_utils.NodeData
+        else:
+            nodes_fwd = {}
+            nodes_bwd = {}
+            Node = data_structures.NodeData
+
+
         start_time = time.time()
         start_node = problem.initial_state()
         goal_node = problem.goal_state()
@@ -480,11 +493,11 @@ class bd_lb_search:
                                             tb_dir=self.tb_dir, tb_select=self.tb_select, tb_order=self.tb_order)
         h_initial = problem.heuristic(start_node)
         frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        nodes_fwd[start_node] = data_structures.NodeData(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
+        nodes_fwd[start_node] = Node(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
         h_goal = problem.heuristic(goal_node, backward=True)
         frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
-        nodes_bwd[goal_node] = data_structures.NodeData(0, h_goal, None)  # dict stores named tuple (g, h, parent) for each state
+        nodes_bwd[goal_node] = Node(0, h_goal, None)  # dict stores named tuple (g, h, parent) for each state
 
         nodes_expanded = 0
         GLB_forcemono = 0                                  # Force monotonicity of GLB for c_count_dict to count nodes expanded below cstar correctly
@@ -558,7 +571,7 @@ class bd_lb_search:
                 # NOTE: DVCBS HOG2 code has optimization s.t if path found between any u in fwd expand_list and v in bwd expand list then terminate with optimal found. For algos expanding many nodes in both directions in same iter this will reduce the expansion count by len(fwd expand_list)+len(bwd expand list up to point path found) but at the cost of iterating through both expand_lists to do the check.
                 for (ordering, g, f, current_state) in expand_list:
                     current_node = nodes_fwd[current_state] 
-                    current_g = current_node.g
+                    current_g = round(current_node.g, 2)
                     current_h = current_node.h
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
@@ -592,7 +605,7 @@ class bd_lb_search:
                             move_info = None
 
                         cost = problem.get_cost(current_state, neighbor_state, move_info) 
-                        tentative_g_score = current_g + cost
+                        tentative_g_score = round(current_g + cost, 2)
 
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
@@ -601,18 +614,18 @@ class bd_lb_search:
                         if neighbor_node is None:
                             prior_g = float('inf')
                         else:
-                            prior_g = neighbor_node.g
+                            prior_g = round(neighbor_node.g, 2)
 
                         if tentative_g_score < prior_g:
                             if neighbor_node is None:
-                                h_score = problem.heuristic(neighbor_state)
+                                h_score = round(problem.heuristic(neighbor_state), 3)
                                 if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                                     if current_h > cost + h_score + 1e-6:
                                         status += f" Inconsistent heuristic detected (fwd)."
                                         h_consistent = False
                             else:
-                                h_score = neighbor_node.h  # Use existing h_score if already in dict
-                            neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                                h_score = round(neighbor_node.h, 3)  # Use existing h_score if already in dict
+                            neighbor_node = Node(tentative_g_score, h_score, current_state)
                             nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
                             if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
@@ -626,7 +639,7 @@ class bd_lb_search:
                                                 prior_f, prior_g)  
 
                         if neighbor_state in nodes_bwd: 
-                            current_path_cost = nodes_bwd[neighbor_state].g + tentative_g_score
+                            current_path_cost = round(nodes_bwd[neighbor_state].g, 2) + tentative_g_score
                             found_goal_count += 1
                             if current_path_cost < U:
                                 U = current_path_cost
@@ -653,7 +666,7 @@ class bd_lb_search:
                 num_expansions_bwd = len(expand_list)
                 for (ordering, g, f, current_state) in expand_list:
                     current_node = nodes_bwd[current_state] 
-                    current_g = current_node.g
+                    current_g = round(current_node.g, 2)
                     current_h = current_node.h
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
@@ -687,7 +700,7 @@ class bd_lb_search:
                             move_info = None
                         
                         cost = problem.get_cost(current_state, neighbor_state, move_info) 
-                        tentative_g_score = current_g + cost 
+                        tentative_g_score = round(current_g + cost , 2)
 
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
@@ -696,18 +709,18 @@ class bd_lb_search:
                         if neighbor_node is None:
                             prior_g = float('inf')
                         else:
-                            prior_g = neighbor_node.g
+                            prior_g = round(neighbor_node.g, 2)
 
                         if tentative_g_score < prior_g:
                             if neighbor_node is None:
-                                h_score = problem.heuristic(neighbor_state, backward=True)
+                                h_score = round(problem.heuristic(neighbor_state, backward=True), 3)
                                 if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                                     if current_h > cost + h_score + 1e-6:
                                         status += f" Inconsistent heuristic detected (bwd)."
                                         h_consistent = False
                             else:
-                                h_score = neighbor_node.h  # Use existing h_score if already in dict
-                            neighbor_node = data_structures.NodeData(tentative_g_score, h_score, current_state)
+                                h_score = round(neighbor_node.h, 3)  # Use existing h_score if already in dict
+                            neighbor_node = Node(tentative_g_score, h_score, current_state)
                             nodes_bwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
                             if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code
@@ -721,7 +734,7 @@ class bd_lb_search:
                                                 prior_f, prior_g)
 
                         if neighbor_state in nodes_fwd: 
-                            current_path_cost = nodes_fwd[neighbor_state].g + tentative_g_score
+                            current_path_cost = round(nodes_fwd[neighbor_state].g, 2) + tentative_g_score
                             found_goal_count += 1
                             if current_path_cost < U:
                                 U = current_path_cost

@@ -243,7 +243,7 @@ class WaitingReadyPriorityQueue:
         """ Push item list of [g, ordering, state] onto Wait queue, 
             removing any existing item with matching state first.
         """
-        if prior_f != float('inf'):
+        if prior_g != float('inf'):
             self.remove_task(item[-1])  # 'Remove' the state if it already exists in wait or ready
         entry = (priority, item)  # entry is (f, [g, ordering, state]) and allowable to update state to REMOVED as it's in a list even though nested in a tuple
         heapq.heappush(self.wait, entry)
@@ -416,7 +416,7 @@ class WaitingReadyBuckets:
             removing any existing item with matching state first.
         """
         g = item[0]
-        if prior_f != float('inf'):
+        if prior_g != float('inf'):
             self.remove_task(item[-1], prior_f, prior_g)  # Remove the state from the previous bucket
         entry = [item[1], item[-1]]  # entry is [ordering, state]
         if priority not in self.wait:
