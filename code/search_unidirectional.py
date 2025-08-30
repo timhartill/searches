@@ -22,7 +22,8 @@ class generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2 = 'NONE', 
-                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=0.0, rust=True):
+                 visualise=True, visualise_dirname='', min_ram=2.0, timeout=30.0, min_edge_cost=0.0, 
+                 rust=False, bpmx1=False):
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
@@ -40,7 +41,8 @@ class generic_search:
         self.tiebreaker2 = tiebreaker2
         self.min_edge_cost = min_edge_cost  # used for making h = max(h, eps): On std tests using eps=1 decreases expansions below C* but expansions <= C* can actually increase so use with caution
         self.rust = rust
-        self._str_repr = f"{algo_name_map[priority_key]}-p{priority_key}-tb1{tiebreaker1}-tb2{tiebreaker2}-eps{min_edge_cost}"
+        self.bpmx1 = bpmx1  # Felner et al 2011. Make inconsistent heuristics "more consistent" by propagating h values between parent and children. Here we do the simplest version, BPMX(1), which only propagates one step. Only does anything if priority_key is 'f' or 'h'.
+        self._str_repr = f"{algo_name_map[self.priority_key]}-p{self.priority_key}-tb1{self.tiebreaker1}-tb2{self.tiebreaker2}-eps{self.min_edge_cost}-bpmx1{self.bpmx1}-rust{self.rust}"
 
 
     def search(self, problem):
@@ -121,7 +123,7 @@ class generic_search:
             if self.priority_key == 'g': 
                 current_h = 0
             else: 
-                current_h = current_node.h
+                current_h = round(current_node.h, 3)
                 if not problem.is_goal(current_state):
                     current_h = max(current_h, self.min_edge_cost)  
                 if self.priority_key == 'f' and h_admissable:
@@ -143,9 +145,10 @@ class generic_search:
                     c_count_dict[C_nonmono] = 0
                 c_count_dict[C_nonmono] +=1
 
+            neighbors_list = []
+            best_h = 0
             for neighbor_info in problem.get_neighbors(current_state):
-                # Handle cases where get_neighbors might return just state or (state, move_info)
-                if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:
+                if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:  # Handle cases where get_neighbors might return just state or (state, move_info)
                     neighbor_state = neighbor_info[0]
                     move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
                 else:
@@ -154,12 +157,34 @@ class generic_search:
 
                 cost = problem.get_cost(current_state, neighbor_state, move_info)
                 tentative_g_score = round(current_g + cost, 2)
+                if self.priority_key == 'g':
+                    h_score = 0
+                elif neighbor_state in nodes_fwd:
+                    h_score = round(nodes_fwd[neighbor_state].h, 3)
+                else:
+                    h_score = round(problem.heuristic(neighbor_state), 3)
+                if self.bpmx1:
+                    best_h = max(best_h, round(h_score - cost, 3))
+                neighbors_list.append( {'state': neighbor_state, 'g': tentative_g_score , 'h': h_score, 'cost': cost} )
+
+            if self.bpmx1:
+                if best_h > current_h:  # a child h > parent h - cost  so increase parent h
+                    current_h = best_h
+                    current_node = Node(current_g, best_h, current_node.parent)
+                    nodes_fwd[current_state] = current_node
+                else:
+                    best_h = current_h  # parent h > child h - cost so use parent h to potentially increase child h
+
+
+            for neighbor in neighbors_list:
+                neighbor_state = neighbor['state']
+                tentative_g_score = neighbor['g']
 
                 neighbor_node = nodes_fwd.get(neighbor_state)
                 if neighbor_node is None:
                     prior_g = float('inf')
                 else:
-                    prior_g = round(neighbor_node.g,2)
+                    prior_g = round(neighbor_node.g, 2)
 
                 at_goal = False
                 if problem.is_goal(neighbor_state):  # Works when here
@@ -171,27 +196,25 @@ class generic_search:
                         U_update_count += 1
                         if self.priority_key == 'h':  # BFS is not optimal so may as well end as soon as a path found
                             neighbor_node = Node(tentative_g_score, 0, current_state)
-                            nodes_fwd[neighbor_state] = neighbor_node  # Update the node in the Rust dict  
+                            nodes_fwd[neighbor_state] = neighbor_node  # Update the node in the dict  
                             status += f"Terminating BFS as path found. U:{U}."
                             break
 
                 if tentative_g_score < prior_g:  #Per Wikipedia citing Russell&Norvig: if a node is reached by one path, removed from openSet, and subsequently reached by a cheaper path, it will be added to openSet again. This is essential to guarantee that the path returned is optimal if the heuristic function is admissible but not consistent. If the heuristic is consistent, when a node is removed from openSet the path to it is guaranteed to be optimal so the test ‘tentative_gScore < gScore[neighbor]’ will always fail if the node is reached again.
-                    if neighbor_node is None:
-                        if self.priority_key == 'g':
-                            h_score = 0
-                        else:
-                            h_score = problem.heuristic(neighbor_state) # for flexibility in calculations; redundant for eg uniform cost unless used in tiebreaker...
-                            if not at_goal:  # by default min_edge_cost = 0 but can try this with min_edge_cost > 0 for "eps enhanced A*"
-                                h_score = max(h_score, self.min_edge_cost)  # Don't use eps > 0 for h fns that always return >=0 .. <=1 or this will push all h to 1.. if eg degradation pushes h to < eps or h naturually < eps then make h eps
-                        neighbor_node = Node(tentative_g_score, h_score, current_state)
-                        if self.priority_key == 'f' and h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                            if current_h > cost + h_score + 1e-6:
-                                status += f" Inconsistent heuristic detected."
-                                h_consistent = False
+                    if self.priority_key == 'g':
+                        h_score = 0
                     else:
-                        h_score = neighbor_node.h
-                        neighbor_node = Node(tentative_g_score, h_score, current_state)
-                    nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict      
+                        h_score = neighbor['h']  #round(problem.heuristic(neighbor_state), 3) 
+                        if not at_goal:  # by default min_edge_cost = 0 but can try this with min_edge_cost > 0 for "eps enhanced A*"
+                            h_score = max(h_score, self.min_edge_cost)  # Don't use eps > 0 for h fns that always return in [0,1] or this will push all h to 1.. if eg degradation pushes h to < eps or h naturually < eps then make h eps
+                        if self.bpmx1:
+                            h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
+                    neighbor_node = Node(tentative_g_score, h_score, current_state)
+                    if self.priority_key == 'f' and h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                        if current_h > neighbor['cost'] + h_score + 1e-6:
+                            status += f" Inconsistent heuristic detected. parent h {current_h} > edgecost {neighbor['cost']} + child h {h_score} + 1e-6."
+                            h_consistent = False
+                    nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
                     frontier.push(neighbor_state, 
                                     frontier.calc_priority(g=tentative_g_score, h=h_score), 
                                     frontier.calc_tiebreak1(g=tentative_g_score, h=h_score),

@@ -48,6 +48,7 @@ SEARCH_MAP = {
     "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "astar_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_negg": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE'},
+    "astar_negg_bpmx1": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE', "bpmx1": True},
     "astar_negg_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": '-g', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
     "astar_fifo": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE'},
     "astar_fifo_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'FIFO', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
@@ -170,6 +171,7 @@ SEARCH_MAP = {
     "lb_gbfhs_first_f_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_pohl_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_nbs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
+    "lb_nbs_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True},  
     "lb_nbs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
 
     # lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps
@@ -423,7 +425,8 @@ if __name__ == "__main__":
                                            data_struct=SEARCH_MAP[algo].get('data_struct', 'P'),
                                            switch_after_U_set=SEARCH_MAP[algo].get('switch_after_U_set', False),
                                            algo_name=algo, 
-                                           rust= args.rust, )
+                                           rust= args.rust, 
+                                           bpmx1 = SEARCH_MAP[algo].get('bpmx1', False), )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
@@ -433,7 +436,8 @@ if __name__ == "__main__":
                                         min_ram = args.algo_min_remaining_gb,
                                         timeout = args.algo_timeout,
                                         min_edge_cost=SEARCH_MAP[algo].get('min_edge_cost', 0.0), 
-                                        rust= args.rust, )
+                                        rust= args.rust, 
+                                        bpmx1 = SEARCH_MAP[algo].get('bpmx1', False), )
 
             algorithms.append(algo_instance)
     else:

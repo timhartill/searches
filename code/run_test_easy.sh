@@ -205,6 +205,7 @@ comment
 #        --pancakes_var_cost \
 #        --toh_inadmiss \
 #        --no_rust \
+#        --algo_heur_bpmx1 \
 
 
 
@@ -237,7 +238,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg lb_nbs_f_eps \
+        --algo_heur astar_negg astar_negg_bpmx1 lb_nbs_f_eps \
         --algo_mcts NONE
 
 

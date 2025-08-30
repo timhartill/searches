@@ -21,7 +21,7 @@ class bd_generic_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, priority_key='f', tiebreaker1='-g', tiebreaker2='NONE', 
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, rust=False):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, rust=False, bpmx1=False):
         if priority_key not in algo_name_map: raise ValueError(f"priority_key must be in {algo_name_map}")
         """
         priority_key: 'g', 'h', or 'f' = g+h. Determines the priority of the nodes in the search.
@@ -32,6 +32,8 @@ class bd_generic_search:
         """
         if rust:
             print(f"Rust usage is not implemented for bd_generic_search so using Python. To disable this message add --no_rust to the calling script but note that rust will then be disabled for everything.")
+        if bpmx1:
+            print(f"bpmx1 from Felner et al 2011 is not implemented for bidirectional search.")
         self.timeout = timeout
         self.min_ram = min_ram
         self.visualise = visualise
@@ -350,7 +352,8 @@ class bd_lb_search:
     if visualise is True and problem supports it, will output visualisation to a subdir off the problem input dir.
     """
     def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0, switch_after_U_set=False,
-                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name='', rust=True):
+                 visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name='', rust=True,
+                 bpmx1=False):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tb_dir: Strategy for determining direction(s) to search in. 
@@ -461,9 +464,10 @@ class bd_lb_search:
         self.ordering = 0
 
         self.rust = rust
+        self.bpmx1 = bpmx1
 
         self.algo = algo_name
-        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}"
+        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}-bpmx1{self.bpmx1}-rust{self.rust}"
 
 
     def search(self, problem):
@@ -480,7 +484,6 @@ class bd_lb_search:
             nodes_fwd = {}
             nodes_bwd = {}
             Node = data_structures.NodeData
-
 
         start_time = time.time()
         start_node = problem.initial_state()
@@ -595,17 +598,37 @@ class bd_lb_search:
                     if g > frontiers.forward_max_g_expanded:
                         frontiers.forward_max_g_expanded = g
 
+                    neighbors_list = []
+                    best_h = 0
                     for neighbor_info in problem.get_neighbors(current_state):
-                        
-                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:  # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
                             move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
 
-                        cost = problem.get_cost(current_state, neighbor_state, move_info) 
+                        cost = problem.get_cost(current_state, neighbor_state, move_info)
                         tentative_g_score = round(current_g + cost, 2)
+                        if neighbor_state in nodes_fwd:
+                            h_score = round(nodes_fwd[neighbor_state].h, 3)
+                        else:
+                            h_score = round(problem.heuristic(neighbor_state), 3)
+                        if self.bpmx1:
+                            best_h = max(best_h, round(h_score - cost, 3))
+                        neighbors_list.append( {'state': neighbor_state, 'g': tentative_g_score , 'h': h_score, 'cost': cost} )
+
+                    if self.bpmx1:
+                        if best_h > current_h:  # a child h > parent h - cost  so increase parent h
+                            current_h = best_h
+                            current_node = Node(current_g, best_h, current_node.parent)
+                            nodes_fwd[current_state] = current_node
+                        else:
+                            best_h = current_h  # parent h > child h - cost so use parent h to potentially increase child h
+
+                    for neighbor in neighbors_list:
+                        neighbor_state = neighbor['state']
+                        tentative_g_score = neighbor['g']
 
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
@@ -617,15 +640,14 @@ class bd_lb_search:
                             prior_g = round(neighbor_node.g, 2)
 
                         if tentative_g_score < prior_g:
-                            if neighbor_node is None:
-                                h_score = round(problem.heuristic(neighbor_state), 3)
-                                if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                                    if current_h > cost + h_score + 1e-6:
-                                        status += f" Inconsistent heuristic detected (fwd)."
-                                        h_consistent = False
-                            else:
-                                h_score = round(neighbor_node.h, 3)  # Use existing h_score if already in dict
+                            h_score = neighbor['h']  #round(problem.heuristic(neighbor_state), 3) 
+                            if self.bpmx1:
+                                h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
+                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                                if current_h > neighbor['cost'] + h_score + 1e-6:
+                                    status += f" Inconsistent heuristic detected. parent h {current_h} > edgecost {neighbor['cost']} + child h {h_score} + 1e-6."
+                                    h_consistent = False
                             nodes_fwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
                             if prior_g != float('inf') or tentative_g_score+h_score < U:       # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code - make a small positive difference on algos that expand levels
@@ -690,18 +712,37 @@ class bd_lb_search:
                     if g > frontiers.backward_max_g_expanded:
                         frontiers.backward_max_g_expanded = g
 
+                    neighbors_list = []
+                    best_h = 0
                     for neighbor_info in problem.get_neighbors(current_state):
-                        
-                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:    # Handle cases where get_neighbors might return just state or (state, move_info)
+                        if isinstance(neighbor_info, tuple) and len(neighbor_info) >= 1:  # Handle cases where get_neighbors might return just state or (state, move_info)
                             neighbor_state = neighbor_info[0]
                             move_info = neighbor_info[1] if len(neighbor_info) > 1 else None
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
-                        
-                        cost = problem.get_cost(current_state, neighbor_state, move_info) 
-                        tentative_g_score = round(current_g + cost , 2)
 
+                        cost = problem.get_cost(current_state, neighbor_state, move_info)
+                        tentative_g_score = round(current_g + cost, 2)
+                        if neighbor_state in nodes_bwd:
+                            h_score = round(nodes_bwd[neighbor_state].h, 3)
+                        else:
+                            h_score = round(problem.heuristic(neighbor_state, backward=True), 3)
+                        if self.bpmx1:
+                            best_h = max(best_h, round(h_score - cost, 3))
+                        neighbors_list.append( {'state': neighbor_state, 'g': tentative_g_score , 'h': h_score, 'cost': cost} )
+
+                    if self.bpmx1:
+                        if best_h > current_h:  # a child h > parent h - cost  so increase parent h
+                            current_h = best_h
+                            current_node = Node(current_g, best_h, current_node.parent)
+                            nodes_bwd[current_state] = current_node
+                        else:
+                            best_h = current_h  # parent h > child h - cost so use parent h to potentially increase child h
+
+                    for neighbor in neighbors_list:
+                        neighbor_state = neighbor['state']
+                        tentative_g_score = neighbor['g']
                         if tentative_g_score >= U:   # Optimisation in NBS and DVCBS HOG2 code
                             continue
                         
@@ -712,15 +753,14 @@ class bd_lb_search:
                             prior_g = round(neighbor_node.g, 2)
 
                         if tentative_g_score < prior_g:
-                            if neighbor_node is None:
-                                h_score = round(problem.heuristic(neighbor_state, backward=True), 3)
-                                if h_consistent:        # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
-                                    if current_h > cost + h_score + 1e-6:
-                                        status += f" Inconsistent heuristic detected (bwd)."
-                                        h_consistent = False
-                            else:
-                                h_score = round(neighbor_node.h, 3)  # Use existing h_score if already in dict
+                            h_score = neighbor['h']  #round(problem.heuristic(neighbor_state), 3) 
+                            if self.bpmx1:
+                                h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
+                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                                if current_h > neighbor['cost'] + h_score + 1e-6:
+                                    status += f" Inconsistent heuristic detected. parent h {current_h} > edgecost {neighbor['cost']} + child h {h_score} + 1e-6."
+                                    h_consistent = False
                             nodes_bwd[neighbor_state] = neighbor_node  # Add/Update the node in the Nodes dict
                             if prior_g != float('inf') or tentative_g_score+h_score < U:   # Optimisation in NBS and DVCBS HOG2 code
                                 #force_low_tiebreak = False          # test optimisation not in NBS or DVCBS HOG2 code

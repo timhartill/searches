@@ -237,11 +237,12 @@ comment
 #        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
 #        --out_prefix "search-eval" \
 #        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+#         --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
 
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "search-eval" \
+        --out_prefix "bpmx1test_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -262,12 +263,12 @@ python search_runner.py \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 \
+        --toh_heur infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
+        --algo_heur astar_negg astar_negg_bpmx1 lb_nbs_f_eps lb_nbs_f_eps_bpmx1 \
         --algo_mcts NONE
 
 

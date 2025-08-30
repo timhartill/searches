@@ -271,6 +271,7 @@ python search_runner.py \
         --out_prefix "lb_StdAll_setid44_hgx2_clbmono_hog2opt_uf_" \
         --in_dir "../problems" \
         --seed 42 \
+        --rust_heur \
         --grid daostd \
         --grid_max_per_scen 3150 \
         --grid_heur octile \
