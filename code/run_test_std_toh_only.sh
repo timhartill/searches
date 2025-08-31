@@ -242,11 +242,11 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "bpmx1test_search-eval" \
+        --out_prefix "bpmx1_h_improve_nbs_mostconn_TOHonly_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
-        --grid_max_per_scen 3150 \
+        --grid_max_per_scen 0 \
         --grid_heur octile \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
@@ -263,12 +263,12 @@ python search_runner.py \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
-        --toh_heur infinitepegrelaxation \
+        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg astar_negg_bpmx1 lb_nbs_f_eps lb_nbs_f_eps_bpmx1 \
+        --algo_heur lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_nbs_f_eps_bpmx1_himp lb_nbs_f_eps_himp lb_mostconnectednodes_lowg_f_eps lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1_himp lb_mostconnectednodes_lowg_f_eps_himp \
         --algo_mcts NONE
 
 

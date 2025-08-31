@@ -164,6 +164,14 @@ SEARCH_MAP = {
     "lb_mostconnectednodes_connln_a_eps_uf": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'LN', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
     "lb_mostconnectednodes_connln_f_eps_uf": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
 
+    #bpmx1 and h_improve versions
+    "lb_nbs_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True},  
+    "lb_nbs_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True, "h_improve": True},  
+    "lb_nbs_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "h_improve": True},  
+    "lb_mostconnectednodes_lowg_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
+    "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
+    "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
+
 
     # Algos expanding single nodes in either/both directions run on all std problems
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
@@ -171,7 +179,6 @@ SEARCH_MAP = {
     "lb_gbfhs_first_f_eps": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_pohl_first_none_f_eps": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
     "lb_nbs_f_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0},  
-    "lb_nbs_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True},  
     "lb_nbs_a_eps": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0},  
 
     # lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps
@@ -426,7 +433,8 @@ if __name__ == "__main__":
                                            switch_after_U_set=SEARCH_MAP[algo].get('switch_after_U_set', False),
                                            algo_name=algo, 
                                            rust= args.rust, 
-                                           bpmx1 = SEARCH_MAP[algo].get('bpmx1', False), )
+                                           bpmx1 = SEARCH_MAP[algo].get('bpmx1', False),
+                                           h_improve = SEARCH_MAP[algo].get('h_improve', False), )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],

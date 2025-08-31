@@ -353,7 +353,7 @@ class bd_lb_search:
     """
     def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0, switch_after_U_set=False,
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name='', rust=True,
-                 bpmx1=False):
+                 bpmx1=False, h_improve=False):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tb_dir: Strategy for determining direction(s) to search in. 
@@ -464,10 +464,12 @@ class bd_lb_search:
         self.ordering = 0
 
         self.rust = rust
-        self.bpmx1 = bpmx1
+        self.bpmx1 = bpmx1          # from Felner et al 2011 for making inconsistent heuristics consistent
+        self.h_improve = h_improve  # from Shperberg et al 2021 for improving h values
+
 
         self.algo = algo_name
-        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}-bpmx1{self.bpmx1}-rust{self.rust}"
+        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}-bpmx1{self.bpmx1}-himp{self.h_improve}-rust{self.rust}"
 
 
     def search(self, problem):
@@ -581,7 +583,7 @@ class bd_lb_search:
                             status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
                     
-                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the g on the frontier doesn't match prior_g
+                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the f or g on the frontier doesn't match prior_g/prior_f eg when h is updated
                         stale_count += 1
                         continue
 
@@ -607,7 +609,6 @@ class bd_lb_search:
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
-
                         cost = problem.get_cost(current_state, neighbor_state, move_info)
                         tentative_g_score = round(current_g + cost, 2)
                         if neighbor_state in nodes_fwd:
@@ -641,8 +642,11 @@ class bd_lb_search:
 
                         if tentative_g_score < prior_g:
                             h_score = neighbor['h']  #round(problem.heuristic(neighbor_state), 3) 
+                            prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
+                            if self.h_improve:
+                                h_score = max(h_score, frontiers.backward_gmin + self.min_edge_cost, frontiers.backward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                                 if current_h > neighbor['cost'] + h_score + 1e-6:
@@ -655,7 +659,7 @@ class bd_lb_search:
                                 #    current_path_cost = g_score_bwd[neighbor_state] + tentative_g_score
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
-                                prior_f = prior_g + h_score
+                                prior_f = prior_g + prior_h
                                 frontiers.push('F', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
                                                 tentative_g_score+h_score, 
                                                 prior_f, prior_g)  
@@ -695,7 +699,7 @@ class bd_lb_search:
                             status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
                     
-                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger if there is an inconsistent heuristic and then only rarely
+                    if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the f or g on the frontier doesn't match prior_g/prior_f eg when h is updated
                         stale_count += 1
                         continue
 
@@ -721,7 +725,6 @@ class bd_lb_search:
                         else:
                             neighbor_state = neighbor_info
                             move_info = None
-
                         cost = problem.get_cost(current_state, neighbor_state, move_info)
                         tentative_g_score = round(current_g + cost, 2)
                         if neighbor_state in nodes_bwd:
@@ -754,8 +757,11 @@ class bd_lb_search:
 
                         if tentative_g_score < prior_g:
                             h_score = neighbor['h']  #round(problem.heuristic(neighbor_state), 3) 
+                            prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
+                            if self.h_improve:
+                                h_score = max(h_score, frontiers.forward_gmin + self.min_edge_cost, frontiers.forward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
                                 if current_h > neighbor['cost'] + h_score + 1e-6:
@@ -768,7 +774,7 @@ class bd_lb_search:
                                 #    current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
-                                prior_f = prior_g + h_score   # NOTE: heuristic must always return same value for the same state otherwise must store past heuristics
+                                prior_f = prior_g + prior_h   
                                 frontiers.push('B', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
                                                 tentative_g_score+h_score,
                                                 prior_f, prior_g)
