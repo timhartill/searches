@@ -171,7 +171,15 @@ SEARCH_MAP = {
     "lb_mostconnectednodes_lowg_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
     "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
     "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
+    "lb_alter_first_none_bae_a_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
 
+    # BAE* versions
+    "lb_alter_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_pohl_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_minb_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_rand_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
+
+    # lb_alter_first_none_bae_f lb_alter_first_none_bae_a lb_pohl_first_none_bae_f lb_pohl_first_none_bae_a lb_minb_first_none_bae_f lb_minb_first_none_bae_a lb_rand_first_none_bae_f lb_rand_first_none_bae_a
 
     # Algos expanding single nodes in either/both directions run on all std problems
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  

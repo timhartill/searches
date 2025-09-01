@@ -203,12 +203,12 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "search-eval" \
+        --out_prefix "bae_testharder-search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
         --grid mazetest daotest \
-        --grid_max_per_scen 2 \
+        --grid_max_per_scen 4 \
         --grid_random_scen_order \
         --grid_heur octile \
         --grid_degs 0 \
@@ -220,18 +220,18 @@ python search_runner.py \
         --tiles_max 2 \
         --tiles_heur manhattan \
         --tiles_degs 0 \
-        --pancakes "14_pancake_probs2_test.csv" \
-        --pancakes_max 2 \
+        --pancakes "14_pancake_probs50_std.csv" \
+        --pancakes_max 50 \
         --pancakes_heur gap \
-        --pancakes_degs 0 1 2 \
+        --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs2_test.csv" \
-        --toh_max 2 \
+        --toh_max 50 \
         --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg lb_nbs_f_eps \
+        --algo_heur lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_alter_first_none_bae_a lb_alter_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a \
         --algo_mcts NONE
 
 

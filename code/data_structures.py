@@ -3,16 +3,14 @@ Data Structures
 """
 import heapq
 import random
+import math
 from collections import namedtuple
-
-from numpy import fmin
-
-
-import util
-
 from sortedcontainers import SortedDict
 from sortedcontainers import SortedKeyList
 from sortedcontainers import SortedSet
+
+import util
+
 
 REMOVED = '^'.encode('utf-8')  # Used to mark an entry as removed in the Ready and Wait structures
 
@@ -355,6 +353,171 @@ class WaitingReadyPriorityQueue:
             For heap-based queue only tb_select = "F" is supported which is the first node in the lowest ordering in the lowest g level
             however tiebreaking can occur over all f values in a glevel unlike the bucket implementation.
             Note: a tiebreak of NONE means all ordering values are 0, hence effective ordering is g, f
+        """
+        # expand_nodes entry format (ordering, g, f, state)
+        expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by ordering
+        g, f, ordering, current_state = self.pop(item_only=False)
+        expand_nodes.add( (ordering, g, f, current_state) )
+        return expand_nodes
+
+
+class BAEWaitingReadyPriorityQueue:
+    """ Priority queue implementation used for BAE* based on that described in Shperberg et al 2025: 
+    one for waiting states and one for ready states
+    Used in LB Pairs family of Bidirectional search algorithms - two of these in each direction
+    Wait priority is f and Ready priority is b (d_d = g_d - h_d' and b_d = f_d + d_d)
+    Wait priority queue entries are tuples of (f, [g, b, ordering, state]) where ordering is the tiebreak value
+    Ready priority queue entries are tuples of (b, [ordering, g, f, state])
+    """
+    def __init__(self, version='A'):
+        """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
+        """
+        self.version = version
+        if self.version not in ['A', 'F']:
+            raise ValueError(f"Invalid version: {self.version}. Must be 'A' or 'F'.")
+        self.wait = []
+        self.ready = []
+        self.wait_max_size = 0
+        self.ready_max_size = 0
+        self.max_bucket_size = 1     # for compatibility with WaitingReadyBuckets
+        self.max_distinct_f = 0      # for compatibility with WaitingReadyBuckets
+        self.max_distinct_g = 0      # for compatibility with WaitingReadyBuckets
+        self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
+        self.ready_entry_finder = {} # mapping of state to entry in ready 
+        return
+
+    def remove_task(self, state):
+        """ Mark an existing entry as REMOVED. entry format: 
+        Wait: (f, [g, b, ordering, state])
+        Ready: (b, [ordering, g, f, state])
+        """
+        if state in self.wait_entry_finder:
+            entry = self.wait_entry_finder.pop(state)
+            entry[-1][-1] = REMOVED
+        if state in self.ready_entry_finder:
+            entry = self.ready_entry_finder.pop(state)
+            entry[-1][-1] = REMOVED
+
+    def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
+        """ Push item list of [g, b, ordering, state] onto Wait queue, 
+            removing any existing item with matching state first.
+        """
+        if prior_g != float('inf'):
+            self.remove_task(item[-1])  # 'Remove' the state if it already exists in wait or ready
+        entry = (priority, item)  # entry is (f, [g, b, ordering, state]) and allowable to update state to REMOVED as it's in a list even though nested in a tuple
+        heapq.heappush(self.wait, entry)
+        self.wait_entry_finder[item[-1]] = entry
+        if self.wait_max_size < len(self.wait):
+            self.wait_max_size = len(self.wait)
+        return
+
+
+    def move_to_ready(self, GLB, always_move_equal=False):
+        """ Move all states from Wait to Ready that satisfy the GLB condition
+            Returns the number of states moved
+            Wait: (f, [g, b, ordering, state])
+            Ready: (b, [ordering, g, f, state])
+        """
+        count = 0
+        while self.wait and self.wait[0][0] < GLB:
+            f, (g, b, ordering, state) = heapq.heappop(self.wait)
+            if state != REMOVED:  # Only move if the state is not marked as REMOVED
+                del self.wait_entry_finder[state]
+                entry = (b, [ordering, g, f, state])       
+                heapq.heappush(self.ready, entry)
+                self.ready_entry_finder[state] = entry
+                count += 1
+        if self.version == 'A' or always_move_equal:
+            while self.wait and self.wait[0][0] == GLB:
+                # If we are in the "all" version and the next item is exactly GLB, we also move it to ready
+                f, (g, b, ordering, state) = heapq.heappop(self.wait)
+                if state != REMOVED:
+                    del self.wait_entry_finder[state]
+                    entry = (b, [ordering, g, f, state])   
+                    heapq.heappush(self.ready, entry)
+                    self.ready_entry_finder[state] = entry
+                    count += 1
+        if self.ready_max_size < len(self.ready):
+            self.ready_max_size = len(self.ready)
+        return count
+    
+    def move_one_to_ready(self, GLB):
+        """ Move one state from Wait to Ready that satisfies the GLB condition
+            Returns 1 if a state was moved, 0 otherwise
+            Wait: (f, [g, b, ordering, state])
+            Ready: (b, [ordering, g, f, state])
+        """
+        while self.wait and self.wait[0][0] <= GLB:
+            f, (g, b, ordering, state) = heapq.heappop(self.wait)
+            if state != REMOVED:
+                del self.wait_entry_finder[state]
+                entry = (b, [ordering, g, f, state])   
+                heapq.heappush(self.ready, entry)
+                self.ready_entry_finder[state] = entry
+                if self.ready_max_size < len(self.ready):
+                    self.ready_max_size = len(self.ready)
+                return 1
+        return 0
+
+    def pop(self, item_only=True):
+        """ Pop the lowest priority element from Ready.
+            Wait: (f, [g, b, ordering, state])
+            Ready: (b, [ordering, g, f, state])
+        """
+        state = REMOVED
+        while self.ready:
+            b, (ordering, g, f, state) = heapq.heappop(self.ready)   # Pop until we find a valid state that is not marked as REMOVED
+            if state != REMOVED:
+                del self.ready_entry_finder[state]
+                break
+        if state != REMOVED:
+            if item_only:
+                return state
+            else:
+                return g, f, ordering, state   #TODO Return b?
+        return None
+
+    def isEmpty(self):
+        """ Check if both Wait and Ready heaps are empty excluding items marked for removal
+        """
+        return len(self.wait_entry_finder) == 0 and len(self.ready_entry_finder) == 0
+    
+    def curr_size(self):
+        return len(self.wait_entry_finder) + len(self.ready_entry_finder)
+
+    def peek_wait(self, priority_only=True):
+        """View the lowest priority element on Wait (fmin) without popping it 
+        after popping any entries marked as REMOVED
+        """
+        while self.wait and self.wait[0][-1][-1] == REMOVED:
+            heapq.heappop(self.wait)
+
+        if self.wait:
+            if priority_only:
+                return self.wait[0][0]
+            else:
+                return self.wait[0]   # Return the whole entry
+        return float('inf')
+
+    def peek_ready(self, priority_only=True):
+        """View the lowest priority element on Ready (bmin) without popping it
+        after popping any entries marked as REMOVED
+        """
+        while self.ready and self.ready[0][-1][-1] == REMOVED:
+            heapq.heappop(self.ready)
+
+        if self.ready:
+            if priority_only:
+                return self.ready[0][0]
+            else:
+                return self.ready[0]     # Return the whole entry
+        return float('inf')
+
+    def select_and_order(self, direction, lb):
+        """ Select and return nodes to expand.
+            For heap-based queue only tb_select = "F" is supported which is the first node in the lowest ordering in the lowest g level
+            however tiebreaking can occur over all f values in a glevel unlike the bucket implementation.
+            Note: a tiebreak of NONE means all ordering values are 0
         """
         # expand_nodes entry format (ordering, g, f, state)
         expand_nodes = SortedKeyList(key=lambda e: e[0])  # SortedKeyList to keep entries sorted by ordering
@@ -938,7 +1101,7 @@ class WaitingReadyBuckets:
 class LBPairs:
     """ Two WaitingReadyPriorityQueue structures, one for forward, one for backward
     Used in LB Pairs family of Bidirectional search algorithms 
-    Wait priority is f and Ready priority is g, so expandable nodes are those in Ready which satisfy 
+    Wait priority is f and Ready priority is g (or b), so expandable nodes are those in Ready which satisfy 
     g_forward + g_backward + epsilon <= GLB ("C" in A*/"naive BDHS") having already satisfied f_direction <= GLB to be moved from Wait to Ready
     Wait priority queue entries are tuples of (f, [g, fifo/lifo_value, state])
     Ready priority queue entries are tuples of (g, [f, fifo/lifo_value, state])
@@ -958,8 +1121,8 @@ class LBPairs:
             raise ValueError(f"Invalid min_edge_cost: {self.min_edge_cost}. Must be >= 0.")
         self.version = version
         self.data_struct = data_struct
-        if self.data_struct not in ['P', 'B']:
-            raise ValueError(f"Invalid data_struct: {self.data_struct}. Must be 'P' for PQ or 'B' for Buckets.")
+        if self.data_struct not in ['P', 'B', 'D']:
+            raise ValueError(f"Invalid data_struct: {self.data_struct}. Must be 'P' for PQ or 'B' for Buckets or 'D' for BAE* PQ.")
         self.tb_dir = tb_dir
         self.tb_select = tb_select
         self.tb_order = tb_order
@@ -968,6 +1131,9 @@ class LBPairs:
         if self.data_struct == 'B':
             self.forward = WaitingReadyBuckets(version)
             self.backward = WaitingReadyBuckets(version)
+        elif self.data_struct == 'D':
+            self.forward = BAEWaitingReadyPriorityQueue(version)
+            self.backward = BAEWaitingReadyPriorityQueue(version)
         else:  # self.data_struct == 'P'
             self.forward = WaitingReadyPriorityQueue(version)
             self.backward = WaitingReadyPriorityQueue(version)
@@ -986,10 +1152,12 @@ class LBPairs:
 
         self.forward_max_g_expanded = 0     # max g expanded in forward direction
         self.backward_max_g_expanded = 0    # max g expanded in backward direction
-        self.forward_gmin = 0               # current gmin in forward direction
-        self.backward_gmin = 0              # current gmin in backward direction
+        self.forward_gmin = 0               # current gmin in forward direction - not used for bae*
+        self.backward_gmin = 0              # current gmin in backward direction - not used for bae*
         self.forward_fmin = 0               # current fmin in forward direction
         self.backward_fmin = 0              # current fmin in backward direction
+        self.forward_bmin = 0               # current bmin in forward direction BAE* only
+        self.backward_bmin = 0              # current bmin in backward direction BAE* only
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -1031,7 +1199,7 @@ class LBPairs:
             raise ValueError(f"Invalid direction: {direction}. Must be 'F' or 'B'.")
 
     def get_new_LB(self):
-        """ Get the new CLB value (the final CLB in prepare_expandable is the new GLB)
+        """ Get the new CLB value for non-BAE* (the final CLB in prepare_expandable is the new GLB)
             NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and naive BDHS
         """
         if self.forward.ready:
@@ -1053,7 +1221,7 @@ class LBPairs:
         return min(fmin_f, fmin_b, gmin_f + gmin_b + self.min_edge_cost)
 
     def prepare_expandable(self, GLB):
-        """ Prepare the expandable nodes for the next iteration
+        """ Prepare the expandable nodes for the next iteration for non-BAE*
             lb(u,v) = max(fmin_f, fmin_b, gmin_f + gmin_b + min_edge_cost)
             GLB is min(lb(u,v)). 
             Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
@@ -1087,6 +1255,43 @@ class LBPairs:
                 CLB = self.get_new_LB()
                 self.GLB = CLB
         return found, CLB
+
+
+    # BAE* specific methods
+    def get_lb_b(self):
+        """ Get the new lb_b value for BAE*. Based on Shperberg et al 2025 implementation
+            lb_b = (bmin_f + bmin_b) / 2
+        """    
+        self.forward_bmin = self.forward.peek_ready(priority_only=True)
+        self.backward_bmin = self.backward.peek_ready(priority_only=True)
+        lb_b = (self.forward_bmin + self.backward_bmin) / 2.0
+        if lb_b != float('inf'):
+            lb_b = math.ceil(lb_b)
+        return lb_b
+
+
+    def bae_prepare_expandable(self, GLB):
+        """ Prepare the expandable nodes for the next iteration in BAE*
+            lb_b = (bmin_f + bmin_b) / 2
+            GLB is min(bmin_f, bmin_b)
+            Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
+        """
+        CLB = GLB
+        self.forward_fmin = self.forward.peek_wait(priority_only=True)
+        self.backward_fmin = self.backward.peek_wait(priority_only=True)
+        minf = min(self.forward_fmin, self.backward_fmin)
+
+        while minf <= self.get_lb_b():
+            CLB = minf
+            count_f, count_b = self.move_to_ready(CLB, always_move_equal=True)
+            self.forward_fmin = self.forward.peek_wait(priority_only=True)
+            self.backward_fmin = self.backward.peek_wait(priority_only=True)
+            minf = min(self.forward_fmin, self.backward_fmin)
+        if minf == float('inf'):
+            CLB = max( CLB, self.get_lb_b() )
+        self.GLB = CLB
+        return True, CLB
+
 
     def calc_expandable(self, add_mwvc=True):
         """ Calculate which buckets in ReadyF, ReadyB are expandable without popping anything. 
@@ -1330,7 +1535,7 @@ class LBPairs:
             else:
                 fwd, bwd = False, True
                 self.last_direction = 'B'
-        elif self.tb_dir == 'G':            # expand direction based on lowest expandable g in fwd vs bwd
+        elif self.tb_dir == 'G':            # expand direction based on lowest expandable g (or b if bae*) in fwd vs bwd
             fval = self.forward.peek_ready(priority_only=True)
             bval = self.backward.peek_ready(priority_only=True)
             if fval > bval:

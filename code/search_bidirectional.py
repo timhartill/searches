@@ -445,10 +445,10 @@ class bd_lb_search:
             self.do_mwvc = True
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
-        if self.data_struct not in ['P', 'B']:
-            raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P' or 'B'.")
+        if self.data_struct not in ['P', 'B', 'D']:
+            raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P', 'B' or 'D'.")
         
-        if self.data_struct == 'P':
+        if self.data_struct in ['P', 'D']:
             if self.tb_select != 'F':
                 raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'F'.")
             if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G']:
@@ -496,12 +496,23 @@ class bd_lb_search:
         frontiers = data_structures.LBPairs(version=self.version, min_edge_cost=self.min_edge_cost, 
                                             data_struct=self.data_struct, 
                                             tb_dir=self.tb_dir, tb_select=self.tb_select, tb_order=self.tb_order)
+
         h_initial = problem.heuristic(start_node)
-        frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
+        if self.data_struct == 'D':
+            d_score = 0 - round(problem.heuristic(start_node, backward=True), 3)
+            b_score = 0 + h_initial + d_score
+            frontiers.push('F', [0, b_score, self.calc_ordering(), start_node], h_initial)  
+        else:
+            frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
         nodes_fwd[start_node] = Node(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
         h_goal = problem.heuristic(goal_node, backward=True)
-        frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
+        if self.data_struct == 'D':
+            d_score = 0 - round(problem.heuristic(start_node), 3)
+            b_score = 0 + h_goal + d_score
+            frontiers.push('B', [0, b_score, self.calc_ordering(), goal_node], h_goal)  
+        else:
+            frontiers.push('B', [0, self.calc_ordering(), goal_node], h_goal) # Push with Direction, (g, fifolifoval, state) and priority (f)
         nodes_bwd[goal_node] = Node(0, h_goal, None)  # dict stores named tuple (g, h, parent) for each state
 
         nodes_expanded = 0
@@ -547,7 +558,10 @@ class bd_lb_search:
                     break
             i += 1
 
-            found, new_GLB = frontiers.prepare_expandable(GLB)
+            if self.data_struct == 'D':
+                found, new_GLB = frontiers.bae_prepare_expandable(GLB)
+            else:
+                found, new_GLB = frontiers.prepare_expandable(GLB)
             if not found:  # If no expandable nodes, we are done - never happens in current test domains
                 status += f"Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
                 break
@@ -660,9 +674,16 @@ class bd_lb_search:
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
                                 prior_f = prior_g + prior_h
-                                frontiers.push('F', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
-                                                tentative_g_score+h_score, 
-                                                prior_f, prior_g)  
+                                if self.data_struct == 'D':  # Wait: (f, [g, b, ordering, state])
+                                    d_score = tentative_g_score - round(problem.heuristic(neighbor_state, backward=True), 3)
+                                    b_score = tentative_g_score + h_score + d_score
+                                    frontiers.push('F', [tentative_g_score, b_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
+                                                    tentative_g_score+h_score, 
+                                                    prior_f, prior_g)  
+                                else:
+                                    frontiers.push('F', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
+                                                    tentative_g_score+h_score, 
+                                                    prior_f, prior_g)  
 
                         if neighbor_state in nodes_bwd: 
                             current_path_cost = round(nodes_bwd[neighbor_state].g, 2) + tentative_g_score
@@ -775,9 +796,16 @@ class bd_lb_search:
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
                                 prior_f = prior_g + prior_h   
-                                frontiers.push('B', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
-                                                tentative_g_score+h_score,
-                                                prior_f, prior_g)
+                                if self.data_struct == 'D':  # Wait: (f, [g, b, ordering, state])
+                                    d_score = tentative_g_score - round(problem.heuristic(neighbor_state), 3)
+                                    b_score = tentative_g_score + h_score + d_score
+                                    frontiers.push('B', [tentative_g_score, b_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
+                                                    tentative_g_score+h_score, 
+                                                    prior_f, prior_g)  
+                                else:
+                                    frontiers.push('B', [tentative_g_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
+                                                    tentative_g_score+h_score,
+                                                    prior_f, prior_g)
 
                         if neighbor_state in nodes_fwd: 
                             current_path_cost = round(nodes_fwd[neighbor_state].g, 2) + tentative_g_score

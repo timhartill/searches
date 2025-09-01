@@ -233,12 +233,12 @@ python search_runner.py \
         --pancakes_degs 0 6 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
-        --toh_heur infinitepegrelaxation pdb_4_5+2 \
+        --toh_heur pdb_4_5+2 infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur astar_negg astar_negg_bpmx1 lb_nbs_f_eps \
+        --algo_heur lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_alter_first_none_bae_a lb_alter_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a \
         --algo_mcts NONE
 
 
