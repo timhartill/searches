@@ -217,7 +217,7 @@ python search_runner.py \
         --grid mazetest daotest \
         --grid_max_per_scen 1 \
         --grid_random_scen_order \
-        --grid_heur octile \
+        --grid_heur octile null \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
@@ -225,20 +225,20 @@ python search_runner.py \
         --grid_ignore_cstar \
         --tiles "8_puzzle_probs2_easytest.csv" \
         --tiles_max 100 \
-        --tiles_heur manhattan \
-        --tiles_degs 0 4\
+        --tiles_heur manhattan null \
+        --tiles_degs 0 \
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
-        --pancakes_heur symgap gap \
-        --pancakes_degs 0 6 \
+        --pancakes_heur symgap gap null \
+        --pancakes_degs 6 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
-        --toh_heur pdb_4_5+2 infinitepegrelaxation \
+        --toh_heur pdb_4_5+2 infinitepegrelaxation null \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_alter_first_none_bae_a lb_alter_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a \
+        --algo_heur lb_nbs_f_eps lb_alter_first_none_bae_a lb_alter_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a \
         --algo_mcts NONE
 
 

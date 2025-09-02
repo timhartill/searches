@@ -1259,7 +1259,7 @@ class LBPairs:
 
     # BAE* specific methods
     def get_lb_b(self):
-        """ Get the new lb_b value for BAE*. Based on Shperberg et al 2025 implementation
+        """ Get the new lb_b value for BAE*. 
             lb_b = (bmin_f + bmin_b) / 2
         """    
         self.forward_bmin = self.forward.peek_ready(priority_only=True)
@@ -1271,10 +1271,9 @@ class LBPairs:
 
 
     def bae_prepare_expandable(self, GLB):
-        """ Prepare the expandable nodes for the next iteration in BAE*
+        """ Prepare the expandable nodes for the next iteration in BAE*. Based on Shperberg et al 2025 implementation which eliminates expansion of nodes with f > C*
             lb_b = (bmin_f + bmin_b) / 2
-            GLB is min(bmin_f, bmin_b)
-            Returns found=True if there are expandable nodes in each ready queue along with the next GLB value
+            GLB is min(fmin_f, fmin_b) unless both wait queues are empty in which case GLB = max(former GLB, lb_b)
         """
         CLB = GLB
         self.forward_fmin = self.forward.peek_wait(priority_only=True)
@@ -1287,7 +1286,7 @@ class LBPairs:
             self.forward_fmin = self.forward.peek_wait(priority_only=True)
             self.backward_fmin = self.backward.peek_wait(priority_only=True)
             minf = min(self.forward_fmin, self.backward_fmin)
-        if minf == float('inf'):
+        if minf == float('inf'):  # both wait queues empty
             CLB = max( CLB, self.get_lb_b() )
         self.GLB = CLB
         return True, CLB

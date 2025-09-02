@@ -27,7 +27,7 @@ def heuristic_manhattan(state_bytes, target_positions, max_cols=4, degradation=0
     """
     Calculates the Manhattan distance heuristic (number of steps).
     Admissable and consistent with unit costs
-    NOTE: This is a test version - the one actually used is in the slidingTileProblem.heuristic(...) method.
+    NOTE: This is a test version - the one actually used is below in the slidingTileProblem.heuristic(...) method.
     """
     distance = 0
     multiplier = 1
@@ -78,11 +78,11 @@ class SlidingTileProblem:
             self.h_multiplier = len(initial_state) * (degradation+10)
             self.optimality_guaranteed = False
         else:
-            self.h_multiplier = 1    
-        self.degradation = degradation    
+            self.h_multiplier = 1
+        self.degradation = degradation    # for manhattan_i this will change dynamically
         self.cstar = cstar
         self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        self.h_str = heuristic  #"Manhattan" # Manhattan distance heuristic is the only one implemented
+        self.h_str = heuristic  # manhattan or manhattan_i for inconsistent version and null
         self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
         self.rust = rust
         try:
@@ -162,6 +162,10 @@ class SlidingTileProblem:
             target_positions = self._start_positions
         else:
             target_positions = self._goal_positions
+        if self.h_str == "manhattan_i":
+            self.degradation = random.choice([0,1,2,3,4])
+        elif self.h_str == 'null':
+            return 0
         if self.rust:
             distance = rust_utils.heuristic_manhattan(state_bytes, target_positions, self.max_cols, self.degradation, self.make_heuristic_inadmissable)
         else:  # not rust
@@ -217,8 +221,8 @@ class PancakeProblem:
         self.degradation = degradation
         self.cstar = cstar
         self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
-        if heuristic not in ["symgap", "gap"]:
-            raise ValueError(f"Invalid heuristic: {heuristic}. Must be 'symgap' or 'gap'.")
+        if heuristic not in ["symgap", "gap", "gap_i", "symgap_i", "null"]:
+            raise ValueError(f"Invalid heuristic: {heuristic}. Must be 'null', 'symgap', 'symgap_i' 'gap' or 'gap_i'.")
         self.h_str = heuristic   #"symgap or gap" # Symmetric Gap heuristic is the only one implemented
         self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
         self._str_repr = f"Pancake-{self.n-1}-{self.cost_type}-{util.make_prob_str(initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
@@ -446,6 +450,10 @@ class PancakeProblem:
             target_pos = self._goal_positions
 
         state_tuple = tuple(state)
+        if self.h_str.endswith('_i'):
+            self.degradation = random.choice([0,1,2,3,4])
+        elif self.h_str == 'null':
+            return 0
 
         if self.h_str == "symgap":
             return max( self.gap_heuristic(state_tuple, target_tuple), 
@@ -507,7 +515,7 @@ class TowersOfHanoiProblem:
         else:
             self.h_multiplier = 1
         heuristic = heuristic.lower()
-        if heuristic not in ["3pegstd", "infinitepegrelaxation"] and not heuristic.startswith('pdb'):
+        if heuristic not in ["3pegstd", "infinitepegrelaxation", "null"] and not heuristic.startswith('pdb'):
             raise ValueError(f"Invalid heuristic: {heuristic}. Must be '3pegstd' or 'infinitepegrelaxation' or 'pdb_p_X+Y'.")
         if len(self.pegs) > 3 and heuristic == "3pegstd": # not optimal for bidirectional or A* for > 3 pegs
             self.optimality_guaranteed = False
@@ -651,6 +659,8 @@ class TowersOfHanoiProblem:
                                 multiplier = random.choice(range(1,self.num_disks)) #k**k
                             num_disks_on_peg += multiplier
                     h += 2*num_disks_on_peg
+        elif self.h_str == 'null':
+            h = 0
         else:   # pdb
             if self.pdb_list == []:  # If not loaded yet, load or create the PDBs pdb_4_10+2 -> ['10', '2']
                 self.load_or_create_pdbs()  

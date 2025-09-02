@@ -63,12 +63,21 @@ def octile(dx, dy, diag_cost=None) -> float:
         return f * dx + dy
     else:
         return f * dy + dx
-    
+
+def null(dx, dy, diag_cost=None) -> float:
+    """ Null heuristic """
+    return 0
+
 h_map = {
     'manhattan': manhattan,
     'euclidean': euclidean,
     'chebyshev': chebyshev,
-    'octile': octile
+    'octile': octile,
+    'manhattan_i': manhattan,
+    'euclidean_i': euclidean,
+    'chebyshev_i': chebyshev,
+    'octile_i': octile,
+    'null': null,
 }
 
 
@@ -143,7 +152,7 @@ class GridProblem:
         self.h_func = h_map.get(heuristic)
         if self.h_func is None:
             raise ValueError(f"Invalid heuristic '{heuristic}'. Available heuristics: {list(h_map.keys())}")
-        if allow_diagonal and heuristic == 'manhattan':
+        if allow_diagonal and heuristic.startswith('manhattan'):
             self.optimality_guaranteed = False
         self.make_heuristic_inadmissable = make_heuristic_inadmissable
         if make_heuristic_inadmissable:
@@ -247,7 +256,10 @@ class GridProblem:
 
         distance = self.h_func(dx, dy, self.diag_cost)
 
-        if self.degradation > 0:
+        if self.h_str.endswith('_i'):
+            self.degradation = random.choice( [1.0, 2.0, 5.0, 10.0] )
+            distance = distance / self.degradation
+        elif self.degradation > 0:
             degrade = self.degradation+1 #random.choice(range(1,self.degradation+1))
             distance = distance / degrade  # (self.degradation+1)  # random.choice(range(1,self.degradation+1))
 

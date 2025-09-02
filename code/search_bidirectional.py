@@ -33,7 +33,7 @@ class bd_generic_search:
         if rust:
             print(f"Rust usage is not implemented for bd_generic_search so using Python. To disable this message add --no_rust to the calling script but note that rust will then be disabled for everything.")
         if bpmx1:
-            print(f"bpmx1 from Felner et al 2011 is not implemented for bidirectional search.")
+            print(f"bpmx1 from Felner et al 2011 is not implemented for generic bidirectional search but it is for the lbpairs bidirection search class.")
         self.timeout = timeout
         self.min_ram = min_ram
         self.visualise = visualise

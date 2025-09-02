@@ -210,23 +210,23 @@ python search_runner.py \
         --grid mazetest daotest \
         --grid_max_per_scen 4 \
         --grid_random_scen_order \
-        --grid_heur octile \
+        --grid_heur octile null \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 2 \
-        --tiles_heur manhattan \
+        --tiles_max 0 \
+        --tiles_heur manhattan null \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
         --pancakes_max 50 \
-        --pancakes_heur gap \
+        --pancakes_heur gap null \
         --pancakes_degs 0 2 \
-        --toh "12_toh_4_peg_probs2_test.csv" \
+        --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
+        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation null\
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
