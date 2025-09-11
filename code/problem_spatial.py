@@ -161,6 +161,7 @@ class GridProblem:
         else:
             self.h_multiplier = 1
         self.degradation = degradation   
+        self.degradation_orig = degradation
         self.cost_multiplier = cost_multiplier 
         self.diag_cost = diag_cost
         self.cstar = cstar

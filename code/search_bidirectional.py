@@ -325,7 +325,7 @@ class bd_generic_search:
                     "g_score_len": len(g_score_fwd)+len(g_score_bwd),
                     "max_ram_taken": max_ram,
                     "status": status,
-                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation_orig, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
                     "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
 
 
@@ -337,7 +337,7 @@ class bd_generic_search:
                 "g_score_len": len(g_score_fwd)+len(g_score_bwd),
                 "max_ram_taken": max_ram,
                 "status": status,
-                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation_orig, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
                 "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,}
 
 
@@ -542,7 +542,7 @@ class bd_lb_search:
         num_expansions_bwd = 0  # Num of expansions in bwd direction this iteration - if fwd+bwd = 0 then terminate with error as inf loop
         num_iter_no_expansions = 0  # Number of iterations with no expansions in either direction - error if >= 2 meaning a potential fwd only iter + bwd only iter failed
         force_low_tiebreak = False  # only improves expansion count slightly (where expanding > 1 node in a direction) so disabling for now
-        switch_after_U_set = self.switch_after_U_set # change to tb_select='F' after U < inf: disabling due to this taking excessive time compared to not using it in some domains eg pancake
+        switch_after_U_set = self.switch_after_U_set # change to tb_select='F' after U < inf
 
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
@@ -559,7 +559,10 @@ class bd_lb_search:
             i += 1
 
             if self.data_struct == 'D':
-                found, new_GLB = frontiers.bae_prepare_expandable(GLB)
+                if switch_after_U_set and U < float('inf'):
+                    found, new_GLB = frontiers.prepare_expandable(GLB)
+                else:
+                    found, new_GLB = frontiers.bae_prepare_expandable(GLB)
             else:
                 found, new_GLB = frontiers.prepare_expandable(GLB)
             if not found:  # If no expandable nodes, we are done - never happens in current test domains
@@ -695,7 +698,9 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
-                                    if self.tb_order in ['FIFO', 'LIFO']:
+                                    if self.data_struct == 'D':
+                                        GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
+                                    elif self.data_struct == 'B' and self.tb_order in ['FIFO', 'LIFO']:
                                         self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
                                         frontiers.tb_order = 'NONE'
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
@@ -817,7 +822,9 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
-                                    if self.tb_order in ['FIFO', 'LIFO']:
+                                    if self.data_struct == 'D':
+                                        GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
+                                    elif self.data_struct == 'B' and self.tb_order in ['FIFO', 'LIFO']:
                                         self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
                                         frontiers.tb_order = 'NONE'
 
@@ -895,7 +902,7 @@ class bd_lb_search:
                     "g_score_len": len(nodes_fwd)+len(nodes_bwd),
                     "max_ram_taken": max_ram,
                     "status": status, 
-                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                    "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation_orig, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
                     "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,
                     "max_bucket_size": max_bucket_size, "distinct_f": distinct_f, "distinct_g": distinct_g,}
 
@@ -908,7 +915,7 @@ class bd_lb_search:
                 "g_score_len": len(nodes_fwd)+len(nodes_bwd),
                 "max_ram_taken": max_ram,
                 "status": status,
-                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
+                "prob_str": problem.prob_str, "heur": problem.h_str, "degr": problem.degradation_orig, "admiss": problem.admissible, "costtype": problem.cost_type, "CS_pre": problem.cstar,
                 "nodes_sec": nodes_expanded / (end_time - start_time) if end_time > start_time else 0,
                 "max_bucket_size": max_bucket_size, "distinct_f": distinct_f, "distinct_g": distinct_g,}
 

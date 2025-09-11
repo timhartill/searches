@@ -80,6 +80,7 @@ class SlidingTileProblem:
         else:
             self.h_multiplier = 1
         self.degradation = degradation    # for manhattan_i this will change dynamically
+        self.degradation_orig = degradation
         self.cstar = cstar
         self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
         self.h_str = heuristic  # manhattan or manhattan_i for inconsistent version and null
@@ -162,10 +163,12 @@ class SlidingTileProblem:
             target_positions = self._start_positions
         else:
             target_positions = self._goal_positions
+
         if self.h_str == "manhattan_i":
             self.degradation = random.choice([0,1,2,3,4])
         elif self.h_str == 'null':
             return 0
+
         if self.rust:
             distance = rust_utils.heuristic_manhattan(state_bytes, target_positions, self.max_cols, self.degradation, self.make_heuristic_inadmissable)
         else:  # not rust
@@ -219,6 +222,7 @@ class PancakeProblem:
         else:
             self.h_multiplier = 1    
         self.degradation = degradation
+        self.degradation_orig = degradation
         self.cstar = cstar
         self.cost_type = "VarCost" if use_variable_costs else "UnitCost"
         if heuristic not in ["symgap", "gap", "gap_i", "symgap_i", "null"]:
@@ -530,6 +534,7 @@ class TowersOfHanoiProblem:
             self.pdb_list = []  # Used as flag to trigger pbd load/create in self.heuristic(..)
 
         self.degradation = degradation
+        self.degradation_orig = degradation
         self.initial_state_tuple = tuple(initial_state) #tuple([initial_peg]*num_disks)  # (A, A, A, ..., A)  Smallest disk is index 0
         self.goal_state_tuple=tuple(goal_state)      # (C, C, C, ..., C)
         self.initial_state_bytes = util.encode_list(initial_state)

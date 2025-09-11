@@ -139,7 +139,7 @@ class heuristic_mcts_search:
             path_to_leaf = [node]
             
             # 1. Selection (using potentially heuristic-guided best_child)
-            while not node.is_terminal() and node.is_fully_expanded():
+            while not node.is_terminal() and node.is_fully_expanded():  # traverse depth first by best child until not fully expanded node (or goal)
                 selected_child = node.best_child(exploration_weight=self.exploration_weight, 
                                                 heuristic_weight=self.heuristic_weight, 
                                                 epsilon=self.epsilon) 
@@ -148,13 +148,13 @@ class heuristic_mcts_search:
                 path_to_leaf.append(node)
                 
             # 2. Expansion
-            if not node.is_terminal() and not node.is_fully_expanded():
+            if not node.is_terminal() and not node.is_fully_expanded(): # expand a single child
                 expanded_node = node.expand() 
                 if expanded_node: 
                     node = expanded_node # Move to the new node
                     path_to_leaf.append(node)
                     
-            # 3. Simulation (Rollout) - Potentially heuristic-guided
+            # 3. Simulation (Rollout) - Potentially heuristic-guided - from newly expanded node
             current_state = node.state
             reward = 0
             sim_depth = 0

@@ -367,7 +367,7 @@ class BAEWaitingReadyPriorityQueue:
     Used in LB Pairs family of Bidirectional search algorithms - two of these in each direction
     Wait priority is f and Ready priority is b (d_d = g_d - h_d' and b_d = f_d + d_d)
     Wait priority queue entries are tuples of (f, [g, b, ordering, state]) where ordering is the tiebreak value
-    Ready priority queue entries are tuples of (b, [ordering, g, f, state])
+    Ready priority queue entries are tuples of (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
     """
     def __init__(self, version='A'):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
@@ -384,12 +384,13 @@ class BAEWaitingReadyPriorityQueue:
         self.max_distinct_g = 0      # for compatibility with WaitingReadyBuckets
         self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
         self.ready_entry_finder = {} # mapping of state to entry in ready 
+        self.use_g = False  # Flag to indicate if ready is using g as priority instead of b
         return
 
     def remove_task(self, state):
         """ Mark an existing entry as REMOVED. entry format: 
         Wait: (f, [g, b, ordering, state])
-        Ready: (b, [ordering, g, f, state])
+        Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
         """
         if state in self.wait_entry_finder:
             entry = self.wait_entry_finder.pop(state)
@@ -416,14 +417,17 @@ class BAEWaitingReadyPriorityQueue:
         """ Move all states from Wait to Ready that satisfy the GLB condition
             Returns the number of states moved
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state])
+            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
         """
         count = 0
         while self.wait and self.wait[0][0] < GLB:
             f, (g, b, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:  # Only move if the state is not marked as REMOVED
                 del self.wait_entry_finder[state]
-                entry = (b, [ordering, g, f, state])       
+                if self.use_g:
+                    entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                else:    
+                    entry = (b, [ordering, g, f, state])
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 count += 1
@@ -433,7 +437,10 @@ class BAEWaitingReadyPriorityQueue:
                 f, (g, b, ordering, state) = heapq.heappop(self.wait)
                 if state != REMOVED:
                     del self.wait_entry_finder[state]
-                    entry = (b, [ordering, g, f, state])   
+                    if self.use_g:
+                        entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                    else:    
+                        entry = (b, [ordering, g, f, state])
                     heapq.heappush(self.ready, entry)
                     self.ready_entry_finder[state] = entry
                     count += 1
@@ -445,13 +452,16 @@ class BAEWaitingReadyPriorityQueue:
         """ Move one state from Wait to Ready that satisfies the GLB condition
             Returns 1 if a state was moved, 0 otherwise
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state])
+            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
         """
         while self.wait and self.wait[0][0] <= GLB:
             f, (g, b, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:
                 del self.wait_entry_finder[state]
-                entry = (b, [ordering, g, f, state])   
+                if self.use_g:
+                    entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                else:    
+                    entry = (b, [ordering, g, f, state])
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 if self.ready_max_size < len(self.ready):
@@ -462,7 +472,7 @@ class BAEWaitingReadyPriorityQueue:
     def pop(self, item_only=True):
         """ Pop the lowest priority element from Ready.
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state])
+            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
         """
         state = REMOVED
         while self.ready:
@@ -474,7 +484,7 @@ class BAEWaitingReadyPriorityQueue:
             if item_only:
                 return state
             else:
-                return g, f, ordering, state   #TODO Return b?
+                return g, f, ordering, state   
         return None
 
     def isEmpty(self):
@@ -500,7 +510,7 @@ class BAEWaitingReadyPriorityQueue:
         return float('inf')
 
     def peek_ready(self, priority_only=True):
-        """View the lowest priority element on Ready (bmin) without popping it
+        """View the lowest priority element on Ready (bmin, or gmin if switching after U set) without popping it
         after popping any entries marked as REMOVED
         """
         while self.ready and self.ready[0][-1][-1] == REMOVED:
@@ -525,6 +535,20 @@ class BAEWaitingReadyPriorityQueue:
         expand_nodes.add( (ordering, g, f, current_state) )
         return expand_nodes
 
+    def set_ready_to_g(self):
+        """ Switch the ready queue to use g as priority instead of b """
+        if not self.use_g:
+            new_ready = []
+            for b, (ordering, g, f, state) in self.ready:
+                if state == REMOVED:
+                    continue
+                entry = (g, [ordering, g, f, state])
+                new_ready.append(entry)
+            heapq.heapify(new_ready)
+            self.ready = new_ready
+            self.ready_entry_finder = {entry[-1][-1]: entry for entry in self.ready}      # Rebuild the ready_entry_finder mapping
+            self.use_g = True
+        return
 
 class WaitingReadyBuckets:
     """ Two SortedDicts: one for buckets of waiting states and one for buckets of ready states
@@ -1291,6 +1315,13 @@ class LBPairs:
         self.GLB = CLB
         return True, CLB
 
+    def set_ready_to_g(self):
+        """ Set both ready queues to use g as priority rather than b. """
+        if not self.forward.use_g:
+            self.forward.set_ready_to_g() # tfr forward ready to g + set use_g flag
+            self.backward.set_ready_to_g() # tfr backward ready to g + set use_g flag
+            self.GLB = self.get_new_LB() # reset GLB to what it would have been if using g as priority in Ready from beginning
+        return self.GLB
 
     def calc_expandable(self, add_mwvc=True):
         """ Calculate which buckets in ReadyF, ReadyB are expandable without popping anything. 
