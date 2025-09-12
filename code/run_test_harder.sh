@@ -227,12 +227,12 @@ python search_runner.py \
         --pancakes_degs 0 2 \
         --toh "12_toh_4_peg_probs50_std.csv" \
         --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
+        --toh_heur pdb_4_10+2 infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_f_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_nbs_f_eps_bpmx1_himp lb_nbs_f_eps_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_himp lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1_himp lb_mostconnectednodes_lowg_f_eps_himp lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a_bpmx1_himp lb_alter_first_none_bae_a_himp lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_a_eps_ug_bpmx1_himp lb_alter_first_none_bae_a_eps_ug_himp lb_alter_first_none_bae_f_bpmx1 lb_alter_first_none_bae_f_bpmx1_himp lb_alter_first_none_bae_f_himp lb_alter_first_none_bae_f_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug_bpmx1_himp lb_alter_first_none_bae_f_eps_ug_himp lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_bpmx1_himp lb_pohl_first_none_bae_a_himp lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1_himp lb_pohl_first_none_bae_a_eps_ug_himp lb_pohl_first_none_bae_f_bpmx1 lb_pohl_first_none_bae_f_bpmx1_himp lb_pohl_first_none_bae_f_himp lb_pohl_first_none_bae_f_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1_himp lb_pohl_first_none_bae_f_eps_ug_himp lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mostconnectednodes_lowg_f_eps lb_gbfhs_gbfhs_f_eps_uf \
         --algo_mcts NONE
 
 

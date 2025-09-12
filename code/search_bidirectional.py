@@ -451,7 +451,7 @@ class bd_lb_search:
         if self.data_struct in ['P', 'D']:
             if self.tb_select != 'F':
                 raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'F'.")
-            if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G']:
+            if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'GBF']:
                 raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'NBS', 'F', 'B', 'A', 'P', 'R', or 'G'.")
 
         if self.tb_order == 'LIFO':
@@ -595,10 +595,6 @@ class bd_lb_search:
                     current_node = nodes_fwd[current_state] 
                     current_g = round(current_node.g, 2)
                     current_h = current_node.h
-                    if h_admissable:
-                        if cstar and f > cstar + 1e-6:
-                            status += f" Possible inadmissable heuristic detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
-                            h_admissable = False
                     
                     if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the f or g on the frontier doesn't match prior_g/prior_f eg when h is updated
                         stale_count += 1
@@ -606,6 +602,11 @@ class bd_lb_search:
 
                     if f >= U:      # optimisation from both NBS and DVCBS HOG2 code
                         continue
+
+                    if h_admissable:
+                        if cstar and f > cstar + 1e-6:
+                            status += f" f > C* expansion detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
+                            h_admissable = False
 
                     nodes_expanded += 1
                     if cstar and GLB_forcemono < cstar:
@@ -665,7 +666,7 @@ class bd_lb_search:
                             if self.h_improve:
                                 h_score = max(h_score, frontiers.backward_gmin + self.min_edge_cost, frontiers.backward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
-                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)
                                 if current_h > neighbor['cost'] + h_score + 1e-6:
                                     status += f" Inconsistent heuristic detected. parent h {current_h} > edgecost {neighbor['cost']} + child h {h_score} + 1e-6."
                                     h_consistent = False
@@ -720,10 +721,6 @@ class bd_lb_search:
                     current_node = nodes_bwd[current_state] 
                     current_g = round(current_node.g, 2)
                     current_h = current_node.h
-                    if h_admissable:
-                        if cstar and f > cstar + 1e-6:
-                            status += f" Possible inadmissable heuristic detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
-                            h_admissable = False
                     
                     if current_g + 1e-6 < g:    # Our Ready and Wait implementations mark existing entries stale before adding duplicates so this condition will only trigger rarely if the f or g on the frontier doesn't match prior_g/prior_f eg when h is updated
                         stale_count += 1
@@ -731,6 +728,12 @@ class bd_lb_search:
 
                     if f >= U:      # optimisation from both NBS and DVCBS HOG2 code
                         continue
+
+                    if h_admissable:
+                        if cstar and f > cstar + 1e-6:
+                            status += f" f > C* expansion detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
+                            h_admissable = False
+
 
                     nodes_expanded += 1
                     if cstar and GLB_forcemono < cstar:
@@ -789,7 +792,7 @@ class bd_lb_search:
                             if self.h_improve:
                                 h_score = max(h_score, frontiers.forward_gmin + self.min_edge_cost, frontiers.forward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
-                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n')
+                            if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)
                                 if current_h > neighbor['cost'] + h_score + 1e-6:
                                     status += f" Inconsistent heuristic detected. parent h {current_h} > edgecost {neighbor['cost']} + child h {h_score} + 1e-6."
                                     h_consistent = False
@@ -800,7 +803,7 @@ class bd_lb_search:
                                 #    current_path_cost = g_score_fwd[neighbor_state] + tentative_g_score
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
-                                prior_f = prior_g + prior_h   
+                                prior_f = prior_g + prior_h
                                 if self.data_struct == 'D':  # Wait: (f, [g, b, ordering, state])
                                     d_score = tentative_g_score - round(problem.heuristic(neighbor_state), 3)
                                     b_score = tentative_g_score + h_score + d_score
