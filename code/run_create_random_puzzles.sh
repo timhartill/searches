@@ -14,17 +14,17 @@ python search_runner.py \
         --grid NONE \
         --tiles NONE \
         --tiles_heur manhattan \
-        --tiles_make_random 10 \
+        --tiles_make_random 100 \
         --tiles_make_size 12 \
         --tiles_add_cstar \
         --pancakes NONE \
         --pancakes_heur symgap \
-        --pancakes_make_random 100 \
+        --pancakes_make_random 0 \
         --pancakes_make_size 14 \
         --pancakes_add_cstar \
         --toh NONE \
         --toh_heur pdb_4_10+2 \
-        --toh_make_random 100 \
+        --toh_make_random 0 \
         --toh_num_disks 12 \
         --toh_num_pegs 4 \
         --toh_add_cstar \

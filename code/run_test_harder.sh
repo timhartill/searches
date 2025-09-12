@@ -179,6 +179,7 @@ comment
 #"8_puzzle_probs2_easytest.csv"
 #"11_puzzle_probs1_easytest.csv"
 #11_puzzle_probs10_seed42_2025-05-20_17-08-21.csv
+#11_puzzle_probs100_seed42_4x3_std.csv
 #"15_puzzle_probs1_testcstar66.csv"
 #"15_puzzle_probs2_test.csv"
 #"15_puzzle_probs100_korf_std.csv"
@@ -216,8 +217,8 @@ python search_runner.py \
         --grid_allow_diag \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
-        --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 2 \
+        --tiles "11_puzzle_probs100_seed42_4x3_std.csv" \
+        --tiles_max 50 \
         --tiles_heur manhattan manhattan_i \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
@@ -231,7 +232,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug \
+        --algo_heur lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_f_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug \
         --algo_mcts NONE
 
 

@@ -7,7 +7,6 @@ Bidirectional A*/UC/BFS, Bidirectional LBPairs
 MCTS, Heuristic MCTS
 
 Author: Tim Hartill
-Some code generated from Gemini 2.5.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +42,7 @@ from search_unidirectional import generic_search
 from search_bidirectional import bd_generic_search, bd_lb_search
 
 # map search algorithm input string to a search class and it's parameters
-# Edit this dict to add new algorithms and if necessary add "from newsearch import supersearch" above
+# Edit this dict to add new algorithms
 SEARCH_MAP = {
     "astar": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE'},
     "astar_eps": {"class":generic_search, "priority_key": 'f', "tiebreaker1": 'NONE', "tiebreaker2": 'NONE', "min_edge_cost": 1.0},
@@ -172,7 +171,11 @@ SEARCH_MAP = {
     "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
     "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
     "lb_alter_first_none_bae_a_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
+    "lb_alter_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
     "lb_pohl_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_alter_first_none_bae_f_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
+    "lb_alter_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_pohl_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
 
     # BAE* versions
     "lb_alter_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
@@ -189,8 +192,14 @@ SEARCH_MAP = {
     "lb_minb_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
     "lb_rand_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
     "lb_fwd_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
+    "lb_alter_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
+    "lb_pohl_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
+    "lb_minb_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
+    "lb_rand_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
+    "lb_fwd_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
 
     # lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_fwd_first_none_bae_a_eps_ug
+    # lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug lb_fwd_first_none_bae_f_eps_ug
 
     # Algos expanding single nodes in either/both directions run on all std problems
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
