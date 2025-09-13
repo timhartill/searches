@@ -421,9 +421,16 @@ class bd_lb_search:
         self.min_edge_cost = min_edge_cost  # Minimum edge cost to consider in the search
         self.switch_after_U_set = switch_after_U_set
 
+        self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
+        if self.data_struct not in ['P', 'B', 'D']:
+            raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P', 'B' or 'D'.")
+
         self.version = version.upper()  # Per Shperberg 2019 Pseudocode 'A' for the "Return ALL paths" version (although we only return first path) or 'F' for the "Return first path version"
         if self.version not in ['A', 'F']:
-            raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A' or 'F'.")
+            if self.version == 'I' and self.data_struct == 'D': # Running I-BAE*
+                pass
+            else:
+                raise ValueError(f"ERROR: Invalid version: '{self.version}'. Must be 'A', 'F' (or 'I' with data_struct 'D').")
 
         self.tb_dir = tb_dir.upper()
         if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'S', 'S0', 'SM', 'SM0', 'SB', 'SBM0', 'EC', 'LN', 'LN0', 'LM', 'LM0', 'GBF']:
@@ -443,10 +450,6 @@ class bd_lb_search:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
         if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0', 'SBM0'] or self.tb_select in ['LM', 'SM']:
             self.do_mwvc = True
-
-        self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
-        if self.data_struct not in ['P', 'B', 'D']:
-            raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P', 'B' or 'D'.")
         
         if self.data_struct in ['P', 'D']:
             if self.tb_select != 'F':
@@ -466,6 +469,8 @@ class bd_lb_search:
         self.rust = rust
         self.bpmx1 = bpmx1          # from Felner et al 2011 for making inconsistent heuristics consistent
         self.h_improve = h_improve  # from Shperberg et al 2021 for improving h values
+        if self.h_improve and self.data_struct != 'P':
+            raise ValueError(f"ERROR: h_improve can only be used with data_struct 'P'.")
 
 
         self.algo = algo_name
@@ -663,7 +668,7 @@ class bd_lb_search:
                             prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
-                            if self.h_improve:
+                            if self.h_improve: # only implemented for data_struct 'P' - TODO could implement for 'B' by tracking gmin and fmin over both queues...
                                 h_score = max(h_score, frontiers.backward_gmin + self.min_edge_cost, frontiers.backward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)
@@ -789,7 +794,7 @@ class bd_lb_search:
                             prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
-                            if self.h_improve:
+                            if self.h_improve:  # only implemented for data_struct 'P' - TODO could implement for 'B' by tracking gmin and fmin over both queues...
                                 h_score = max(h_score, frontiers.forward_gmin + self.min_edge_cost, frontiers.forward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)

@@ -21,6 +21,12 @@ def make_sd():
     return sd
 
 
+def make_gdict():
+    gdict = SortedDict()
+    for i in range(100000):
+        gdict[i] = i
+    return gdict
+
 skl = make_skl()
 
 # sortedKeyList timings
@@ -118,6 +124,15 @@ f = sd[g].peekitem(index=0)[0]  # Get the lowest f value
 if not sd[g][f]:
     sd[g].pop(f)  # remove if no entries in f bucket ie ready[g][f] 
     print("2")
+
+
+
+gdict = make_gdict()
+timeit.timeit("for i in range(100000): del gdict[i]", number=1, globals=globals())  #0.08711435802979395
+gdict = make_gdict()
+timeit.timeit("for i in range(100000): gdict.pop(i)", number=1, globals=globals())  #0.08343088696710765 essentially identical
+
+
 
 import util
 test_list_full_range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

@@ -229,8 +229,8 @@ python search_runner.py \
         --tiles_degs 0 4 \
         --pancakes "8_pancake_probs1_easytest.csv" \
         --pancakes_max 100 \
-        --pancakes_heur symgap gap gap_i \
-        --pancakes_degs 0 2 6 \
+        --pancakes_heur gap gap_i \
+        --pancakes_degs 0 4 \
         --toh "7_toh_4_peg_probs2_easytest.csv" \
         --toh_max 100 \
         --toh_heur pdb_4_5+2 infinitepegrelaxation \
@@ -238,7 +238,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_nbs_f_eps lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug \
+        --algo_heur lb_nbs_f_eps lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_i_eps lb_pohl_first_none_bae_i_eps lb_minb_first_none_bae_i_eps lb_rand_first_none_bae_i_eps lb_alter_first_none_bae_i_eps_bpmx1 lb_pohl_first_none_bae_i_eps_bpmx1 \
         --algo_mcts NONE
 
 

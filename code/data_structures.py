@@ -373,8 +373,8 @@ class BAEWaitingReadyPriorityQueue:
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
         """
         self.version = version
-        if self.version not in ['A', 'F']:
-            raise ValueError(f"Invalid version: {self.version}. Must be 'A' or 'F'.")
+        if self.version not in ['A', 'F', 'I']:
+            raise ValueError(f"Invalid version: {self.version}. Must be 'A', 'F' or 'I'.")
         self.wait = []
         self.ready = []
         self.wait_max_size = 0
@@ -383,8 +383,9 @@ class BAEWaitingReadyPriorityQueue:
         self.max_distinct_f = 0      # for compatibility with WaitingReadyBuckets
         self.max_distinct_g = 0      # for compatibility with WaitingReadyBuckets
         self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
-        self.ready_entry_finder = {} # mapping of state to entry in ready 
-        self.use_g = False  # Flag to indicate if ready is using g as priority instead of b
+        self.ready_entry_finder = {} # mapping of state to entry in ready
+        self.use_g = False           # Flag to indicate if ready is using g as priority instead of b
+        self.g_dict = SortedDict()   # dictionary keeping count of g values in Ready when Ready itself is ordered by b
         return
 
     def remove_task(self, state):
@@ -398,6 +399,10 @@ class BAEWaitingReadyPriorityQueue:
         if state in self.ready_entry_finder:
             entry = self.ready_entry_finder.pop(state)
             entry[-1][-1] = REMOVED
+            if entry[-1][1] in self.g_dict:
+                self.g_dict[entry[-1][1]] -= 1  # Decrement the count of this g value
+                if self.g_dict[entry[-1][1]] == 0:
+                    del self.g_dict[entry[-1][1]]
 
     def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
         """ Push item list of [g, b, ordering, state] onto Wait queue, 
@@ -431,7 +436,11 @@ class BAEWaitingReadyPriorityQueue:
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
                 count += 1
-        if self.version == 'A' or always_move_equal:
+                if g not in self.g_dict:
+                    self.g_dict[g] = 1
+                else:
+                    self.g_dict[g] += 1    
+        if self.version in ['A', 'I'] or always_move_equal:
             while self.wait and self.wait[0][0] == GLB:
                 # If we are in the "all" version and the next item is exactly GLB, we also move it to ready
                 f, (g, b, ordering, state) = heapq.heappop(self.wait)
@@ -444,6 +453,10 @@ class BAEWaitingReadyPriorityQueue:
                     heapq.heappush(self.ready, entry)
                     self.ready_entry_finder[state] = entry
                     count += 1
+                    if g not in self.g_dict:
+                        self.g_dict[g] = 1
+                    else:
+                        self.g_dict[g] += 1    
         if self.ready_max_size < len(self.ready):
             self.ready_max_size = len(self.ready)
         return count
@@ -464,6 +477,10 @@ class BAEWaitingReadyPriorityQueue:
                     entry = (b, [ordering, g, f, state])
                 heapq.heappush(self.ready, entry)
                 self.ready_entry_finder[state] = entry
+                if g not in self.g_dict:
+                    self.g_dict[g] = 1
+                else:
+                    self.g_dict[g] += 1    
                 if self.ready_max_size < len(self.ready):
                     self.ready_max_size = len(self.ready)
                 return 1
@@ -479,6 +496,9 @@ class BAEWaitingReadyPriorityQueue:
             b, (ordering, g, f, state) = heapq.heappop(self.ready)   # Pop until we find a valid state that is not marked as REMOVED
             if state != REMOVED:
                 del self.ready_entry_finder[state]
+                self.g_dict[g] -= 1  # Decrement the count of this g value
+                if self.g_dict[g] == 0:
+                    del self.g_dict[g]
                 break
         if state != REMOVED:
             if item_only:
@@ -538,12 +558,17 @@ class BAEWaitingReadyPriorityQueue:
     def set_ready_to_g(self):
         """ Switch the ready queue to use g as priority instead of b """
         if not self.use_g:
+            self.g_dict = SortedDict()   # Reset the g_dict
             new_ready = []
             for b, (ordering, g, f, state) in self.ready:
                 if state == REMOVED:
                     continue
                 entry = (g, [ordering, g, f, state])
                 new_ready.append(entry)
+                if g not in self.g_dict:
+                    self.g_dict[g] = 1
+                else:
+                    self.g_dict[g] += 1
             heapq.heapify(new_ready)
             self.ready = new_ready
             self.ready_entry_finder = {entry[-1][-1]: entry for entry in self.ready}      # Rebuild the ready_entry_finder mapping
@@ -1138,8 +1163,8 @@ class LBPairs:
        If unknown can set min_edge_cost (eps) to 0.0
         data_struct is 'P' for PriorityQueue or 'B' for WaitingReadyBuckets
         """
-        if version not in ['A', 'F']:
-            raise ValueError(f"Invalid version: {version}. Must be 'A' or 'F'.")
+        if version not in ['A', 'F', 'I']:
+            raise ValueError(f"Invalid version: {version}. Must be 'A', 'F' (or 'I' with data_struct 'D').")
         self.min_edge_cost = min_edge_cost
         if self.min_edge_cost < 0.0:
             raise ValueError(f"Invalid min_edge_cost: {self.min_edge_cost}. Must be >= 0.")
@@ -1162,6 +1187,7 @@ class LBPairs:
             self.forward = WaitingReadyPriorityQueue(version)
             self.backward = WaitingReadyPriorityQueue(version)
         self.GLB = 0
+        self.old_CLB = 0  # previous CLB value - used in I-BAE* only
         self.forward_expandable_g = {}   # key:g val: (f_count, f_smallest, |f_smallest|, g_total_count, <GLB edge count, =GLB edge count, edge count, connected_total_count, connected_smallest_count, connected_smallest_count_gf (gD, fD))
         self.backward_expandable_g = {}  # key:g val: as prior
         self.expandable_edges = set()   # set of (gF, gB)
@@ -1204,7 +1230,7 @@ class LBPairs:
         return count_f, count_b
 
     def move_one_to_ready(self, GLB):
-        """ Move one state from Wait to Ready that satisfies the <= GLB condition in each direction
+        """ Move one state/bucket from Wait to Ready that satisfies the <= GLB condition in each direction
             Returns the number of states moved in each direction (countF, CountB)
         """
         count_f = self.forward.move_one_to_ready(GLB)
@@ -1274,7 +1300,7 @@ class LBPairs:
                 count_f, count_b = self.move_one_to_ready(CLB)
             else:
                 count_f, count_b = 0, 0
-            #if count_f == 0 or count_b == 0:   # Per Chen pseudocode - clb non-monotonic but still optimal
+            #if count_f == 0 or count_b == 0:   # Per Chen pseudocode - clb non-monotonic but still optimal guarantee
             if count_f == 0 and count_b == 0:   # Per Shperberg/Siag code for CLB monotonic increase!
                 CLB = self.get_new_LB()
                 self.GLB = CLB
@@ -1299,7 +1325,7 @@ class LBPairs:
             lb_b = (bmin_f + bmin_b) / 2
             GLB is min(fmin_f, fmin_b) unless both wait queues are empty in which case GLB = max(former GLB, lb_b)
         """
-        CLB = GLB
+        CLB = self.old_CLB  #GLB
         self.forward_fmin = self.forward.peek_wait(priority_only=True)
         self.backward_fmin = self.backward.peek_wait(priority_only=True)
         minf = min(self.forward_fmin, self.backward_fmin)
@@ -1310,10 +1336,39 @@ class LBPairs:
             self.forward_fmin = self.forward.peek_wait(priority_only=True)
             self.backward_fmin = self.backward.peek_wait(priority_only=True)
             minf = min(self.forward_fmin, self.backward_fmin)
-        if minf == float('inf'):  # both wait queues empty
+
+        if minf == float('inf'):  # both wait queues empty, happens fairly frequently
             CLB = max( CLB, self.get_lb_b() )
-        self.GLB = CLB
-        return True, CLB
+        self.old_CLB = CLB
+
+        if self.forward.g_dict:
+            self.forward_gmin = self.forward.g_dict.peekitem(index=0)[0]
+        else:
+            self.forward_gmin = float('inf')
+        if self.backward.g_dict:
+            self.backward_gmin = self.backward.g_dict.peekitem(index=0)[0]
+        else:
+            self.backward_gmin = float('inf')
+
+
+         # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)
+        if self.version != 'I':
+            self.GLB = CLB
+        else:
+           self.GLB = min(minf, self.forward_gmin + self.backward_gmin + self.min_edge_cost)  # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)
+
+#        if self.forward_fmin == float('inf'):  
+#            self.forward_fmin = 0
+#        if self.backward_fmin == float('inf'):
+#            self.backward_fmin = 0
+#        if self.forward_gmin == float('inf'):  
+#            self.forward_gmin = 0
+#        if self.backward_gmin == float('inf'):
+#            self.backward_gmin = 0
+        
+        return True, self.GLB
+
+
 
     def set_ready_to_g(self):
         """ Set both ready queues to use g as priority rather than b. """

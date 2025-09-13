@@ -168,41 +168,43 @@ SEARCH_MAP = {
     "lb_nbs_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True, "h_improve": True},  
     "lb_nbs_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "h_improve": True},  
     "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True},  
-    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},  
-    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "h_improve": True},  
+#    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},  
+#    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "h_improve": True},  
     "lb_mostconnectednodes_lowg_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
-    "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
-    "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
+#    "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
+#    "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
     "lb_alter_first_none_bae_a_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
-    "lb_alter_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
-    "lb_alter_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+#    "lb_alter_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
+#    "lb_alter_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
     "lb_alter_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
-    "lb_alter_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
-    "lb_alter_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
-    "lb_alter_first_none_bae_f_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
-    "lb_alter_first_none_bae_f_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
-    "lb_alter_first_none_bae_f_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+#    "lb_alter_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
+#    "lb_alter_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_alter_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
-    "lb_alter_first_none_bae_f_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
-    "lb_alter_first_none_bae_f_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
+#    "lb_alter_first_none_bae_f_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
+#    "lb_alter_first_none_bae_f_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_pohl_first_none_bae_a_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
-    "lb_pohl_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
-    "lb_pohl_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+#    "lb_pohl_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
+#    "lb_pohl_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
     "lb_pohl_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
-    "lb_pohl_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
-    "lb_pohl_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
-    "lb_pohl_first_none_bae_f_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
-    "lb_pohl_first_none_bae_f_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
-    "lb_pohl_first_none_bae_f_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+#    "lb_pohl_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
+#    "lb_pohl_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_pohl_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
-    "lb_pohl_first_none_bae_f_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
-    "lb_pohl_first_none_bae_f_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
+#    "lb_pohl_first_none_bae_f_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
+#    "lb_pohl_first_none_bae_f_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
 
-    # lb_nbs_f_eps_bpmx1 lb_nbs_f_eps_bpmx1_himp lb_nbs_f_eps_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_himp lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1_himp lb_mostconnectednodes_lowg_f_eps_himp
-    # lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a_bpmx1_himp lb_alter_first_none_bae_a_himp lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_a_eps_ug_bpmx1_himp lb_alter_first_none_bae_a_eps_ug_himp
-    # lb_alter_first_none_bae_f_bpmx1 lb_alter_first_none_bae_f_bpmx1_himp lb_alter_first_none_bae_f_himp lb_alter_first_none_bae_f_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug_bpmx1_himp lb_alter_first_none_bae_f_eps_ug_himp 
-    # lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_bpmx1_himp lb_pohl_first_none_bae_a_himp lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1_himp lb_pohl_first_none_bae_a_eps_ug_himp
-    # lb_pohl_first_none_bae_f_bpmx1 lb_pohl_first_none_bae_f_bpmx1_himp lb_pohl_first_none_bae_f_himp lb_pohl_first_none_bae_f_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1_himp lb_pohl_first_none_bae_f_eps_ug_himp 
+    # lb_nbs_f_eps_bpmx1 lb_nbs_f_eps_bpmx1_himp lb_nbs_f_eps_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1
+    # lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug_bpmx1    
+    # lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1
+    
+    # I-BAE* versions with bpmx1 and/or h_improve
+    "lb_alter_first_none_bae_i_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
+#    "lb_alter_first_none_bae_i_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
+#    "lb_alter_first_none_bae_i_eps_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+    "lb_pohl_first_none_bae_i_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
+#    "lb_pohl_first_none_bae_i_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
+#    "lb_pohl_first_none_bae_i_eps_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
+
+    # lb_alter_first_none_bae_i_eps_bpmx1 lb_pohl_first_none_bae_i_eps_bpmx1
 
     # BAE* versions
     "lb_alter_first_none_bae_a": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D'},
@@ -227,6 +229,15 @@ SEARCH_MAP = {
 
     # lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
     # lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug
+
+    # I-BAE* versions
+    "lb_alter_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_pohl_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_minb_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_rand_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
+    "lb_fwd_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
+
+    # lb_alter_first_none_bae_i_eps lb_pohl_first_none_bae_i_eps lb_minb_first_none_bae_i_eps lb_rand_first_none_bae_i_eps
 
     # Algos expanding single nodes in either/both directions run on all std problems
     "lb_rand_rand_f_eps": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'R', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B'},  
@@ -471,7 +482,7 @@ if __name__ == "__main__":
     # Heuristic algorithms must accept the parameters as shown here.. 
     if args.algo_heur[0].upper() != "NONE":
         for algo in args.algo_heur:
-            assert algo in SEARCH_MAP
+            assert algo in SEARCH_MAP, f"Algorithm '{algo}' not found in SEARCH_MAP. Either correct the name in the --algo_heur key or add this algortihm specification to SEARCH_MAP."
             algo_class = SEARCH_MAP[algo]['class']
             if algo.startswith('lb_'):
                 # LB Pairs-based algorithms
@@ -512,7 +523,7 @@ if __name__ == "__main__":
     # MCTS algorithms must accept the parameters as shown here.. 
     if args.algo_mcts[0].upper() != "NONE":
         for algo in args.algo_mcts:
-            assert algo in SEARCH_MAP
+            assert algo in SEARCH_MAP, f"Algorithm '{algo}' not found in SEARCH_MAP. Either correct the name in the --algo_mcts key or add this algortihm specification to SEARCH_MAP."
             algo_class = SEARCH_MAP[algo]['class']
             hw = 0.0
             if SEARCH_MAP[algo]['heuristic_weight'] != 0.0:
