@@ -450,12 +450,14 @@ class bd_lb_search:
             self.do_calc_expandable = True   # Flag for tiebreakers requiring frontier.calc_expandable() to be run. This incurs overhead so not doing it if unnecessary.
         if self.tb_dir in ['LM', 'LM0', 'SM', 'SM0', 'SBM0'] or self.tb_select in ['LM', 'SM']:
             self.do_mwvc = True
-        
+
+        self.dir_fast = ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'GBF']
+
         if self.data_struct in ['P', 'D']:
             if self.tb_select != 'F':
                 raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'F'.")
-            if self.tb_dir not in ['NBS', 'F', 'B', 'A', 'P', 'R', 'G', 'GBF']:
-                raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_select other than 'NBS', 'F', 'B', 'A', 'P', 'R', or 'G'.")
+            if self.tb_dir not in self.dir_fast:
+                raise ValueError(f"ERROR: Invalid data_struct '{self.data_struct}'. Must be 'B' for any tb_dir other than {self.dir_fast}.")
 
         if self.tb_order == 'LIFO':
             self.increment_tb1 = -1
@@ -468,7 +470,7 @@ class bd_lb_search:
 
         self.rust = rust
         self.bpmx1 = bpmx1          # from Felner et al 2011 for making inconsistent heuristics consistent
-        self.h_improve = h_improve  # from Shperberg et al 2021 for improving h values
+        self.h_improve = h_improve  # from Shperberg et al 2021 for improving h values - NOT FULLY IMPLEMENTED, DONT USE. For proper implementation, need to find ming/minf over both Wait/Ready not just minf from Wait, ming from Ready as current
         if self.h_improve and self.data_struct != 'P':
             raise ValueError(f"ERROR: h_improve can only be used with data_struct 'P'.")
 
@@ -706,9 +708,15 @@ class bd_lb_search:
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     if self.data_struct == 'D':
                                         GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
-                                    elif self.data_struct == 'B' and self.tb_order in ['FIFO', 'LIFO']:
-                                        self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
-                                        frontiers.tb_order = 'NONE'
+                                    elif self.data_struct == 'B':
+                                        if self.tb_order in ['FIFO', 'LIFO']:
+                                            self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
+                                            frontiers.tb_order = 'NONE'
+                                        if self.tb_dir not in self.dir_fast:
+                                            self.tb_dir = 'P'  # For bucket implementation, tb_select='F' and still doing calc_expandable() is slow so switch to tb_dir that doesnt require this
+                                            frontiers.tb_dir = 'P'
+                                            self.do_calc_expandable = False
+                                            self.do_mwvc = False
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -832,9 +840,15 @@ class bd_lb_search:
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     if self.data_struct == 'D':
                                         GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
-                                    elif self.data_struct == 'B' and self.tb_order in ['FIFO', 'LIFO']:
-                                        self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
-                                        frontiers.tb_order = 'NONE'
+                                    elif self.data_struct == 'B':
+                                        if self.tb_order in ['FIFO', 'LIFO']:
+                                            self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
+                                            frontiers.tb_order = 'NONE'
+                                        if self.tb_dir not in self.dir_fast:
+                                            self.tb_dir = 'P'  # For bucket implementation, tb_select='F' and still doing calc_expandable() is slow so switch to tb_dir that doesnt require this
+                                            frontiers.tb_dir = 'P'
+                                            self.do_calc_expandable = False
+                                            self.do_mwvc = False
 
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop

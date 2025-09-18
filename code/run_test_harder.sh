@@ -232,7 +232,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_nbs_f_eps lb_nbs_f_eps_bpmx1 lb_nbs_f_eps_bpmx1_himp lb_nbs_f_eps_himp lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug_bpmx1 lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1 lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mostconnectednodes_lowg_f_eps lb_gbfhs_gbfhs_f_eps_uf lb_alter_first_none_bae_i_eps lb_pohl_first_none_bae_i_eps lb_minb_first_none_bae_i_eps lb_rand_first_none_bae_i_eps lb_alter_first_none_bae_i_eps_bpmx1 lb_pohl_first_none_bae_i_eps_bpmx1 \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_uf_bpmx1 \
         --algo_mcts NONE
 
 

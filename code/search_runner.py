@@ -163,14 +163,16 @@ SEARCH_MAP = {
     "lb_mostconnectednodes_connln_a_eps_uf": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'LN', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
     "lb_mostconnectednodes_connln_f_eps_uf": {"class": bd_lb_search, "tb_dir": 'LN', "tb_select": 'LN', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True},  
 
-    #bpmx1 and h_improve versions
+    #bpmx1 and h_improve versions - NOTE: h_improve not fully implemented: need to take fmin/gmin over Wait and Ready. However preliminary tests showed it sometimes improved, sometimes didn't so not proceeding further with it at present 
     "lb_nbs_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True},  
-    "lb_nbs_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True, "h_improve": True},  
-    "lb_nbs_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "h_improve": True},  
+#    "lb_nbs_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "bpmx1": True, "h_improve": True},  
+#    "lb_nbs_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'NBS', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "h_improve": True},  
+    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
     "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True},  
 #    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},  
 #    "lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_himp": {"class": bd_lb_search, "tb_dir": 'SM0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "h_improve": True},  
     "lb_mostconnectednodes_lowg_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
+    "lb_mostconnectednodes_lowg_f_eps_uf_bpmx1": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True},  
 #    "lb_mostconnectednodes_lowg_f_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True, "h_improve": True},  
 #    "lb_mostconnectednodes_lowg_f_eps_himp": {"class": bd_lb_search, "tb_dir": 'LN0', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "h_improve": True},  
     "lb_alter_first_none_bae_a_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
