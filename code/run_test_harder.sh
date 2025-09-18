@@ -232,7 +232,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_uf_bpmx1 \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps lb_mostconnectednodes_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 \
         --algo_mcts NONE
 
 

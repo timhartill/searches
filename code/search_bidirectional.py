@@ -718,10 +718,10 @@ class bd_lb_search:
                                             self.do_calc_expandable = False
                                             self.do_mwvc = False
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
-                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                    if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
                         break  # break for state in expand_list
-            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
 
 
@@ -851,10 +851,10 @@ class bd_lb_search:
                                             self.do_mwvc = False
 
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
-                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                    if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in BWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
                         break  # break for state in expand_list
-            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
             if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction 
                 num_iter_no_expansions += 1
