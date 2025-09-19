@@ -299,7 +299,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur first smallg smallgf: lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1 lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1 \
+        --algo_heur lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1 lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1 \
         --algo_mcts NONE
 
 
