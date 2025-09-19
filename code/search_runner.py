@@ -217,7 +217,7 @@ SEARCH_MAP = {
 
     # lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a
 
-    # BAE* versions that change ready to use g priority after U has been set
+    # BAE* "ug" versions that change ready to use g priority after U has been set
     "lb_alter_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
     "lb_pohl_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
     "lb_minb_first_none_bae_a_eps_ug": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
