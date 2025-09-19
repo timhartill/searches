@@ -1,0 +1,305 @@
+#!/bin/bash
+# Test script for search runner options
+
+<<comment
+search_runner.py usage:
+
+usage:  [-h] [--out_dir OUT_DIR] [--out_prefix OUT_PREFIX] [--in_dir IN_DIR]
+        [--seed SEED] [--grid_dir GRID_DIR] [--grid [GRID ...]]
+        [--grid_max_per_scen GRID_MAX_PER_SCEN] [--grid_reverse_scen_order]
+        [--grid_heur [GRID_HEUR ...]] [--grid_degs [GRID_DEGS ...]]
+        [--grid_inadmiss] [--grid_cost_multipier GRID_COST_MULTIPIER]
+        [--grid_allow_diag] [--grid_diag_cost GRID_DIAG_COST]
+        [--grid_ignore_cstar] [--tiles_dir TILES_DIR] [--tiles TILES]
+        [--tiles_max TILES_MAX] [--tiles_heur [TILES_HEUR ...]]
+        [--tiles_degs [TILES_DEGS ...]] [--tiles_inadmiss] [--tiles_var_cost]
+        [--tiles_ignore_cstar] [--pancakes_dir PANCAKES_DIR]
+        [--pancakes PANCAKES] [--pancakes_max PANCAKES_MAX]
+        [--pancakes_heur [PANCAKES_HEUR ...]]
+        [--pancakes_degs [PANCAKES_DEGS ...]] [--pancakes_inadmiss]
+        [--pancakes_var_cost] [--pancakes_ignore_cstar] [--toh_dir TOH_DIR]
+        [--toh TOH] [--toh_max TOH_MAX] [--toh_heur [TOH_HEUR ...]]
+        [--toh_degs [TOH_DEGS ...]] [--toh_inadmiss] [--toh_ignore_cstar]
+        [--algo_timeout ALGO_TIMEOUT]
+        [--algo_min_remaining_gb ALGO_MIN_REMAINING_GB] [--algo_visualise]
+        [--algo_heur [ALGO_HEUR ...]] [--algo_mcts [ALGO_MCTS ...]]
+        [--algo_mcts_iterations ALGO_MCTS_ITERATIONS]
+        [--algo_mcts_max_depth ALGO_MCTS_MAX_DEPTH]
+        [--algo_mcts_exploration_weight ALGO_MCTS_EXPLORATION_WEIGHT]
+        [--algo_mcts_heur_weight ALGO_MCTS_HEUR_WEIGHT]
+
+Search Algorithm Comparison Runner
+
+options:
+  -h, --help            show this help message and exit
+  --out_dir OUT_DIR     Full path to output directory. CSV and JSON output
+                        files will be written here.
+  --out_prefix OUT_PREFIX
+                        Log, CSV and JSON output file prefix. Date and time
+                        will be added to make unique.
+  --in_dir IN_DIR       Full path to input directory BASE. Expected subdirs
+                        off here are matrices, pancake, tile and toh. matrices
+                        should have np-scen and np-map and eg dao-map and dao-
+                        scen etc off it.
+  --seed SEED           random seed. Reset before running each algorithm on
+                        each problem.
+  --grid_dir GRID_DIR   Grid subdir off in_dir.
+  --grid [GRID ...]     Space-separated list of the domain portion of the grid
+                        problems to run eg --grid dao mazes. 'NONE' means
+                        don't run. for each domain, this will be expanded to
+                        the ...matrices/dao-scen subdir and all .scen files in
+                        there will be attempted. Will look for corresponding
+                        grids in dao-maps subdir
+  --grid_max_per_scen GRID_MAX_PER_SCEN
+                        Max number of problems to run from any ONE .scen file.
+                        Eg if 21 and 156 .scen files in chosen subdir we will
+                        run 21 * 156 problems in total
+  --grid_reverse_scen_order
+                        If set, reverse the order of entries in each scen file
+                        before selection of --grid_max_per_scen entries
+                        (noting that higher cstar problems tend to occur later
+                        in file i.e. files are ordered by c* buckets of ~10
+                        problems)
+  --grid_heur [GRID_HEUR ...]
+                        grid heuristics. Eg --grid_heur octile euclidean
+                        chebyshev manhattan
+  --grid_degs [GRID_DEGS ...]
+                        grid heuristic degradation(s) to run. Eg 0 1 2 3
+  --grid_inadmiss       grid heuristic admissable or inadmissable Eg
+                        --grid_inadmiss means make inadmissable heuristic.
+  --grid_cost_multipier GRID_COST_MULTIPIER
+                        Any number > 1.0 will multiply the unit cost, hence
+                        weakening the heuristic which isn't multiplied by this
+                        number.
+  --grid_allow_diag     Allow diagonal movement in the grid problems. Default
+                        is False. Note when enabled this sets the variable
+                        cost flag.
+  --grid_diag_cost GRID_DIAG_COST
+                        Cost of diagonal move before cost multiplication. Some
+                        HOG2 grid Cstar calculations in .scen files use 2.0,
+                        other .scen diag costs vary. Some papers use 1.5.
+                        Heuristic (and correct) estimate remains
+                        sqrt(2)=1.4142135623730951.
+  --grid_ignore_cstar   If set the cstar in .scen files is not used. This is
+                        typically set when using a different diagonal cost
+                        than what the cstar in the .scen file was based on, or
+                        you are using a cost multiplier other than 1.
+  --tiles_dir TILES_DIR
+                        Tiles subdir off in_dir.
+  --tiles TILES         File name of the sliding tile problems to run eg
+                        15_puzzle_korf_std100.csv or 'NONE' to skip. Should be
+                        in the tiles subdir.
+  --tiles_max TILES_MAX
+                        Max number of tile problems to run from the chosen
+                        tile file. Eg if 100 and 1000 problems in the file we
+                        will run 100 tile problems in total
+  --tiles_heur [TILES_HEUR ...]
+                        tiles heuristics. Only manhattan implemented. Eg
+                        --tiles_heur manhattan
+  --tiles_degs [TILES_DEGS ...]
+                        tiles heuristic degradation(s) to run. Eg 0 1 2 3
+  --tiles_inadmiss      tiles heuristic admissable or inadmissable Eg
+                        --tiles_inadmiss means make inadmissable heuristic.
+  --tiles_var_cost      When enabled this uses the tile value as the cost
+                        rather than 1. Default is false.
+  --tiles_ignore_cstar  If set the cstar in .csv files is not used. This is
+                        typically set when using variable costs or an
+                        inadmissable heuristic.
+  --pancakes_dir PANCAKES_DIR
+                        Pancakes subdir off in_dir.
+  --pancakes PANCAKES   File name of the pancake problems to run or 'NONE' to
+                        skip. Should be in the pancake subdir.
+  --pancakes_max PANCAKES_MAX
+                        Max number of pancake problems to run from the chosen
+                        pancake file. Eg if 100 and 1000 problems in the file
+                        we will run 100 pancake problems in total
+  --pancakes_heur [PANCAKES_HEUR ...]
+                        pancakes heuristics. Only symmetric gap implemented.
+                        Eg --pancakes_heur symgap
+  --pancakes_degs [PANCAKES_DEGS ...]
+                        pancakes heuristic degradation(s) to run. Eg 0 1 2 3
+  --pancakes_inadmiss   pancakes heuristic admissable or inadmissable Eg
+                        --pancakes_inadmiss means make inadmissable heuristic.
+  --pancakes_var_cost   When enabled this uses the num pancakes flipped as the
+                        cost rather than 1. Default is false.
+  --pancakes_ignore_cstar
+                        If set the cstar in .csv files is not used. This is
+                        typically set when using variable costs or an
+                        inadmissable heuristic.
+  --toh_dir TOH_DIR     Toh subdir off in_dir.
+  --toh TOH             File name of the towers of hanoi problems to run or
+                        'NONE' to skip. Should be in the toh subdir.
+  --toh_max TOH_MAX     Max number of toh problems to run from the chosen toh
+                        file. Eg if 100 and 1000 problems in the file we will
+                        run 100 toh problems in total
+  --toh_heur [TOH_HEUR ...]
+                        toh heuristics. infinitepegrelaxation and 3pegstd
+                        implemented. Eg --toh_heur 3pegstd
+                        infinitepegrelaxation
+  --toh_degs [TOH_DEGS ...]
+                        toh heuristic degradation(s) to run. Eg 0 1 2 3
+  --toh_inadmiss        toh heuristic admissable or inadmissable Eg
+                        --toh_inadmiss means make inadmissable heuristic.
+  --toh_ignore_cstar    If set the cstar in .csv files is not used. This is
+                        typically set when using variable costs or an
+                        inadmissable heuristic.
+  --algo_timeout ALGO_TIMEOUT
+                        Maximum time in minutes to allow any algorithm to run
+                        for. If exceeded, statistics to that point are
+                        returned along with status of 'timeout'. Normal return
+                        status = 'completed'. It is important to set this
+                        value such that no algorithm OOMs on the particular
+                        machine running the experiments.
+  --algo_min_remaining_gb ALGO_MIN_REMAINING_GB
+                        Minimum GB RAM remaining before algorithm is killed.
+  --algo_visualise      Output .png files showing nodes expanded, path,
+                        meeting point etc for each algorithm and problem type
+                        that supports this.
+  --algo_heur [ALGO_HEUR ...]
+                        which unidirectional and bidirectional heuristic
+                        searches to run. Pass NONE to not run any: eg
+                        --algo_heur astar uniformcost bestfirst bdastar. Will
+                        set priority key to g+h, g and/or h appropriately
+  --algo_mcts [ALGO_MCTS ...]
+                        which MCTS searches to run. Pass NONE to not run any:
+                        eg --algo_mcts NONE
+  --algo_mcts_iterations ALGO_MCTS_ITERATIONS
+                        Number of MCTS iterations to be run for each MCTS
+                        algorithm.
+  --algo_mcts_max_depth ALGO_MCTS_MAX_DEPTH
+                        Maximum depth of MCTS Tree.
+  --algo_mcts_exploration_weight ALGO_MCTS_EXPLORATION_WEIGHT
+                        MCTS Exploration Weight
+  --algo_mcts_heur_weight ALGO_MCTS_HEUR_WEIGHT
+                        MCTS Heuristic Weight (if applicable)
+
+python search_runner.py \
+        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
+        --out_prefix "search-eval" \
+        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+        --seed 42 \
+        --grid daostd \
+        --grid_max_per_scen 3150 \
+        --grid_heur octile \
+        --grid_degs 0 \
+        --grid_cost_multipier 1.0 \
+        --grid_allow_diag \
+        --grid_diag_cost 1.5 \
+        --grid_ignore_cstar \
+        --tiles "15_puzzle_probs100_korf_std.csv" \
+        --tiles_max 2 \
+        --tiles_heur manhattan \
+        --tiles_degs 0 \
+        --pancakes "14_pancake_probs50_std.csv" \
+        --pancakes_max 50 \
+        --pancakes_heur gap \
+        --pancakes_degs 0 1 2 \
+        --toh "12_toh_4_peg_probs50_std.csv" \
+        --toh_max 50 \
+        --toh_heur pdb_4_10+2 pdb_4_6+6 \
+        --toh_degs 0 \
+        --algo_visualise \
+        --algo_timeout 120 \
+        --algo_min_remaining_gb 2.0 \
+        --algo_heur astar lb_nbs_f_eps lb_nbb_f_eps lb_nbb_a_eps \
+        --algo_mcts NONE
+
+comment
+
+#daotest mazetest
+#dao maze
+#"8_puzzle_probs2_easytest.csv"
+#"11_puzzle_probs1_easytest.csv"
+#11_puzzle_probs10_seed42_2025-05-20_17-08-21.csv
+#"15_puzzle_probs1_testcstar66.csv"
+#"15_puzzle_probs2_test.csv"
+#"15_puzzle_probs100_korf_std.csv"
+#"8_pancake_probs1_easytest.csv"
+#"14_pancake_probs2_test.csv"
+#"14_pancake_probs100_seed42_2025-05-20_17-21-23.csv"
+#"7_toh_3_peg_probs1_easytest.csv"
+#"7_toh_4_peg_probs2_easytest.csv"
+#"12_toh_4_peg_probs2_test.csv"
+#"12_toh_4_peg_probs100_seed42_2025-05-20_17-21-23.csv"
+
+#--algo_heur astar uc huc bfs bd_astar bd_uc bd_huc bd_bfs \
+#--algo_mcts mcts_noheur mcts_selectheur mcts_rolloutheur mcts_bothheur \
+#--toh_heur infinitepegrelaxation pdb_4_10+2 pdb_4_6+6 
+
+#        --tiles_ignore_cstar \
+#        --tiles_var_cost \
+#        --pancakes_ignore_cstar \
+#        --pancakes_var_cost \
+#        --toh_inadmiss \
+
+#        --grid_max_per_scen 21 \
+#         --algo_heur astar astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps \
+#        --out_dir "/media/tim/dl3storage/gitprojects/searches/outputs" \
+#        --out_prefix "search-eval" \
+#        --in_dir "/media/tim/dl3storage/gitprojects/searches/problems" \
+
+# analysis on Std 50 Pancake d0 d2 gap hog:
+# lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_1stbucket_a_eps lb_nbb_rand_f_eps lb_nbb_all_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostedges_connec_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_alter_highestg_f_eps lb_alter_smallestg_f_eps lb_rand_rand_f_eps
+# (1) removed due to oom on dl1: lb_bwd_first_none_f_eps lb_mostedges_first_none_f_eps lb_mostconnectednodes_first_none_f_eps lb_nbb_all_f_eps lb_nbb_connec_f_eps lb_nbb_connln_f_eps lb_mostedges_connec_f_eps lb_alter_highestg_f_eps lb_alter_smallestg_f_eps lb_nbb_1stbucket_a_eps
+# (2) all that run std pancake probs on dl1 without OOM (1) except new nbb/nbs (3) below:   --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_lowg_first_none_f_eps lb_smallg_first_none_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps lb_nbb_rand_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowg_f_eps lb_lowg_smallblowestg_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_lowg_lowestg_f_eps lb_rand_rand_f_eps \
+# (3) all eps nbs, nbb a and f with all tb:   --algo_heur astar_negg lb_nbs_a_eps lb_nbs_fifo_a_eps lb_nbs_lifo_a_eps lb_nbs_rand_a_eps lb_nbs_f_eps lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_a_eps lb_nbb_fifo_a_eps lb_nbb_lifo_a_eps lb_nbb_rand_a_eps lb_nbb_f_eps lb_nbb_fifo_f_eps lb_nbb_lifo_f_eps lb_nbb_rand_f_eps lb_nbb_highg_a_eps lb_nbb_highg_fifo_a_eps lb_nbb_highg_lifo_a_eps lb_nbb_highg_rand_a_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_a_eps lb_nbb_highf_fifo_a_eps lb_nbb_highf_lifo_a_eps lb_nbb_highf_rand_a_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps \
+# (4) remove from (3) those that take too long, versions A, and/or we have results for: astar_negg lb_nbs_a_eps lb_nbs_f_eps lb_nbb_a_eps lb_nbb_f_eps lb_nbs_fifo_a_eps lb_nbs_lifo_a_eps lb_nbs_rand_a_eps lb_nbb_fifo_a_eps lb_nbb_lifo_a_eps lb_nbb_rand_a_eps lb_nbb_fifo_f_eps lb_nbb_lifo_f_eps lb_nbb_highg_a_eps lb_nbb_highg_fifo_a_eps lb_nbb_highg_lifo_a_eps lb_nbb_highg_rand_a_eps lb_nbb_highf_a_eps lb_nbb_highf_fifo_a_eps lb_nbb_highf_lifo_a_eps lb_nbb_highf_rand_a_eps 
+# (5) = (3) minus (4): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps \
+# (10) remove from (2) due to excessive expansions on std pancake: lb_lowg_first_none_f_eps lb_lowg_smallblowestg_f_eps lb_lowg_lowestg_f_eps lb_nbb_smallbhighg_f_eps lb_nbb_smallblowestg_f_eps lb_nbb_smallblowg_f_eps lb_smallgf_first_none_f_eps lb_nbb_1stbucket_f_eps
+# (11) = (2) minus (10): --algo_heur lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
+# (20) = (5) + (11): --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
+# (21) remove due to excessive time taken on 15 puzzle: lb_nbb_highg_f_eps lb_nbb_highg_fifo_f_eps lb_nbb_highg_lifo_f_eps lb_nbb_highf_f_eps lb_nbb_highf_fifo_f_eps
+# (22) = (20) minus (21): --algo_heur --algo_heur lb_nbs_fifo_f_eps lb_nbs_lifo_f_eps lb_nbs_rand_f_eps lb_nbb_rand_f_eps lb_nbb_highg_rand_f_eps lb_nbb_highf_rand_f_eps lb_fwd_first_none_f_eps lb_alter_first_none_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_smallg_first_none_f_eps lb_nbb_rand_f_eps lb_smallgf_smallbhighg_f_eps lb_smallgf_smallblowg_f_eps lb_mostconnectednodes_connln_f_eps lb_rand_rand_f_eps \
+# (23) Connected Smallg MWVC ver F: --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps \
+# (24) Connected Smallg MWVC ver A: --algo_heur lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+# (25) = (23) + (24): --algo_heur lb_smallg_smallg_none_f_eps lb_smallg_lowg_none_f_eps lb_mwvcsmallg_mwvcsmallg_none_f_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mostconnectednodes_connln_f_eps lb_mostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_mwvcconnln_f_eps lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcsmallg_mwvcsmallg_none_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_a_eps lb_mwvcmostconnectednodes_mwvcconnln_a_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+# (26) =  semi-random subset incl nbsnbb ver FA dvcbs ver FA, mostconnected, smallg smallgf: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps \
+# (27) = (26) + dvcbs verFA tb_order RAND & NONE: --algo_heur lb_nbs_f_eps lb_nbs_a_eps lb_nbb_f_eps lb_nbb_a_eps lb_mwvcsmallg_lowg_fifo_dvcbs_f_eps lb_mwvcsmallg_lowg_fifo_dvcbs_a_eps lb_mostconnectednodes_connln_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_f_eps lb_mwvcsmallgf_lowg_fifo_dvcbs_a_eps lb_mwvcsmallg_lowg_none_f_eps lb_mwvcsmallg_lowg_rand_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_rand_a_eps  lb_mwvcmostconnectednodes_lowg_f_eps lb_mwvcmostconnectednodes_lowg_a_eps \
+# (28) = (22) minus further excessive time or mem or expansions on sliding tile: lb_nbs_fifo_f_eps lb_nbs_rand_f_eps lb_pohl_first_none_f_eps lb_rand_first_none_f_eps lb_rand_rand_f_eps 
+# (29) = gbfhs versions: lb_nbb_gbfhs_f_eps lb_alter_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_gbfhs_lowg_f_eps_uf
+# (30) = UF versions: --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_gbfhs_a_eps_uf lb_gbfhs_lowg_f_eps lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_connln_a_eps_uf lb_mostconnectednodes_connln_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf \
+
+# (40) selected single node per direction algos: lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps 
+# (41) selected glevel or gf bucket expansion algos without UF: lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_mostconnectednodes_lowg_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps 
+# (42) uf versions of 41: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf 
+# (44) (40)+(41)+(42): lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_mostconnectednodes_lowg_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf 
+
+# (45) consistent h with BAE*: lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
+# (46) consistent h uf versions: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
+# (47) inconsistent h BAE* ug bpmx versions: lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1
+# (48) inconsistent h dvchs mostconn gbfhs bpmx: 
+# (49) inconsistent h bpmx: first smallg smallgf: 
+
+python search_runner.py \
+        --out_dir "../outputs" \
+        --out_prefix "lb_StdAllInconsistent_setid47_hgx2_clbmono_hog2opt_" \
+        --in_dir "../problems" \
+        --seed 42 \
+        --rust_heur \
+        --grid daostd \
+        --grid_max_per_scen 3150 \
+        --grid_heur octile_i \
+        --grid_degs 0 \
+        --grid_cost_multipier 1.0 \
+        --grid_allow_diag \
+        --grid_diag_cost 1.5 \
+        --grid_ignore_cstar \
+        --tiles "15_puzzle_probs100_korf_std.csv" \
+        --tiles_max 100 \
+        --tiles_heur manhattan_i \
+        --tiles_degs 0 \
+        --pancakes "14_pancake_probs50_std.csv" \
+        --pancakes_max 50 \
+        --pancakes_heur gap_i \
+        --pancakes_degs 0 \
+        --toh "12_toh_4_peg_probs50_std.csv" \
+        --toh_max 50 \
+        --toh_heur infinitepegrelaxation \
+        --toh_degs 0 \
+        --algo_visualise \
+        --algo_timeout 2880 \
+        --algo_min_remaining_gb 2.0 \
+        --algo_heur lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1 \
+        --algo_mcts NONE
+
+
