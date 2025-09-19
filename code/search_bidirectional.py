@@ -670,7 +670,7 @@ class bd_lb_search:
                             prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
-                            if self.h_improve: # only implemented for data_struct 'P' - TODO could implement for 'B' by tracking gmin and fmin over both queues...
+                            if self.h_improve: # Not fully implemented, don't use
                                 h_score = max(h_score, frontiers.backward_gmin + self.min_edge_cost, frontiers.backward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)
@@ -718,10 +718,10 @@ class bd_lb_search:
                                             self.do_calc_expandable = False
                                             self.do_mwvc = False
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
-                    if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
                         break  # break for state in expand_list
-            if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
 
 
@@ -802,7 +802,7 @@ class bd_lb_search:
                             prior_h = h_score
                             if self.bpmx1:
                                 h_score = max(h_score, round(best_h - neighbor['cost'], 3))   # if parent h - cost > child h then increase child h
-                            if self.h_improve:  # only implemented for data_struct 'P' - TODO could implement for 'B' by tracking gmin and fmin over both queues...
+                            if self.h_improve:  # not fully implemented, don't use
                                 h_score = max(h_score, frontiers.forward_gmin + self.min_edge_cost, frontiers.forward_fmin - tentative_g_score)  # improve h(n) if possible
                             neighbor_node = Node(tentative_g_score, h_score, current_state)
                             if h_consistent: # Check whether current heuristic is consistent: if h(n) > cost(n, n') + h(n') (only checks immediate child n' not grandchildren etc)
@@ -851,10 +851,10 @@ class bd_lb_search:
                                             self.do_mwvc = False
 
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
-                    if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+                    if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in BWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
                         break  # break for state in expand_list
-            if GLB >= U and not switch_after_U_set: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
+            if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                 break # break main loop
             if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction 
                 num_iter_no_expansions += 1

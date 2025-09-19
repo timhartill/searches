@@ -198,7 +198,7 @@ SEARCH_MAP = {
     # lb_alter_first_none_bae_a_bpmx1 lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_alter_first_none_bae_f_eps_ug_bpmx1    
     # lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1
     
-    # I-BAE* versions with bpmx1 and/or h_improve
+    # I-BAE* versions with bpmx1 
     "lb_alter_first_none_bae_i_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True},
 #    "lb_alter_first_none_bae_i_eps_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
 #    "lb_alter_first_none_bae_i_eps_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
