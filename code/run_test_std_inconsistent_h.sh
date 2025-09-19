@@ -267,12 +267,12 @@ comment
 # (45) consistent h with BAE*: lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
 # (46) consistent h uf versions: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
 # (47) inconsistent h BAE* ug bpmx versions: lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1
-# (48) inconsistent h dvchs mostconn gbfhs bpmx: 
+# (48) inconsistent h dvchs mostconn gbfhs bpmx: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_mostconnectednodes_lowg_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps_uf
 # (49) inconsistent h bpmx: first smallg smallgf: 
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lb_StdAllInconsistent_setid47_hgx2_clbmono_hog2opt_" \
+        --out_prefix "lb_StdAllInconsistent_setid48_hgx2_clbmono_hog2opt_" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
@@ -299,7 +299,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1 \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_mostconnectednodes_lowg_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps_uf \
         --algo_mcts NONE
 
 
