@@ -265,7 +265,7 @@ comment
 # (44) (40)+(41)+(42): lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_mostconnectednodes_lowg_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf 
 
 # (45) consistent h with BAE*: lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
-# (46) consistent h uf versions:
+# (46) consistent h uf versions: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
 # (47) inconsistent h BAE* ug versions:
 # (48) inconsistent h bpmx versions:
 
@@ -298,7 +298,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf \
         --algo_mcts NONE
 
 
