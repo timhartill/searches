@@ -612,7 +612,7 @@ class bd_lb_search:
 
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
-                            status += f" f > C* expansion detected (Fwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
+                            status += f" f > C* expansion detected (Fwd) GLB:{GLB} f:{f} h:{current_h} prior g:{current_g} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
 
                     nodes_expanded += 1
@@ -635,11 +635,13 @@ class bd_lb_search:
                             neighbor_state = neighbor_info
                             move_info = None
                         cost = problem.get_cost(current_state, neighbor_state, move_info)
-                        tentative_g_score = round(current_g + cost, 2)
+                        tentative_g_score = round(g + cost, 2)  # current_g
                         if neighbor_state in nodes_fwd:
                             h_score = round(nodes_fwd[neighbor_state].h, 3)
                         else:
                             h_score = round(problem.heuristic(neighbor_state), 3)
+#                            if tentative_g_score + h_score > cstar:  # TEST
+#                                print(f"FWD ###################### g + h > C* {tentative_g_score} + {h_score} > {cstar} ...")
                         if self.bpmx1:
                             best_h = max(best_h, round(h_score - cost, 3))
                         neighbors_list.append( {'state': neighbor_state, 'g': tentative_g_score , 'h': h_score, 'cost': cost} )
@@ -744,7 +746,7 @@ class bd_lb_search:
 
                     if h_admissable:
                         if cstar and f > cstar + 1e-6:
-                            status += f" f > C* expansion detected (Bwd) GLB:{GLB} f:{f} h:{current_h} g:{g} cstar:{cstar} state:{current_state}."
+                            status += f" f > C* expansion detected (Bwd) GLB:{GLB} f:{f} h:{current_h} prior g:{current_g} g:{g} cstar:{cstar} state:{current_state}."
                             h_admissable = False
 
 
@@ -768,11 +770,13 @@ class bd_lb_search:
                             neighbor_state = neighbor_info
                             move_info = None
                         cost = problem.get_cost(current_state, neighbor_state, move_info)
-                        tentative_g_score = round(current_g + cost, 2)
+                        tentative_g_score = round(g + cost, 2) #current_g
                         if neighbor_state in nodes_bwd:
                             h_score = round(nodes_bwd[neighbor_state].h, 3)
                         else:
                             h_score = round(problem.heuristic(neighbor_state, backward=True), 3)
+#                            if tentative_g_score + h_score > cstar:  # TEST
+#                                print(f"BWD ###################### g + h > C* {tentative_g_score} + {h_score} > {cstar} ...")
                         if self.bpmx1:
                             best_h = max(best_h, round(h_score - cost, 3))
                         neighbors_list.append( {'state': neighbor_state, 'g': tentative_g_score , 'h': h_score, 'cost': cost} )

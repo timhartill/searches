@@ -527,8 +527,10 @@ class TowersOfHanoiProblem:
         self.h_str = heuristic
         if self.h_str.startswith('pdb'):
             h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
-            if len(h) != 2:
-                raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y")
+            if h[-1] == 'i' and len(h) != 3:  # inconsistent version
+                raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y_i or pdb_p_X+Y where p matches the peg count of the problem.")
+            elif h[-1] != 'i' and len(h) != 2:
+                raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y[_i]")
             if int(h[0]) != self.peg_count:
                 raise ValueError(f"Invalid pdb heuristic {self.h_str} for peg count {self.peg_count}. Must be of the form pdb_p_X+Y where p matches the peg count of the problem.")
             self.pdb_list = []  # Used as flag to trigger pbd load/create in self.heuristic(..)
@@ -612,6 +614,8 @@ class TowersOfHanoiProblem:
         if backward: ctp=self.initial_peg # bdhs current target peg for disk k
         else: ctp=self.target_peg 
         multiplier = 1
+        if self.h_str.endswith('_i'):
+            self.degradation = random.choice([0,1,2,3,4])
         ignored_disks = set(range(self.degradation))
 
         if self.h_str == "3pegstd":
@@ -644,10 +648,10 @@ class TowersOfHanoiProblem:
                                 multiplier = random.choice(range(1,self.num_disks)) #k**k
                             num_disks_on_peg += multiplier
                     if num_disks_on_peg > 0:
-                        #h += (2*num_disks_on_peg) - 1  # Very occasionally gives inadmissable on bwd. Felner: 2 * n - 1  but unclear where the brackets are from the wording.
-                        h += (2*(num_disks_on_peg-1))  # Fixes inadmissability
+                        h += (2*(num_disks_on_peg-1))  
                 else:  # goal peg    
                     # 2 Sum for goal peg = 2 * each disk that must move to allow other disks to move onto goal. Count downward from largest until break
+                    # NOTE: Very rarely including the goal peg generates an inadmissable heuristic eg In solving C_C_B_A_A_B_A_D_B_C_D_D__D_D_D_D_D_D_D_D_D_D_D_D using BiDirLBPairs-lb_gbfhs_first_f_eps-dirGBF-selF-ordNONE-verF-dsB-eps1.0-ufFalse-bpmx1False-himpFalse-rustFalse generates a path of 36 when C*=35
                     goal_disks = []
                     for k in range(self.num_disks-1,-1,-1):
                         if state[k] == peg:
@@ -663,7 +667,8 @@ class TowersOfHanoiProblem:
                             if self.make_heuristic_inadmissable:
                                 multiplier = random.choice(range(1,self.num_disks)) #k**k
                             num_disks_on_peg += multiplier
-                    h += 2*num_disks_on_peg
+                    if num_disks_on_peg > 0:
+                        h += 2 *(num_disks_on_peg)
         elif self.h_str == 'null':
             h = 0
         else:   # pdb
@@ -677,7 +682,8 @@ class TowersOfHanoiProblem:
                 h = self.pdb1.get(state_bytes[self.pdb_list[1]:].decode(), float('inf')) + self.pdb2.get(state_bytes[:self.pdb_list[1]].decode(), float('inf'))
 
             if self.degradation > 0:
-                h = math.floor((h / (self.degradation+1))* 100) / 100
+                #h = math.floor((h / (self.degradation+1))* 100) / 100
+                h = round(h / (self.degradation+1) )
 
         return h * self.h_multiplier
 
@@ -689,19 +695,23 @@ class TowersOfHanoiProblem:
             """ Per Felner et al 2004 put largest disks in largest partition ie for pdb_4_10+2 put largest 10 disks in '10'/pb1/pdb4
                 and smallest 2 disks in "2"/pdb2/pdb4
             """
-            h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2']
+            if self.h_str.endswith('_i'):
+                self.h_dir = self.h_str[:-2]  # remove _i for pdb loading/creation as pdbs are the same regardless of degradation
+            else:
+                self.h_dir = self.h_str
+            h = self.h_str[4:].split('_')        # pdb_4_10+2 -> ['4', '10+2' [, 'i']]
             pdb_list = h[1].split('+')  # pdb_4_10+2 -> ['10', '2']
             if len(pdb_list) != 2:
-                raise ValueError(f"Invalid pdb element count {self.h_str}. Must be of the form pdb_p_X+Y")
+                raise ValueError(f"Invalid pdb element count {self.h_str}. Must be of the form pdb_p_X+Y[_i]")
             for i in range(len(pdb_list)):
                 try:
                     pdb_list[i] = int(pdb_list[i])
                 except:
-                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y")
+                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y[_i]")
             if sum(pdb_list) != self.num_disks:
-                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y. Sum of X + Y must equal disk count {self.num_disks}")
+                    raise ValueError(f"Invalid pdb heuristic format {self.h_str}. Must be of the form pdb_p_X+Y[_i]. Sum of X + Y must equal disk count {self.num_disks}")
 
-            self.pdb_dir = os.path.join(os.path.dirname(self.file), f"{util.encode_list(self.initial_state_tuple).decode()}_{self.h_str}")
+            self.pdb_dir = os.path.join(os.path.dirname(self.file), f"{util.encode_list(self.initial_state_tuple).decode()}_{self.h_dir}")
             if os.path.exists(self.pdb_dir):
                 print(f"Loading cached pdbs from: {self.pdb_dir}")
                 self.pdb1 = util.load_from_json(os.path.join(self.pdb_dir, f"{pdb_list[0]}_1_fwd.json"), verbose=True)  #Add _1_ so 6+6 doesnt overwrite itself

@@ -242,7 +242,7 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "bpmx1_h_improve_nbs_mostconn_TOHonly_search-eval" \
+        --out_prefix "TOH1probCstar35only_search-eval" \
         --in_dir "../problems" \
         --seed 42 \
         --grid daostd \
@@ -261,9 +261,9 @@ python search_runner.py \
         --pancakes_max 0 \
         --pancakes_heur gap \
         --pancakes_degs 0 2 \
-        --toh "12_toh_4_peg_probs50_std.csv" \
+        --toh "12_toh_4_peg_probs1_cstar25.csv" \
         --toh_max 50 \
-        --toh_heur pdb_4_10+2 pdb_4_6+6 infinitepegrelaxation \
+        --toh_heur infinitepegrelaxation \
         --toh_degs 0 \
         --algo_visualise \
         --algo_timeout 2880 \
