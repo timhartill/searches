@@ -265,7 +265,7 @@ comment
 # (44) (40)+(41)+(42): lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_mostconnectednodes_lowg_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf 
 
 # (45) consistent h with BAE*: lb_alter_first_none_bae_a lb_pohl_first_none_bae_a lb_minb_first_none_bae_a lb_rand_first_none_bae_a lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
-# (46) (in)consistent h uf versions: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
+# (46) duplicates (42) (in)consistent h uf versions: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
 # (47) inconsistent h BAE* ug bpmx versions: lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1
 # (47.5) bpmx versions of (41): lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1
 # (48) = (47.5)+(41) inconsistent h dvchs mostconn gbfhs bpmx: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_mostconnectednodes_lowg_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_gbfhs_f_eps_uf
@@ -277,12 +277,12 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lb_StdAllInconsistent_setid46and50_hgx2_clbmono_hog2opt_" \
+        --out_prefix "lb_StdToHInconsistentOnly_setid60_hgx2_clbmono_hog2opt_" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
         --grid daostd \
-        --grid_max_per_scen 3150 \
+        --grid_max_per_scen 0 \
         --grid_heur octile_i \
         --grid_degs 0 \
         --grid_cost_multipier 1.0 \
@@ -290,11 +290,11 @@ python search_runner.py \
         --grid_diag_cost 1.5 \
         --grid_ignore_cstar \
         --tiles "15_puzzle_probs100_korf_std.csv" \
-        --tiles_max 100 \
+        --tiles_max 0 \
         --tiles_heur manhattan_i \
         --tiles_degs 0 \
         --pancakes "14_pancake_probs50_std.csv" \
-        --pancakes_max 50 \
+        --pancakes_max 0 \
         --pancakes_heur gap_i \
         --pancakes_degs 0 \
         --toh "12_toh_4_peg_probs50_std.csv" \
@@ -304,7 +304,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_gbfhs_lowg_f_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_uf_bpmx1 lb_smallg_lowg_none_f_eps_uf_bpmx1 lb_smallgf_smallblowg_f_eps_uf_bpmx1 \
+        --algo_heur lb_rand_rand_f_eps lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_nbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps lb_mwvcsmallg_lowg_none_dvcbs_f_eps lb_mwvcsmallgf_lowg_none_dvcbs_f_eps lb_gbfhs_gbfhs_f_eps lb_gbfhs_lowg_f_eps lb_mostconnectednodes_lowg_f_eps lb_smallg_lowg_none_f_eps lb_smallgf_smallblowg_f_eps lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_gbfhs_gbfhs_f_eps_uf lb_gbfhs_lowg_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1 lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1 lb_gbfhs_lowg_f_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_uf_bpmx1 lb_smallg_lowg_none_f_eps_uf_bpmx1 lb_smallgf_smallblowg_f_eps_uf_bpmx1 \
         --algo_mcts NONE
 
 
