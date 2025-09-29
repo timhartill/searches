@@ -1315,8 +1315,8 @@ class LBPairs:
         self.forward_bmin = self.forward.peek_ready(priority_only=True)
         self.backward_bmin = self.backward.peek_ready(priority_only=True)
         lb_b = (self.forward_bmin + self.backward_bmin) / 2.0
-        if lb_b != float('inf'):
-            lb_b = math.ceil(lb_b)
+        #if lb_b != float('inf'):
+        #    lb_b = math.ceil(lb_b)
         return lb_b
 
 
@@ -1351,20 +1351,11 @@ class LBPairs:
             self.backward_gmin = float('inf')
 
 
-         # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)
+        
         if self.version != 'I':
-            self.GLB = CLB
+            self.GLB = CLB   # GLB is min(fmin_f, fmin_b)
         else:
            self.GLB = min(minf, self.forward_gmin + self.backward_gmin + self.min_edge_cost)  # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)
-
-#        if self.forward_fmin == float('inf'):  
-#            self.forward_fmin = 0
-#        if self.backward_fmin == float('inf'):
-#            self.backward_fmin = 0
-#        if self.forward_gmin == float('inf'):  
-#            self.forward_gmin = 0
-#        if self.backward_gmin == float('inf'):
-#            self.backward_gmin = 0
         
         return True, self.GLB
 
