@@ -18,7 +18,7 @@ Tested under Python 3.12 on Ubuntu and CentOS.
 2. Results and logs will be in _/outputs_.
 3. Reviewing _bash run_test_easy.sh_ will give you the idea as to how to run different algorithms on different problems. Basically everything starts in _search_runner.py_.
 
-**Adding Rust Modules**
+**Adding Rust Modules (Optional)**
 
 1. pip install _maturin_
 2. Run _maturin develop --release_ on the command line to compile the Rust library _.../code/src/lib.rs_ as an importable Python package _rust_utils_. 
