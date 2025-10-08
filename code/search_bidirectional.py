@@ -353,7 +353,7 @@ class bd_lb_search:
     """
     def __init__(self, tb_dir='NBS', tb_select='F', tb_order='NONE', version='A', min_edge_cost=1.0, switch_after_U_set=False,
                  visualise=True, visualise_dirname = '', min_ram=2.0, timeout=30.0, data_struct='P', algo_name='', rust=True,
-                 bpmx1=False, h_improve=False):
+                 bpmx1=False, h_improve=False, switch_type='F'):
         """
         visualise: If True, will output a visualisation of the search to a subdir off the output dir.
         tb_dir: Strategy for determining direction(s) to search in. 
@@ -419,11 +419,17 @@ class bd_lb_search:
         self.visualise = visualise
         self.visualise_dirname = visualise_dirname
         self.min_edge_cost = min_edge_cost  # Minimum edge cost to consider in the search
-        self.switch_after_U_set = switch_after_U_set
+        self.switch_after_U_set = switch_after_U_set  # change strategies after first path found
+        self.switch_type = switch_type.upper()          # 'F' for "switch to expanding single node (eg from glevel) if not already doing so". If BAE* switch ready queue priority to g from b also.
+                                                        # 'NG' for "switch to expanding single node AND switch Ready queue priority to g * -1"
+        if self.switch_type not in ['F', 'NG']:
+            raise ValueError(f"ERROR: Invalid switch_type: '{self.switch_type}'. Must be 'F', or 'NG'.")
 
         self.data_struct = data_struct.upper()  # 'P' for PriorityQueue, 'B' for Buckets
         if self.data_struct not in ['P', 'B', 'D']:
             raise ValueError(f"ERROR: Invalid data_struct: '{self.data_struct}'. Must be 'P', 'B' or 'D'.")
+        if self.data_struct != 'D' and self.switch_type == 'NG':
+            raise ValueError(f"ERROR: switch_type 'NG' can only be used with data_struct 'D'.")
 
         self.version = version.upper()  # Per Shperberg 2019 Pseudocode 'A' for the "Return ALL paths" version (although we only return first path) or 'F' for the "Return first path version"
         if self.version not in ['A', 'F']:
@@ -476,7 +482,7 @@ class bd_lb_search:
 
 
         self.algo = algo_name
-        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}-bpmx1{self.bpmx1}-himp{self.h_improve}-rust{self.rust}"
+        self._str_repr = f"BiDirLBPairs-{self.algo}-dir{self.tb_dir}-sel{self.tb_select}-ord{self.tb_order}-ver{self.version}-ds{self.data_struct}-eps{self.min_edge_cost}-uf{self.switch_after_U_set}-bpmx1{self.bpmx1}-himp{self.h_improve}-rust{self.rust}-st{self.switch_type}"
 
 
     def search(self, problem):
@@ -513,9 +519,9 @@ class bd_lb_search:
             frontiers.push('F', [0, self.calc_ordering(), start_node], h_initial) # Push with Direction, (g, fifolifoval, state) and priority (f)
         nodes_fwd[start_node] = Node(0, h_initial, None)  # dict stores named tuple (g, h, parent) for each state
 
-        h_goal = problem.heuristic(goal_node, backward=True)
+        h_goal = problem.heuristic(goal_node)
         if self.data_struct == 'D':
-            d_score = 0 - round(problem.heuristic(start_node), 3)
+            d_score = 0 - round(problem.heuristic(goal_node), 3)
             b_score = 0 + h_goal + d_score
             frontiers.push('B', [0, b_score, self.calc_ordering(), goal_node], h_goal)  
         else:
@@ -687,7 +693,7 @@ class bd_lb_search:
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
                                 prior_f = prior_g + prior_h
-                                if self.data_struct == 'D':  # Wait: (f, [g, b, ordering, state])
+                                if self.data_struct == 'D':  # BAE* Wait: (f, [g, b, ordering, state])
                                     d_score = tentative_g_score - round(problem.heuristic(neighbor_state, backward=True), 3)
                                     b_score = tentative_g_score + h_score + d_score
                                     frontiers.push('F', [tentative_g_score, b_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
@@ -708,9 +714,13 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
-                                    if self.data_struct == 'D':
-                                        GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
-                                    elif self.data_struct == 'B':
+                                    if self.switch_type == 'F':
+                                        if self.data_struct == 'D':
+                                            GLB = frontiers.set_ready_to_g(U) # For BAE*, change ordering of ready to g from b and reset glb
+                                    elif self.switch_type == 'NG':
+                                        GLB = frontiers.set_ready_to_negg(U) # Change ordering of Ready to g * -1
+
+                                    if self.data_struct == 'B':
                                         if self.tb_order in ['FIFO', 'LIFO']:
                                             self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
                                             frontiers.tb_order = 'NONE'
@@ -719,6 +729,7 @@ class bd_lb_search:
                                             frontiers.tb_dir = 'P'
                                             self.do_calc_expandable = False
                                             self.do_mwvc = False
+
                     # end of for state in expand_list loop - after each expansion check whether U has diminished to current GLB - DVCBS HOG2 code optimisation
                     if GLB >= U: # If the estimated lowest cost path on frontier is greater cost than the best path found, stop
                         status += f"Completed in FWD Exp. Termination condition GLB ({GLB}) >= U ({U}) met."
@@ -821,7 +832,7 @@ class bd_lb_search:
                                 #    if current_path_cost < U:
                                 #        force_low_tiebreak = True
                                 prior_f = prior_g + prior_h
-                                if self.data_struct == 'D':  # Wait: (f, [g, b, ordering, state])
+                                if self.data_struct == 'D':  # BAE* Wait: (f, [g, b, ordering, state])
                                     d_score = tentative_g_score - round(problem.heuristic(neighbor_state), 3)
                                     b_score = tentative_g_score + h_score + d_score
                                     frontiers.push('B', [tentative_g_score, b_score, self.calc_ordering(force_low_tiebreak), neighbor_state], 
@@ -842,9 +853,13 @@ class bd_lb_search:
                                 if switch_after_U_set:
                                     self.tb_select = 'F'  # If path found, reset tb_select to F so that next iteration will recalc CLB after expanding each node
                                     frontiers.tb_select = 'F'  # Reset tb_select to F so that next iteration will recalc CLB after expanding each node
-                                    if self.data_struct == 'D':
-                                        GLB = frontiers.set_ready_to_g() # For BAE*, change ordering of ready to g from b and reset glb to 0
-                                    elif self.data_struct == 'B':
+                                    if self.switch_type == 'F':
+                                        if self.data_struct == 'D':
+                                            GLB = frontiers.set_ready_to_g(U) # For BAE*, change ordering of ready to g from b and reset glb
+                                    elif self.switch_type == 'NG':
+                                        GLB = frontiers.set_ready_to_negg(U) # Change ordering of Ready to g * -1
+
+                                    if self.data_struct == 'B':
                                         if self.tb_order in ['FIFO', 'LIFO']:
                                             self.tb_order = 'NONE'  # For bucket implementation, tb_select='F', tb_order FIFO or LIFO is slow so reset to NONE
                                             frontiers.tb_order = 'NONE'

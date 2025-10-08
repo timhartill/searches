@@ -384,14 +384,15 @@ class BAEWaitingReadyPriorityQueue:
         self.max_distinct_g = 0      # for compatibility with WaitingReadyBuckets
         self.wait_entry_finder = {}  # mapping of state to entry in wait for deletion
         self.ready_entry_finder = {} # mapping of state to entry in ready
-        self.use_g = False           # Flag to indicate if ready is using g as priority instead of b
+        self.use_g = False           # Flag to indicate if ready is using g (or g*-1) as priority instead of b
+        self.g_multiplier = 1        # Multiplier for g when switching ready priority to -g
         self.g_dict = SortedDict()   # dictionary keeping count of g values in Ready when Ready itself is ordered by b
         return
 
     def remove_task(self, state):
         """ Mark an existing entry as REMOVED. entry format: 
         Wait: (f, [g, b, ordering, state])
-        Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
+        Ready: (b, [ordering, g, f, state]) (or ( (-)g, [ordering, g, f, state]) if use_g is True)
         """
         if state in self.wait_entry_finder:
             entry = self.wait_entry_finder.pop(state)
@@ -405,7 +406,7 @@ class BAEWaitingReadyPriorityQueue:
                     del self.g_dict[entry[-1][1]]
 
     def push(self, item, priority, prior_f=float('inf'), prior_g=float('inf')):
-        """ Push item list of [g, b, ordering, state] onto Wait queue, 
+        """ Push item list of (f, [g, b, ordering, state]) onto Wait queue, 
             removing any existing item with matching state first.
         """
         if prior_g != float('inf'):
@@ -422,7 +423,7 @@ class BAEWaitingReadyPriorityQueue:
         """ Move all states from Wait to Ready that satisfy the GLB condition
             Returns the number of states moved
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
+            Ready: (b, [ordering, g, f, state]) (or ( (-)g, [ordering, g, f, state]) if use_g is True)
         """
         count = 0
         while self.wait and self.wait[0][0] < GLB:
@@ -430,7 +431,7 @@ class BAEWaitingReadyPriorityQueue:
             if state != REMOVED:  # Only move if the state is not marked as REMOVED
                 del self.wait_entry_finder[state]
                 if self.use_g:
-                    entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                    entry = (g*self.g_multiplier, [ordering, g, f, state])  # if using g as priority in ready
                 else:    
                     entry = (b, [ordering, g, f, state])
                 heapq.heappush(self.ready, entry)
@@ -447,7 +448,7 @@ class BAEWaitingReadyPriorityQueue:
                 if state != REMOVED:
                     del self.wait_entry_finder[state]
                     if self.use_g:
-                        entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                        entry = (g*self.g_multiplier, [ordering, g, f, state])  # if using g as priority in ready
                     else:    
                         entry = (b, [ordering, g, f, state])
                     heapq.heappush(self.ready, entry)
@@ -465,14 +466,14 @@ class BAEWaitingReadyPriorityQueue:
         """ Move one state from Wait to Ready that satisfies the GLB condition
             Returns 1 if a state was moved, 0 otherwise
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
+            Ready: (b, [ordering, g, f, state]) (or ( (-)g, [ordering, g, f, state]) if use_g is True)
         """
         while self.wait and self.wait[0][0] <= GLB:
             f, (g, b, ordering, state) = heapq.heappop(self.wait)
             if state != REMOVED:
                 del self.wait_entry_finder[state]
                 if self.use_g:
-                    entry = (g, [ordering, g, f, state])  # if using g as priority in ready
+                    entry = (g*self.g_multiplier, [ordering, g, f, state])  # if using g as priority in ready
                 else:    
                     entry = (b, [ordering, g, f, state])
                 heapq.heappush(self.ready, entry)
@@ -489,7 +490,7 @@ class BAEWaitingReadyPriorityQueue:
     def pop(self, item_only=True):
         """ Pop the lowest priority element from Ready.
             Wait: (f, [g, b, ordering, state])
-            Ready: (b, [ordering, g, f, state]) (or (g, [ordering, g, f, state]) if use_g is True)
+            Ready: (b, [ordering, g, f, state]) (or ( (-)g, [ordering, g, f, state]) if use_g is True)
         """
         state = REMOVED
         while self.ready:
@@ -538,9 +539,11 @@ class BAEWaitingReadyPriorityQueue:
 
         if self.ready:
             if priority_only:
+                if self.use_g and self.g_multiplier == -1:
+                    return self.g_dict.peekitem(0)[0]  # Return the real minimum g if using -g as priority
                 return self.ready[0][0]
             else:
-                return self.ready[0]     # Return the whole entry
+                return self.ready[0]     # Return the whole entry - not used
         return float('inf')
 
     def select_and_order(self, direction, lb):
@@ -555,15 +558,18 @@ class BAEWaitingReadyPriorityQueue:
         expand_nodes.add( (ordering, g, f, current_state) )
         return expand_nodes
 
-    def set_ready_to_g(self):
-        """ Switch the ready queue to use g as priority instead of b """
+    def set_ready_to_g(self, U, opposite_gmin, min_edge_cost, new_g_multiplier=1):
+        """ Switch the ready queue to use g or -g as priority instead of b """
         if not self.use_g:
+            self.g_multiplier = new_g_multiplier
             self.g_dict = SortedDict()   # Reset the g_dict
             new_ready = []
             for b, (ordering, g, f, state) in self.ready:
                 if state == REMOVED:
                     continue
-                entry = (g, [ordering, g, f, state])
+                #if opposite_gmin + g >= U:  # prune states that can no longer be part of a better solution - has both +/- effect so leaving out to preserve current ug numbers
+                #    continue
+                entry = (g*self.g_multiplier, [ordering, g, f, state])
                 new_ready.append(entry)
                 if g not in self.g_dict:
                     self.g_dict[g] = 1
@@ -1202,8 +1208,8 @@ class LBPairs:
 
         self.forward_max_g_expanded = 0     # max g expanded in forward direction
         self.backward_max_g_expanded = 0    # max g expanded in backward direction
-        self.forward_gmin = 0               # current gmin in forward direction - not used for bae*
-        self.backward_gmin = 0              # current gmin in backward direction - not used for bae*
+        self.forward_gmin = 0               # current gmin in forward direction
+        self.backward_gmin = 0              # current gmin in backward direction
         self.forward_fmin = 0               # current fmin in forward direction
         self.backward_fmin = 0              # current fmin in backward direction
         self.forward_bmin = 0               # current bmin in forward direction BAE* only
@@ -1300,7 +1306,7 @@ class LBPairs:
                 count_f, count_b = self.move_one_to_ready(CLB)
             else:
                 count_f, count_b = 0, 0
-            #if count_f == 0 or count_b == 0:   # Per Chen pseudocode - clb non-monotonic but still optimal guarantee
+            #if count_f == 0 or count_b == 0:   # Per one interpretation of Chen pseudocode - clb non-monotonic but still optimal guarantee
             if count_f == 0 and count_b == 0:   # Per Shperberg/Siag code for CLB monotonic increase!
                 CLB = self.get_new_LB()
                 self.GLB = CLB
@@ -1316,7 +1322,7 @@ class LBPairs:
         self.backward_bmin = self.backward.peek_ready(priority_only=True)
         lb_b = (self.forward_bmin + self.backward_bmin) / 2.0
         #if lb_b != float('inf'):
-        #    lb_b = math.ceil(lb_b)
+        #    lb_b = math.ceil(lb_b)  # doing this caused non-optimal path to be returned in very rare case: a single DAO problem
         return lb_b
 
 
@@ -1349,23 +1355,27 @@ class LBPairs:
             self.backward_gmin = self.backward.g_dict.peekitem(index=0)[0]
         else:
             self.backward_gmin = float('inf')
-
-
         
-        if self.version != 'I':
+        if self.version != 'I':  # Version I returns optimal paths but expands many nodes so not recommended
             self.GLB = CLB   # GLB is min(fmin_f, fmin_b)
         else:
            self.GLB = min(minf, self.forward_gmin + self.backward_gmin + self.min_edge_cost)  # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)
         
         return True, self.GLB
 
-
-
-    def set_ready_to_g(self):
+    def set_ready_to_g(self, U):
         """ Set both ready queues to use g as priority rather than b. """
         if not self.forward.use_g:
-            self.forward.set_ready_to_g() # tfr forward ready to g + set use_g flag
-            self.backward.set_ready_to_g() # tfr backward ready to g + set use_g flag
+            self.forward.set_ready_to_g(U, self.backward_gmin, self.min_edge_cost) # tfr forward ready to g + set use_g flag
+            self.backward.set_ready_to_g(U, self.forward_gmin, self.min_edge_cost) # tfr backward ready to g + set use_g flag
+            self.GLB = self.get_new_LB() # reset GLB to what it would have been if using g as priority in Ready from beginning
+        return self.GLB
+    
+    def set_ready_to_negg(self, U):
+        """ Set both Ready queues to use -g as priority rather than b. """
+        if not self.forward.use_g:
+            self.forward.set_ready_to_g(U, self.backward_gmin, self.min_edge_cost, new_g_multiplier=-1) # tfr forward ready to -g + set use_g flag
+            self.backward.set_ready_to_g(U, self.forward_gmin, self.min_edge_cost, new_g_multiplier=-1) # tfr backward ready to -g + set use_g flag
             self.GLB = self.get_new_LB() # reset GLB to what it would have been if using g as priority in Ready from beginning
         return self.GLB
 

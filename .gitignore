@@ -148,8 +148,8 @@ tags
 /testdata
 README_files/libs
 README.html
+!outputs/keep
 outputs
-!outputs/keep/*
 outputs_sample
 outputs_sample_orig
 assets

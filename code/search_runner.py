@@ -183,6 +183,7 @@ SEARCH_MAP = {
 #    "lb_alter_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
 #    "lb_alter_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
     "lb_alter_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_alter_first_none_bae_a_eps_ung_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type': 'NG', "bpmx1": True},
 #    "lb_alter_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
 #    "lb_alter_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_alter_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
@@ -192,13 +193,16 @@ SEARCH_MAP = {
 #    "lb_pohl_first_none_bae_a_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "bpmx1": True, "h_improve": True},
 #    "lb_pohl_first_none_bae_a_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', "h_improve": True},
     "lb_pohl_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_pohl_first_none_bae_a_eps_ung_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type': 'NG', "bpmx1": True},
 #    "lb_pohl_first_none_bae_a_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
 #    "lb_pohl_first_none_bae_a_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_pohl_first_none_bae_f_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
 #    "lb_pohl_first_none_bae_f_eps_ug_bpmx1_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True, "h_improve": True},
 #    "lb_pohl_first_none_bae_f_eps_ug_himp": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "h_improve": True},
     "lb_minb_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_minb_first_none_bae_a_eps_ung_bpmx1": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type': 'NG', "bpmx1": True},
     "lb_rand_first_none_bae_a_eps_ug_bpmx1": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, "bpmx1": True},
+    "lb_rand_first_none_bae_a_eps_ung_bpmx1": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type': 'NG', "bpmx1": True},
     "lb_gbfhs_gbfhs_f_eps_bpmx1": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', "bpmx1": True},  
     "lb_gbfhs_gbfhs_f_eps_uf_bpmx1": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'GBF', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True},  
     "lb_gbfhs_lowg_f_eps_uf_bpmx1": {"class": bd_lb_search, "tb_dir": 'GBF', "tb_select": 'LG', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'B', 'switch_after_U_set':True, "bpmx1": True},  
@@ -215,6 +219,7 @@ SEARCH_MAP = {
     # lb_pohl_first_none_bae_a_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_f_eps_ug_bpmx1
 
     # lb_alter_first_none_bae_a_eps_ug_bpmx1 lb_pohl_first_none_bae_a_eps_ug_bpmx1 lb_minb_first_none_bae_a_eps_ug_bpmx1 lb_rand_first_none_bae_a_eps_ug_bpmx1
+    # lb_alter_first_none_bae_a_eps_ung_bpmx1 lb_pohl_first_none_bae_a_eps_ung_bpmx1 lb_minb_first_none_bae_a_eps_ung_bpmx1 lb_rand_first_none_bae_a_eps_ung_bpmx1
     # lb_mwvcsmallg_lowg_none_dvcbs_a_eps_bpmx1 lb_mwvcsmallg_lowg_none_dvcbs_f_eps_bpmx1 lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_bpmx1 lb_mostconnectednodes_lowg_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_bpmx1 lb_gbfhs_gbfhs_f_eps_uf_bpmx1
     # lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1 lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1
 
@@ -252,7 +257,15 @@ SEARCH_MAP = {
     "lb_fwd_first_none_bae_f_eps_ug": {"class": bd_lb_search, "tb_dir": 'F', "tb_select": 'F', "tb_order": 'NONE', "version": 'F', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True},
 
     # lb_alter_first_none_bae_a_eps_ug lb_pohl_first_none_bae_a_eps_ug lb_minb_first_none_bae_a_eps_ug lb_rand_first_none_bae_a_eps_ug
-    # lb_alter_first_none_bae_f_eps_ug lb_pohl_first_none_bae_f_eps_ug lb_minb_first_none_bae_f_eps_ug lb_rand_first_none_bae_f_eps_ug
+
+    # BAE* "ung" versions that change ready to use -g priority after U has been set
+    "lb_alter_first_none_bae_a_eps_ung": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type':'NG'},
+    "lb_pohl_first_none_bae_a_eps_ung": {"class": bd_lb_search, "tb_dir": 'P', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type':'NG'},
+    "lb_minb_first_none_bae_a_eps_ung": {"class": bd_lb_search, "tb_dir": 'G', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type':'NG'},
+    "lb_rand_first_none_bae_a_eps_ung": {"class": bd_lb_search, "tb_dir": 'R', "tb_select": 'F', "tb_order": 'NONE', "version": 'A', "min_edge_cost": 1.0, "data_struct": 'D', 'switch_after_U_set':True, 'switch_type':'NG'},
+
+    # lb_alter_first_none_bae_a_eps_ung lb_pohl_first_none_bae_a_eps_ung lb_minb_first_none_bae_a_eps_ung lb_rand_first_none_bae_a_eps_ung
+
 
     # I-BAE* versions
     "lb_alter_first_none_bae_i_eps": {"class": bd_lb_search, "tb_dir": 'A', "tb_select": 'F', "tb_order": 'NONE', "version": 'I', "min_edge_cost": 1.0, "data_struct": 'D'},
@@ -527,7 +540,8 @@ if __name__ == "__main__":
                                            algo_name=algo, 
                                            rust= args.rust, 
                                            bpmx1 = SEARCH_MAP[algo].get('bpmx1', False),
-                                           h_improve = SEARCH_MAP[algo].get('h_improve', False), )
+                                           h_improve = SEARCH_MAP[algo].get('h_improve', False), 
+                                           switch_type = SEARCH_MAP[algo].get('switch_type', 'F'), )
             else:
                 algo_instance = algo_class(priority_key = SEARCH_MAP[algo]['priority_key'],
                                         tiebreaker1 = SEARCH_MAP[algo]['tiebreaker1'],
