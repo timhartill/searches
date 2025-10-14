@@ -1164,7 +1164,7 @@ class LBPairs:
     NOTE: GLB is called min_LB in Chen 2017, LB in Shperberg 2019 and C in A* and our naive BDHS
     """
     def __init__(self, version='A', min_edge_cost=1.0, data_struct='P', 
-                 tb_dir='NBS', tb_select='F', tb_order='NONE'):
+                 tb_dir='NBS', tb_select='F', tb_order='NONE', gcd=1):
         """ version is 'A' for All means move_to_read uses <= GLB, 'F' for First means move_to_ready uses < GLB
        If unknown can set min_edge_cost (eps) to 0.0
         data_struct is 'P' for PriorityQueue or 'B' for WaitingReadyBuckets
@@ -1214,6 +1214,8 @@ class LBPairs:
         self.backward_fmin = 0              # current fmin in backward direction
         self.forward_bmin = 0               # current bmin in forward direction BAE* only
         self.backward_bmin = 0              # current bmin in backward direction BAE* only
+
+        self.gcd = gcd                      # gcd of all non-zero edge costs - used in BAE* only. Set to -1 to disable
         return
 
     def push(self, direction, item, priority, prior_f=float('inf'), prior_g=float('inf')):
@@ -1317,12 +1319,14 @@ class LBPairs:
     def get_lb_b(self):
         """ Get the new lb_b value for BAE*. 
             lb_b = (bmin_f + bmin_b) / 2
+            The gcd in the ceiling line is the greatest common denominator of all non-zero edge costs for the problem domain
+            To exclude the ceil part of the calculation set self.gcd = -1 in the __init__ of the problem class
         """    
         self.forward_bmin = self.forward.peek_ready(priority_only=True)
         self.backward_bmin = self.backward.peek_ready(priority_only=True)
         lb_b = (self.forward_bmin + self.backward_bmin) / 2.0
-        #if lb_b != float('inf'):
-        #    lb_b = math.ceil(lb_b)  # doing this caused non-optimal path to be returned in very rare case: a single DAO problem
+        if lb_b != float('inf') and self.gcd != -1:
+            lb_b = math.ceil(lb_b / self.gcd) * self.gcd  # Note doing this without gcd=0.5 caused non-optimal path to be returned in very rare case: a single DAO problem
         return lb_b
 
 
@@ -1356,7 +1360,7 @@ class LBPairs:
         else:
             self.backward_gmin = float('inf')
         
-        if self.version != 'I':  # Version I returns optimal paths but expands many nodes so not recommended
+        if self.version != 'I':  # Version I returns optimal paths on inconsistent heuristics but expands many nodes so not recommended
             self.GLB = CLB   # GLB is min(fmin_f, fmin_b)
         else:
            self.GLB = min(minf, self.forward_gmin + self.backward_gmin + self.min_edge_cost)  # GLB is min(fmin_f, fmin_b, gmin_f + gmin_b + eps)

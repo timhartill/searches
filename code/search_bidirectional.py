@@ -556,6 +556,9 @@ class bd_lb_search:
         num_iter_no_expansions = 0  # Number of iterations with no expansions in either direction - error if >= 2 meaning a potential fwd only iter + bwd only iter failed
         force_low_tiebreak = False  # only improves expansion count slightly (where expanding > 1 node in a direction) so disabling for now
         switch_after_U_set = self.switch_after_U_set # change to tb_select='F' after U < inf
+        if hasattr(problem, 'gcd'):  # Only used in BAE*
+            frontiers.gcd = problem.gcd
+            status += f"Problem gcd:{problem.gcd}."
 
         while not frontiers.forward.isEmpty() and not frontiers.backward.isEmpty():
             curr_heap_size = frontiers.get_max_heap_size()
@@ -579,7 +582,7 @@ class bd_lb_search:
             else:
                 found, new_GLB = frontiers.prepare_expandable(GLB)
             if not found:  # If no expandable nodes, we are done - never happens in current test domains
-                status += f"Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
+                status += f" Completed. No expandable nodes found. Old GLB:{GLB} New GLB:{new_GLB} U:{U}."
                 break
 
             if new_GLB + 1e-6 < GLB:
@@ -878,7 +881,7 @@ class bd_lb_search:
             if num_expansions_fwd + num_expansions_bwd == 0:  # If no nodes expanded in either direction 
                 num_iter_no_expansions += 1
                 if num_iter_no_expansions >= 2:  # If no nodes expanded in either direction for 2 iterations, terminate with error (2 iterations to allow for an attempt at each direction with eg alter)
-                    status += f"ERROR: Terminating since no nodes expanded in either direction over 2 iterations! GLB:{GLB} U:{U}."
+                    status += f" ERROR: Terminating since no nodes expanded in either direction over 2 iterations! GLB:{GLB} U:{U}."
                     break
             else:
                 num_iter_no_expansions = 0

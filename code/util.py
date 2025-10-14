@@ -261,6 +261,45 @@ def make_prob_str(file_name='', initial_state=None, goal_state=None, prefix="__"
         prob_str += make_prob_serial(goal_state, prefix=prefix, suffix="")
     return prob_str + suffix
 
+def gcd_float(a, b):
+    """
+    Calculates the Greatest Common Divisor (GCD) of two floating-point numbers.
+
+    Args:
+        a (float): The first floating-point number.
+        b (float): The second floating-point number.
+
+    Returns:
+        float: The GCD of a and b.
+    """
+    if a == 0 and b == 0:
+        return 0.0
+    if a == 0:
+        return abs(b)
+    if b == 0:
+        return abs(a)
+
+    # Determine the precision needed (number of decimal places)
+    # This assumes a and b are finite and not NaN
+    str_a = str(a)
+    str_b = str(b)
+
+    decimal_places_a = len(str_a.split('.')[-1]) if '.' in str_a else 0
+    decimal_places_b = len(str_b.split('.')[-1]) if '.' in str_b else 0
+
+    max_decimal_places = max(decimal_places_a, decimal_places_b)
+    
+    # Scale the numbers to integers
+    scaling_factor = 10**max_decimal_places
+    int_a = round(a * scaling_factor)
+    int_b = round(b * scaling_factor)
+
+    # Calculate GCD of the integers
+    gcd_integers = math.gcd(int_a, int_b)
+
+    # Scale the result back
+    return gcd_integers / scaling_factor
+
 
 def write_jsonl_to_csv(results, csv_file_path, del_keys=['path'], 
                        delimiter=',', lineterminator='\n', verbose=True):

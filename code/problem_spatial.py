@@ -167,6 +167,9 @@ class GridProblem:
         self.cstar = cstar
         self.cost_type = "VarCost" if self.use_variable_costs else "UnitCost"
         self.admissible = self.optimality_guaranteed and not self.make_heuristic_inadmissable
+        self.gcd = 1
+        if self.allow_diagonal:
+            self.gcd = util.gcd_float(self.cost_multiplier, self.diag_cost * self.cost_multiplier) #gcd(1, 1.5) = 0.5
         self._str_repr = f"GRID-{self.griddomain}-R{self.max_rows}xC{self.max_cols}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}-{util.make_prob_str(file_name=self.basename, initial_state=self.initial_state_tuple, goal_state=self.goal_state_tuple)}-h{self.h_str}-d{self.degradation}-a{self.admissible}-cs{self.cstar}"
         self.prob_str = f"{self.griddomain}-{self.cost_type}-dc{self.diag_cost}-cm{self.cost_multiplier}"
 
