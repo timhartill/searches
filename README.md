@@ -22,6 +22,6 @@ Tested under Python 3.12 on Ubuntu and CentOS.
 
 1. pip install _maturin_
 2. Run _maturin develop --release_ on the command line to compile the Rust library _.../code/src/lib.rs_ as an importable Python package _rust_utils_. 
-3. Add a _--rust_heur_ flag to your run script to run the Rust version of the manhattan heuristic for Sliding Tile. Speeds up 4x4 Sliding Tile problems by 20% or so.
-4. Add a _--rust_ flag to your run script to use a Rust version of the node dictionary that stores g, h and the parent for each state. Actually runs a bit slower dues to the calling overhead but saves a modest amount on memory usage.
+3. Add a _--rust_heur_ flag to your run script to run the Rust version of the manhattan heuristic for Sliding Tile. Speeds up 4x4 Sliding Tile problems by 15% or so.
+4. Add a _--rust_ flag to your run script to use a Rust version of the node dictionary that stores g, h and the parent for each state. Actually runs a bit slower due to the calling overhead but saves a modest amount on memory usage.
 
