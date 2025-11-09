@@ -282,10 +282,16 @@ comment
 # (53) 2nd 2 of (51): lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf_bpmx1 lb_mostconnectednodes_lowg_f_eps_uf_bpmx1
 # (54) 3rd 2 of (51): lb_smallg_lowg_none_f_eps_uf_bpmx1 lb_smallgf_smallblowg_f_eps_uf_bpmx1
 
+# (55) (in)consistent h uf (46) less gbfhs: lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
+# (56) 1st 2 of (55): lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf
+# (57) 2nd 2 of (55): lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf
+# (58) 3rd 2 of (55): lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
+
+
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lb_StdAllInconsistent_setid54bae_ug__bpmx_ceilgcd_hgx2_clbmono_hog2opt_" \
+        --out_prefix "lb_StdAllInconsistent_setid56bae_ug__ceilgcd_hgx2_clbmono_hog2opt_" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
@@ -312,7 +318,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_smallg_lowg_none_f_eps_uf_bpmx1 lb_smallgf_smallblowg_f_eps_uf_bpmx1 \
+        --algo_heur lb_mwvcsmallg_lowg_none_dvcbs_a_eps_uf lb_mwvcsmallg_lowg_none_dvcbs_f_eps_uf \
         --algo_mcts NONE
 
 
