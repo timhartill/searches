@@ -291,7 +291,7 @@ comment
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lb_StdAllInconsistent_setid57_uf__ceilgcd_hgx2_clbmono_hog2opt_" \
+        --out_prefix "lb_StdAllInconsistent_setid58_uf__ceilgcd_hgx2_clbmono_hog2opt_" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
@@ -318,7 +318,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_mwvcsmallgf_lowg_none_dvcbs_f_eps_uf lb_mostconnectednodes_lowg_f_eps_uf \
+        --algo_heur lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf \
         --algo_mcts NONE
 
 
