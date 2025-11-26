@@ -288,11 +288,11 @@ comment
 # (58) 3rd 2 of (55): lb_smallg_lowg_none_f_eps_uf lb_smallgf_smallblowg_f_eps_uf
 
 # (70) = (49) first only without smallg smallgf inconsistent h +/-bpmx: lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1
-
+# (71) = (49) smallg smallgf no first +bpmx1 only: lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1
 
 python search_runner.py \
         --out_dir "../outputs" \
-        --out_prefix "lb_StdDAOInconsistent_setid70__ceilgcd_hgx2_clbmono_hog2opt_" \
+        --out_prefix "lb_StdDAOInconsistent_setid71__ceilgcd_hgx2_clbmono_hog2opt_" \
         --in_dir "../problems" \
         --seed 42 \
         --rust_heur \
@@ -319,7 +319,7 @@ python search_runner.py \
         --algo_visualise \
         --algo_timeout 2880 \
         --algo_min_remaining_gb 2.0 \
-        --algo_heur lb_rand_first_none_f_eps lb_gbfhs_first_f_eps lb_pohl_first_none_f_eps lb_nbs_f_eps lb_rand_first_none_f_eps_bpmx1 lb_gbfhs_first_f_eps_bpmx1 lb_pohl_first_none_f_eps_bpmx1 lb_nbs_f_eps_bpmx1 \
+        --algo_heur lb_smallg_lowg_none_f_eps_bpmx1 lb_smallgf_smallblowg_f_eps_bpmx1 \
         --algo_mcts NONE
 
 
